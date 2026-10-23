@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wednesware-calcium"
+version = "0.1.0"
+description = "An experimental Python-to-C compiler with explicit CPython interoperability"
+readme = "README.md"
+requires-python = ">=3.12,<3.15"
+authors = [{name = "Wednesware"}]
+classifiers = ["Development Status :: 3 - Alpha", "Programming Language :: Python :: 3", "Programming Language :: C"]
+
+[project.scripts]
+calcium = "calcium.cli:main"
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+include = ["calcium*"]
+
+[tool.setuptools.package-data]
+calcium = ["runtime/*.h", "runtime/*.c"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
