@@ -19,7 +19,7 @@ from .models import CalciumInternalError
 
 def parser():
     root = argparse.ArgumentParser(
-        prog="calcium", description="Experimental Python-to-C compiler (embedded CPython)"
+        prog="ca", description="Experimental Python-to-C compiler (embedded CPython)"
     )
     root.add_argument("--version", action="version", version=f"Calcium {__version__}")
     commands = root.add_subparsers(dest="command", required=True)
