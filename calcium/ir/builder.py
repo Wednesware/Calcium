@@ -286,6 +286,35 @@ class Builder:
                 for target in node.targets:
                     self.assign(target, value)
                 self.drop(value)
+            elif isinstance(node, ast.Import):
+                for alias in node.names:
+                    value = self.emit(
+                        "import",
+                        data={"name": alias.name, "fromlist": [], "level": 0},
+                        line=node.lineno,
+                    )
+                    if alias.asname:
+                        for part in alias.name.split(".")[1:]:
+                            child = self.emit("import_from", [value], data=part, line=node.lineno)
+                            self.drop(value)
+                            value = child
+                    self.save(alias.asname or alias.name.split(".")[0], value, node.lineno)
+                    self.drop(value)
+            elif isinstance(node, ast.ImportFrom):
+                module = self.emit(
+                    "import",
+                    data={
+                        "name": node.module or "",
+                        "fromlist": [a.name for a in node.names],
+                        "level": node.level,
+                    },
+                    line=node.lineno,
+                )
+                for alias in node.names:
+                    value = self.emit("import_from", [module], data=alias.name, line=node.lineno)
+                    self.save(alias.asname or alias.name, value, node.lineno)
+                    self.drop(value)
+                self.drop(module)
             elif isinstance(node, ast.AugAssign):
                 left = self.load(node.target.id, node.lineno)
                 right = self.expr(node.value)

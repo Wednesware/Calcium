@@ -1,7 +1,7 @@
 # Architecture proposal
 
 Status: proposed, not approved. This document and its linked specifications
-fulfill Phase 0 of [the project brief](../CALCIUM_INFO.md). Implementation is now available; see the [current implementation contract](IMPLEMENTATION.md). Recommendations below are decisions to review,
+fulfill Phase 0 of the original project brief. Implementation is now available; see the [current implementation contract](IMPLEMENTATION.md). Recommendations below are decisions to review,
 not claims of delivered compatibility.
 
 ## Objectives and feasibility

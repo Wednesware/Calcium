@@ -20,6 +20,8 @@ OPS = {
     "setitem",
     "function",
     "iter",
+    "import",
+    "import_from",
 }
 PURE_CLEANUP = {"drop", "clear"}
 
@@ -69,6 +71,8 @@ def validate(program: Program):
                     "setitem": 3,
                     "function": 0,
                     "iter": 1,
+                    "import": 0,
+                    "import_from": 1,
                 }
                 if op.op in arities and len(op.args) != arities[op.op]:
                     raise CalciumInternalError("instruction arity mismatch")

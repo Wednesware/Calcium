@@ -15,9 +15,10 @@ from time import perf_counter
 
 from . import __version__
 from .backend.generator import generate
+from .backend.project import launcher, module_id
 from .backend.toolchain import ToolchainError, compile_c, python_config
 from .frontend.analysis import analyze
-from .frontend.loader import load
+from .frontend.project import discover
 from .ir.builder import build as build_ir
 from .ir.nodes import Program
 from .ir.validator import validate
@@ -49,6 +50,14 @@ def _publish_directory(staged: Path, output: Path):
                 "program.cir.json",
                 "program.ast.txt",
             }
+            if manifest.is_file():
+                previous = json.loads(manifest.read_text())
+                for record in previous.get("modules", []):
+                    for key in ("c_file", "ir_file", "ast_file"):
+                        name = record.get(key)
+                        if name and Path(name).name == name:
+                            allowed.add(name)
+            allowed.add("calcium_modules.c")
             if (
                 not manifest.is_file()
                 or json.loads(manifest.read_text()).get("generator") != "calcium"
@@ -77,10 +86,13 @@ class Calcium:
     compiler: str | None = None
     python: str = sys.executable
     debug: bool = False
-    fallback: bool = True
+    fallback: bool | None = None
     emit_ir: bool = False
     emit_ast: bool = False
     keep_c: bool = False
+    project_root: str | Path | None = None
+    include_paths: tuple[str | Path, ...] = ()
+    include_all: bool = False
 
     def __post_init__(self):
         if self.optimization not in (0, 1):
@@ -96,14 +108,32 @@ class Calcium:
         if self.target == "c" and self.keep_c:
             raise ValueError("--keep-c is redundant for target c")
 
-    def _prepare(self, source) -> tuple[Result, object, object, Program | None]:
+    def _prepare(self, source=None, *, module=None):
         result = Result()
         start = perf_counter()
         snapshot = analysis = None
+        active = str(source or module)
         try:
             config = python_config(str(self.python))
-            snapshot = load(source)
-            analysis = analyze(snapshot)
+            project = discover(
+                source,
+                module=module,
+                root=self.project_root,
+                include_paths=self.include_paths,
+                include_all=self.include_all,
+                library=self.target == "extension",
+            )
+            snapshot = project.entry.source
+            if snapshot is None:
+                raise ValueError("entry must contain executable Python source")
+            if self.target == "executable" and project.entry.package:
+                raise ValueError(
+                    "package needs __main__.py to build an executable; use --module package.entry or --target extension"
+                )
+            project_build = (
+                project.directory_input or project.module_entry or len(project.modules) > 1
+            )
+            allow_fallback = self.fallback if self.fallback is not None else not project_build
             result.metadata = {
                 "calcium_version": __version__,
                 "python": config,
@@ -112,72 +142,154 @@ class Calcium:
                 "optimization": self.optimization,
                 "target": self.target,
                 "native_function_frames": False,
+                "project_root": str(project.roots[0]),
+                "entry_module": project.entry.name,
+                "module_entry": project.module_entry,
+                "fallback_allowed": allow_fallback,
             }
             result.runtime_dependencies = [
                 f"CPython {'.'.join(map(str, config['version']))}",
                 "matching standard library",
             ]
+            result.runtime_dependencies.extend(
+                f"external import: {name}" for name in sorted(project.external)
+            )
+            analyses, programs, records = {}, {}, []
+            for name, item in sorted(project.modules.items()):
+                if item.namespace:
+                    records.append(
+                        {
+                            "name": name,
+                            "source": str(item.path),
+                            "directory": str(item.directory),
+                            "package": True,
+                            "namespace": True,
+                            "search_locations": [str(p) for p in item.namespace_paths],
+                            "mode": "namespace",
+                            "executor": None,
+                            "c_file": None,
+                            "source_sha256": None,
+                        }
+                    )
+                    continue
+                active = str(item.path)
+                current = analyze(item.source)
+                analyses[name] = current
+                result.diagnostics.extend(current.diagnostics)
+                reasons = [
+                    dict(reason, module=name, path=str(item.path)) for reason in current.fallbacks
+                ]
+                result.fallbacks.extend(reasons)
+                if reasons and not allow_fallback:
+                    for reason in reasons:
+                        result.diagnostics.append(
+                            Diagnostic(
+                                "C101",
+                                reason["reason"],
+                                str(item.path),
+                                reason["line"],
+                                reason["column"],
+                            )
+                        )
+                    continue
+                if reasons:
+                    program = Program([], "fallback", item.source.text)
+                    result.diagnostics.append(
+                        Diagnostic(
+                            "C102",
+                            f"module {name} uses CPython code-object fallback; no native coverage",
+                            str(item.path),
+                            severity="warning",
+                        )
+                    )
+                else:
+                    program = build_ir(current.tree)
+                validate(program)
+                result.optimizations.extend(
+                    dict(report, module=name) for report in optimize(program, self.optimization)
+                )
+                programs[name] = program
+                identity = module_id(name)
+                records.append(
+                    {
+                        "name": name,
+                        "source": str(item.path),
+                        "directory": str(item.directory),
+                        "package": item.package,
+                        "namespace": False,
+                        "search_locations": [str(item.directory)] if item.package else [],
+                        "mode": program.mode,
+                        "executor": "ca_exec_" + identity,
+                        "c_file": "module_" + identity + ".c",
+                        "source_sha256": item.source.digest,
+                    }
+                )
+            for item in project.dynamic:
+                result.diagnostics.append(
+                    Diagnostic(
+                        "C112",
+                        item["reason"],
+                        str(project.modules[item["module"]].path),
+                        item["line"],
+                        severity="warning",
+                    )
+                )
+            analysis = analyses.get(project.entry.name)
+            if any(d.severity == "error" for d in result.diagnostics):
+                return result, snapshot, analysis, None
+            entry_program = programs[project.entry.name]
+            result.ir = entry_program.to_dict()
+            result.ir["modules"] = {name: program.to_dict() for name, program in programs.items()}
             result.analysis = {
                 "scopes": analysis.scopes,
                 "types": analysis.types,
                 "ast": ast.dump(analysis.tree, indent=2, include_attributes=True),
+                "modules": {
+                    name: {"scopes": a.scopes, "types": a.types} for name, a in analyses.items()
+                },
+                "imports": project.imports,
+                "external_imports": sorted(project.external),
+                "dynamic_imports": project.dynamic,
             }
-            result.diagnostics.extend(analysis.diagnostics)
-            result.fallbacks = analysis.fallbacks
-            if analysis.fallbacks and not self.fallback:
-                for item in analysis.fallbacks:
-                    result.diagnostics.append(
-                        Diagnostic(
-                            "C101", item["reason"], str(snapshot.path), item["line"], item["column"]
-                        )
-                    )
-                return result, snapshot, analysis, None
-            if analysis.fallbacks:
-                program = Program([], "fallback", snapshot.text)
-                result.diagnostics.append(
-                    Diagnostic(
-                        "C102",
-                        "entire module uses CPython code-object fallback; no native coverage",
-                        str(snapshot.path),
-                        severity="warning",
-                    )
-                )
-            else:
-                program = build_ir(analysis.tree)
-            validate(program)
-            result.optimizations = optimize(program, self.optimization)
-            result.ir = program.to_dict()
-            result.metadata["mode"] = program.mode
+            modes = {p.mode for p in programs.values()}
+            result.metadata["mode"] = next(iter(modes)) if len(modes) == 1 else "mixed"
+            result.metadata["modules"] = records
+            result.metadata["project_sha256"] = sha256(
+                json.dumps(
+                    {r["name"]: r["source_sha256"] for r in records}, sort_keys=True
+                ).encode()
+            ).hexdigest()
             result.success = True
-            return result, snapshot, analysis, program
+            return result, snapshot, analysis, (project, analyses, programs, records)
         except (SyntaxError, UnicodeError) as exc:
-            line = getattr(exc, "lineno", 1) or 1
-            column = getattr(exc, "offset", 1) or 1
-            result.diagnostics.append(Diagnostic("C100", str(exc), str(source), line, column))
+            line, column = getattr(exc, "lineno", 1) or 1, getattr(exc, "offset", 1) or 1
+            result.diagnostics.append(
+                Diagnostic("C100", str(exc), getattr(exc, "filename", None) or active, line, column)
+            )
         except ToolchainError as exc:
             result.diagnostics.append(Diagnostic("C300", str(exc), stage="environment"))
         except OSError as exc:
-            result.diagnostics.append(Diagnostic("C103", str(exc), str(source), stage="loader"))
+            result.diagnostics.append(Diagnostic("C103", str(exc), active, stage="loader"))
         finally:
             result.timings["analysis"] = perf_counter() - start
         return result, snapshot, analysis, None
 
-    def analyze(self, source) -> Result:
-        return self._prepare(source)[0]
+    def analyze(self, source=None, *, module=None) -> Result:
+        return self._prepare(source, module=module)[0]
 
-    def inspect(self, source) -> Result:
-        return self.analyze(source)
+    def inspect(self, source=None, *, module=None) -> Result:
+        return self.analyze(source, module=module)
 
-    def transpile(self, source, *, output=None) -> Result:
+    def transpile(self, source=None, *, module=None, output=None) -> Result:
         if self.target != "c":
             raise ValueError("transpile requires target c; use build for native targets")
-        result, snapshot, analysis, program = self._prepare(source)
+        result, snapshot, analysis, program = self._prepare(source, module=module)
         if not result.success:
             return result
-        output = Path(os.path.abspath(output or Path("build") / snapshot.path.stem))
+        output = Path(os.path.abspath(output or Path("build") / _entry_stem(program)))
         if output.is_symlink():
             raise ValueError("output must not be a symlink")
-        if snapshot.path.is_relative_to(output.resolve()):
+        if any(item.path.is_relative_to(output.resolve()) for item in program[0].modules.values()):
             raise ValueError("output directory must not contain the input source")
         start = perf_counter()
         try:
@@ -200,34 +312,68 @@ class Calcium:
         result.timings["emission"] = perf_counter() - start
         return result
 
-    def _emit(self, directory, result, snapshot, analysis, program, module_name):
+    def _emit(self, directory, result, snapshot, analysis, plan, module_name):
+        project, analyses, programs, original_records = plan
+        records = [dict(record) for record in original_records]
         directory.mkdir(parents=True)
         runtime = Path(__file__).parent / "runtime"
-        for name in ("calcium_runtime.h", "calcium_runtime.c"):
+        for name in ("calcium_runtime.h", "calcium_runtime.c", "calcium_modules.c"):
             shutil.copyfile(runtime / name, directory / name)
         minor = result.metadata["python"]["version"][1]
-        text = generate(
-            program,
-            filename=str(snapshot.path),
-            directory=str(snapshot.path.parent),
-            module_name=module_name,
+        for record in records:
+            if record["namespace"]:
+                continue
+            name = record["name"]
+            text = generate(
+                programs[name],
+                filename=record["source"],
+                directory=record["directory"],
+                module_name=module_name,
+                python_executable=result.metadata["python"]["executable"],
+                executor=record["executor"],
+            )
+            (directory / record["c_file"]).write_text(text, encoding="utf-8")
+            if self.emit_ir:
+                record["ir_file"] = record["c_file"] + ".cir.json"
+                (directory / record["ir_file"]).write_text(
+                    json.dumps(programs[name].to_dict(), indent=2, sort_keys=True) + "\n"
+                )
+            if self.emit_ast:
+                record["ast_file"] = record["c_file"] + ".ast.txt"
+                (directory / record["ast_file"]).write_text(
+                    ast.dump(analyses[name].tree, indent=2, include_attributes=True) + "\n"
+                )
+        text = launcher(
+            records,
+            project.entry.name,
+            module_entry=project.module_entry,
+            directory=str(project.roots[0] if project.module_entry else snapshot.path.parent),
             python_executable=result.metadata["python"]["executable"],
+            extension_name=module_name,
         )
         (directory / "program.c").write_text(text, encoding="utf-8")
         (directory / "program.h").write_text(
             f'#ifndef CALCIUM_PROGRAM_H\n#define CALCIUM_PROGRAM_H\n#define CALCIUM_PY_MINOR {minor}\n#include "calcium_runtime.h"\n#endif\n'
         )
         manifest = {
-            "schema_version": 1,
+            "schema_version": 2,
             "generator": "calcium",
             "version": __version__,
             "source_sha256": snapshot.digest,
             "source": str(snapshot.path),
-            "mode": program.mode,
+            "project_sha256": result.metadata["project_sha256"],
+            "entry_module": project.entry.name,
+            "module_entry": project.module_entry,
+            "mode": result.metadata["mode"],
+            "modules": records,
+            "project_roots": [str(root) for root in project.roots],
+            "imports": project.imports,
+            "external_imports": sorted(project.external),
+            "dynamic_imports": project.dynamic,
             "python_minor": minor,
             "python_executable": result.metadata["python"]["executable"],
             "optimization": self.optimization,
-            "runtime_abi": 1,
+            "runtime_abi": 2,
             "fallbacks": result.fallbacks,
             "runtime_dependencies": result.runtime_dependencies,
         }
@@ -235,37 +381,39 @@ class Calcium:
             json.dumps(manifest, indent=2, sort_keys=True) + "\n"
         )
         mapping = {
-            "schema_version": 1,
-            "source": str(snapshot.path),
-            "functions": {
-                fn.symbol: {
-                    b.name: [{"register": op.result, "line": op.line} for op in b.instructions]
-                    for b in fn.blocks
-                }
-                for fn in program.functions
-            },
+            name: {
+                "source": str(project.modules[name].path),
+                "functions": {
+                    fn.symbol: {
+                        b.name: [{"register": op.result, "line": op.line} for op in b.instructions]
+                        for b in fn.blocks
+                    }
+                    for fn in program.functions
+                },
+            }
+            for name, program in programs.items()
         }
         (directory / "source-map.json").write_text(
-            json.dumps(mapping, indent=2, sort_keys=True) + "\n"
+            json.dumps({"schema_version": 2, "modules": mapping}, indent=2, sort_keys=True) + "\n"
         )
         if self.emit_ir:
             (directory / "program.cir.json").write_text(
-                json.dumps(program.to_dict(), indent=2, sort_keys=True) + "\n"
+                json.dumps(result.ir, indent=2, sort_keys=True) + "\n"
             )
         if self.emit_ast:
             (directory / "program.ast.txt").write_text(result.analysis["ast"] + "\n")
 
-    def build(self, source, *, output=None) -> Result:
+    def build(self, source=None, *, module=None, output=None) -> Result:
         if self.target == "c":
-            return self.transpile(source, output=output)
-        result, snapshot, analysis, program = self._prepare(source)
+            return self.transpile(source, module=module, output=output)
+        result, snapshot, analysis, program = self._prepare(source, module=module)
         if not result.success:
             return result
         config = result.metadata["python"]
         suffix = config["config"]["EXT_SUFFIX"] if self.target == "extension" else ""
         output = Path(
             os.path.abspath(
-                output or Path("build") / snapshot.path.stem / (snapshot.path.stem + suffix)
+                output or Path("build") / _entry_stem(program) / (_entry_stem(program) + suffix)
             )
         )
         if output.is_symlink():
@@ -279,6 +427,10 @@ class Calcium:
             module_name = output.name[: -len(suffix)]
             if not re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*", module_name):
                 raise ValueError("extension module name must be an ASCII Python identifier")
+        if program[0].entry.package and module_name != program[0].entry.name:
+            raise ValueError(
+                "a package extension output name must match its top-level package name"
+            )
         start = perf_counter()
         try:
             output.parent.mkdir(parents=True, exist_ok=True)
@@ -313,3 +465,10 @@ class Calcium:
 
 def _module_name(name):
     return name if re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*", name) else "calcium_program"
+
+
+def _entry_stem(plan):
+    entry = plan[0].entry
+    return (
+        entry.name.split(".")[-2] if entry.name.endswith(".__main__") else entry.name.split(".")[-1]
+    )

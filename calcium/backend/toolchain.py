@@ -75,12 +75,8 @@ def compile_c(
         command += ["-g", "-Wall", "-Wextra"]
     if target == "extension":
         command += ["-shared", "-fPIC", "-DCALCIUM_EXTENSION=1"]
-    command += [
-        str(directory / "program.c"),
-        str(directory / "calcium_runtime.c"),
-        "-o",
-        str(output),
-    ]
+    # The emission directory is private and contains only generated sources.
+    command += [str(path) for path in sorted(directory.glob("*.c"))] + ["-o", str(output)]
     if target == "executable":
         library = Path(cfg["LIBDIR"] or "") / (cfg["LDLIBRARY"] or "")
         if not library.is_file():

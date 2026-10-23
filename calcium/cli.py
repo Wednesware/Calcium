@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 import platform
 import shutil
 import statistics
@@ -18,9 +19,7 @@ from .models import CalciumInternalError
 
 
 def parser():
-    root = argparse.ArgumentParser(
-        prog="ca", description="Experimental Python-to-C compiler (embedded CPython)"
-    )
+    root = argparse.ArgumentParser(prog="ca", description="Wednesware Calcium")
     root.add_argument("--version", action="version", version=f"Calcium {__version__}")
     commands = root.add_subparsers(dest="command", required=True)
     info = commands.add_parser("info", help="runtime and toolchain availability")
@@ -28,16 +27,35 @@ def parser():
     info.add_argument("--format", choices=["text", "json"], default="text")
     for name in ["check", "inspect", "transpile", "build", "run", "benchmark"]:
         cmd = commands.add_parser(name)
-        cmd.add_argument("source", type=Path)
+        cmd.add_argument("source", type=Path, nargs="?")
+        cmd.add_argument("--module", help="module or package entry, like python -m")
+        cmd.add_argument("--project-root", type=Path)
+        cmd.add_argument("--include-path", type=Path, action="append", default=[])
+        cmd.add_argument(
+            "--include-all",
+            action="store_true",
+            help="compile all Python modules under the project root",
+        )
         cmd.add_argument("-O", dest="optimization", type=int, choices=[0, 1, 2, 3], default=0)
         cmd.add_argument("--python", default=sys.executable)
         cmd.add_argument("--debug", action="store_true")
         cmd.add_argument("--verbose", action="store_true")
-        cmd.add_argument(
+        fallback = cmd.add_mutually_exclusive_group()
+        fallback.add_argument(
             "--no-fallback",
-            action="store_true",
-            help="reject code-object fallback (CPython object API remains available)",
+            dest="fallback",
+            action="store_const",
+            const=False,
+            help="require native C lowering for every compiled source",
         )
+        fallback.add_argument(
+            "--allow-fallback",
+            dest="fallback",
+            action="store_const",
+            const=True,
+            help="explicitly allow reported Python code-object fallback in project modules",
+        )
+        cmd.set_defaults(fallback=None)
         cmd.add_argument("--report-optimizations", action="store_true")
         cmd.add_argument("--report-fallbacks", action="store_true")
         if name not in ["run"]:
@@ -105,7 +123,7 @@ def display(result, args):
                 )
             )
         elif args.command == "check":
-            print(f"{args.source}: OK ({result.metadata['mode']})")
+            print(f"{args.module or args.source}: OK ({result.metadata['mode']})")
         elif args.command != "run":
             for artifact in result.artifacts:
                 print(artifact.path)
@@ -119,19 +137,53 @@ def benchmark(compiler, args, program_args):
         file=sys.stderr,
     )
     with tempfile.TemporaryDirectory(prefix="calcium-benchmark-") as tmp:
-        result = compiler.build(args.source, output=Path(tmp) / "program")
+        result = compiler.build(args.source, module=args.module, output=Path(tmp) / "program")
         if not result.success:
             return result
         executable = result.executable
         result.artifacts.clear()
+        if args.module is not None:
+            baseline = [args.python, "-m", args.module, *program_args]
+            baseline_cwd = None
+        elif args.source.is_dir():
+            if (args.source / "__init__.py").is_file():
+                baseline = [args.python, "-m", args.source.name, *program_args]
+                baseline_cwd = None
+            else:
+                baseline = [args.python, result.metadata["source"], *program_args]
+                baseline_cwd = None
+        else:
+            baseline = [args.python, str(args.source.resolve()), *program_args]
+            baseline_cwd = None
+        baseline_env = os.environ.copy()
+        roots = [str(args.project_root.resolve())] if args.project_root else []
+        if args.module is not None and not roots:
+            roots.append(str(Path(".").resolve()))
+        if (
+            args.source is not None
+            and args.source.is_dir()
+            and (args.source / "__init__.py").is_file()
+        ):
+            roots.insert(0, str(args.source.resolve().parent))
+        roots.extend(str(p.resolve()) for p in args.include_path)
+        if roots:
+            baseline_env["PYTHONPATH"] = os.pathsep.join(
+                [*roots, baseline_env.get("PYTHONPATH", "")]
+            )
         commands = [
-            [args.python, str(args.source.resolve()), *program_args],
+            baseline,
             [str(executable), *program_args],
         ]
         observations, samples = [], [[], []]
         try:
-            for command in commands:
-                run = subprocess.run(command, capture_output=True, timeout=args.timeout)
+            for index, command in enumerate(commands):
+                run = subprocess.run(
+                    command,
+                    capture_output=True,
+                    timeout=args.timeout,
+                    cwd=baseline_cwd if index == 0 else None,
+                    env=baseline_env if index == 0 else None,
+                )
                 observations.append((run.returncode, run.stdout, run.stderr))
             if observations[0] != observations[1]:
                 from .models import Diagnostic
@@ -148,7 +200,13 @@ def benchmark(compiler, args, program_args):
             for iteration in range(args.warmups + args.repeat):
                 for index in [0, 1] if iteration % 2 == 0 else [1, 0]:
                     start = perf_counter()
-                    run = subprocess.run(commands[index], capture_output=True, timeout=args.timeout)
+                    run = subprocess.run(
+                        commands[index],
+                        capture_output=True,
+                        timeout=args.timeout,
+                        cwd=baseline_cwd if index == 0 else None,
+                        env=baseline_env if index == 0 else None,
+                    )
                     elapsed = perf_counter() - start
                     if (run.returncode, run.stdout, run.stderr) != observations[0]:
                         from .models import Diagnostic
@@ -213,6 +271,10 @@ def main(argv=None):
         target = getattr(
             args, "target", "executable" if args.command in ["run", "benchmark"] else "c"
         )
+        if args.source is None and args.module is None:
+            raise ValueError("a source path or --module is required")
+        if args.source is not None and args.module is not None:
+            raise ValueError("choose a source path or --module, not both")
         if args.command == "transpile" and target != "c":
             raise ValueError("transpile only emits C; use build for native targets")
         compiler = Calcium(
@@ -221,19 +283,22 @@ def main(argv=None):
             python=args.python,
             compiler=getattr(args, "compiler", None),
             debug=args.debug,
-            fallback=not args.no_fallback,
+            fallback=args.fallback,
+            project_root=args.project_root,
+            include_paths=tuple(args.include_path),
+            include_all=args.include_all,
             keep_c=getattr(args, "keep_c", False),
             emit_ir=getattr(args, "emit_ir", False),
             emit_ast=getattr(args, "emit_ast", False),
         )
         if args.command in ["check", "inspect"]:
-            result = compiler.inspect(args.source)
+            result = compiler.inspect(args.source, module=args.module)
         elif args.command == "transpile":
-            result = compiler.transpile(args.source, output=args.output)
+            result = compiler.transpile(args.source, module=args.module, output=args.output)
         elif args.command == "benchmark":
             result = benchmark(compiler, args, program_args)
         else:
-            result = compiler.build(args.source, output=args.output)
+            result = compiler.build(args.source, module=args.module, output=args.output)
         display(result, args)
         if not result.success:
             return error_status(result)
