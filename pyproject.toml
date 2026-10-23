@@ -22,7 +22,7 @@ test = ["pytest>=8"]
 include = ["calcium*"]
 
 [tool.setuptools.package-data]
-calcium = ["runtime/*.h", "runtime/*.c"]
+calcium = [".nitropkg", "runtime/*.h", "runtime/*.c"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
