@@ -4,7 +4,7 @@ import sys
 
 import pytest
 
-from calcium import Calcium
+from calcium import Calcium, __version__
 
 
 def cli(*args):
@@ -19,7 +19,7 @@ def cli(*args):
 def test_cli_commands(tmp_path):
     source = tmp_path / "cli.py"
     source.write_text("print(42)")
-    assert cli("--version").stdout.startswith("Calcium 0.1.0")
+    assert cli("--version").stdout.startswith(f"Calcium {__version__}")
     info = json.loads(cli("info", "--format", "json").stdout)
     assert info["optimization_levels"] == [0, 1]
     checked = cli("check", source, "--format", "json")

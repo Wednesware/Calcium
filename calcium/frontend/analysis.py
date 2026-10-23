@@ -46,7 +46,6 @@ REFLECTION = {
     "breakpoint",
     "super",
     "__builtins__",
-    "__import__",
 }
 
 
@@ -94,6 +93,13 @@ class Capability(ast.NodeVisitor):
     def visit_Name(self, node):
         if node.id in REFLECTION:
             self.reject(node, "frame-sensitive builtin or mutable builtins mapping")
+
+    def visit_Import(self, node):
+        pass
+
+    def visit_ImportFrom(self, node):
+        if any(alias.name == "*" for alias in node.names):
+            self.reject(node, "star imports require code-object fallback")
 
     def visit_Expr(self, node):
         self.visit(node.value)

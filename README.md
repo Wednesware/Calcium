@@ -1,13 +1,15 @@
 # Calcium
 
-Calcium is Wednesware's experimental Python-to-C compiler. It lowers a supported
+Calcium is Wednesware's Python-to-C compiler. It lowers a supported
 Python subset through a control-flow IR into readable C11 and optionally builds
 executables or CPython extension modules with GCC or Clang.
 
-**Status: working early prototype, version 0.1.0.** Generated code uses CPython
+**Version 26.2.** Generated code uses CPython
 object APIs; native numeric specialization and general speedups are not yet
-implemented. Unsupported constructs execute through a clearly reported
-whole-module CPython fallback, or fail with `--no-fallback`.
+implemented. Project imports are recursively compiled into separate C files. Project builds
+reject unsupported syntax by default; `--allow-fallback` explicitly enables reported
+per-module Python compatibility mode. Isolated single-file inputs retain the earlier
+fallback default; `--no-fallback` enforces native lowering everywhere.
 
 ## Install and run
 
@@ -27,10 +29,27 @@ calcium inspect examples/factorial.py --emit-ir
 calcium run examples/dynamic.py --report-fallbacks
 ```
 
+## Packages and whole projects
+
+```sh
+ca transpile path/to/package --output build/c --emit-ir
+ca build path/to/package --output build/myapp
+ca build --module my_package.cli --project-root ./src --output build/myapp
+ca build project/main.py --include-all --output build/myapp
+```
+
+Every discovered project source, including package initializers and imported local
+modules, gets its own C translation unit. Generated executables link those units and
+run without the original Python project sources. Directory inputs include all local
+Python modules; script inputs recursively follow static imports. `--include-path`
+adds source roots; `--include-all` includes dynamically selected modules. Inspect
+`manifest.json` for per-module C filenames, native/fallback status and external
+runtime dependencies. See [package transpilation](docs/PACKAGES.md) for details.
+
 `python -m calcium` works directly from a checkout. For script arguments, use
 `calcium run script.py -- one --another`. `run` returns the program's exit status.
 `transpile` emits `program.c`, `program.h`, separate runtime sources, a manifest
-and a source map without invoking a C compiler. Native builds retain C/IR/AST
+and a source map without invoking a C compiler. Native builds retain all module C/IR/AST
 sidecars with `--keep-c`, `--emit-ir` or `--emit-ast`.
 
 ```sh
@@ -69,11 +88,12 @@ Native lowering covers literals, bindings, containers, arithmetic, comparisons,
 calls, attributes/indexing, short circuiting, conditionals, loops, simple functions,
 returns, and simple augmented assignments. Arbitrary-precision integer arithmetic
 uses CPython APIs. Native functions accept fixed positional-or-keyword parameters;
-annotations, defaults, nested functions, imports, classes, exception handlers,
-generators and async currently select whole-module fallback.
+annotations, defaults, nested functions, classes, exception handlers, generators and async remain unsupported by native
+lowering. Projects report errors for these constructs unless compatibility fallback
+is explicitly enabled. Ordinary imports are lowered natively.
 
-O0 is the baseline; O1 also removes unreachable CIR blocks. O2/O3, multi-module
-native compilation, a general C ABI and standalone runtime are future work.
+O0 is the baseline; O1 also removes unreachable CIR blocks. O2/O3, a general C ABI
+and standalone runtime are future work.
 Native functions are C builtins: Python frames, code objects, exact function
 introspection, some argument-error messages and native traceback formatting differ.
 Use fallback execution for programs requiring those Python details. Read the
@@ -96,8 +116,8 @@ Tests compile generated C with both available compilers, compare native/fallback
 execution with CPython at O0/O1, import extensions, and verify error, reference,
 output-protection, CLI and packaging behavior. See [Testing](docs/TESTING.md).
 
-The architecture began with the design required by [CALCIUM_INFO.md](CALCIUM_INFO.md);
-implementation was subsequently authorized by the maintainer. See
+The architecture began with a design review; implementation was subsequently
+authorized by the maintainer. See
 [Architecture](docs/ARCHITECTURE.md), [CIR](docs/IR.md),
 [Type System](docs/TYPE_SYSTEM.md), [Runtime](docs/RUNTIME.md),
 [Optimizations](docs/OPTIMIZATIONS.md), [CLI/API](docs/CLI.md),
@@ -107,5 +127,4 @@ the implementation contract describes what exists today.
 
 Calcium is separate from Kefir, Wednesware's Nuitka-based application builder.
 Magnesium and Iodine remain optional future CLI adapters, with no compiler dependency.
-An open-source license remains a maintainer decision before external distribution;
-no license is inferred from sibling projects.
+Licensing metadata remains unchanged; no license is inferred from sibling projects.

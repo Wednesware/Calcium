@@ -1,6 +1,7 @@
-# Calcium 0.1.0 implementation contract
+# Calcium 26.2 implementation contract
 
-This is the current delivery contract. The other specification documents describe
+This is the current delivery contract. [Package transpilation](PACKAGES.md)
+describes the project/compiler-import additions in 26.2. The other specification documents describe
 the broader architecture and future milestones. Implementation began on the user's
 explicit instruction, “Please generate Calcium itself now,” on 2026-10-23.
 
@@ -51,9 +52,11 @@ retain more memory than individual Python code objects.
 | Augmented assignment | Simple name target, Python in-place numeric/sequence protocol |
 
 Defaults, positional-only/keyword-only signatures, star argument expansion,
-annotations, nested functions, decorators, imports, classes, destructuring,
+annotations, nested functions, decorators, classes, destructuring,
 comprehensions, exception statements/handlers, generators, async, pattern matching
-and unsupported operators select a **whole-module fallback**. Native C functions
+and unsupported operators require **per-module fallback**. Projects reject these
+constructs by default; `--allow-fallback` explicitly enables compatibility mode.
+Isolated single-file scripts retain the earlier fallback default. Native C functions
 and runtime object API operations still use CPython; “native” describes lowering,
 not a standalone runtime or unboxed arithmetic.
 
@@ -62,15 +65,16 @@ runtime interpreter and evaluates it in the actual module dictionary. It preserv
 ordinary dynamic language execution, imports, hooks, exceptions and reflection
 within that Python code. Each reason is reported and the manifest records mode
 `fallback`; this is not native acceleration. `--no-fallback` turns those reasons
-into located compilation errors. Local imports remain runtime filesystem imports;
-only the entry source is embedded, and dependencies/resources are not bundled.
+into located compilation errors. Local project imports are independently lowered to C and linked through the
+compiled registry; original source files are not required for native modules.
+External dependencies/resources are not bundled.
 
 Script `__file__`/`sys.argv[0]` use the absolute source path, and its original
 parent directory is placed first on the runtime search path. The working directory
 is inherited. Interpreter path initialization uses the selected Python executable,
 including its virtualenv and site-packages, instead of guessing a Python prefix
-from the generated binary location. That Python installation must remain available. The artifact therefore retains source-directory dependencies and is
-not a portable package bundle. Python executable/loader/import-path implementation
+from the generated binary location. That Python installation must remain available. Metadata retains original source paths, but converted modules execute from C
+without those files. External resources and runtime dependencies still need deployment. Python executable/loader/import-path implementation
 details may differ from `python script.py`; these are not claimed identical.
 
 ## Native compatibility exclusions
@@ -123,8 +127,9 @@ host toolchain and are not claimed reproducible across hosts.
 
 Implemented commands: `transpile`, `build`, `run`, `check`, `inspect`, `benchmark`,
 `info`, `--version` and `--help`. Script arguments follow `--` for run/benchmark.
-Use each command's `--help` for implemented options. Native project/module entry
-options and interactive initialization are not implemented; argparse rejects them.
+Use each command's `--help` for implemented options. Package/directory and explicit module entries, project roots and additional source
+roots are implemented; see [Packages](PACKAGES.md). Interactive initialization
+is not implemented.
 
 `--output` is a directory for target C and a file for native output. An extension
 output must carry the target interpreter's extension suffix; its filename controls
@@ -162,8 +167,7 @@ A local UBSan smoke run checks generated factorial code; this is not a comprehen
 sanitizer campaign. Wheel verification checks bundled runtime C/header files and
 an installed-package smoke build outside the checkout.
 
-Next milestones are richer CIR verification and dataflow, native import/package
-execution, more complete exception/lifetime/finalizer tests, function wrapper
+Next milestones are richer CIR verification and dataflow, more complete exception/lifetime/finalizer tests, function wrapper
 metadata, checked unboxed numeric regions, and additional optimization passes.
 The longer-term [Roadmap](ROADMAP.md) remains the direction rather than a claim
 that every phase has been completed. Magnesium/Iodine are not required: their
