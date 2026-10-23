@@ -40,6 +40,7 @@ class Function:
     registers: int = 0
     doc: str | None = None
     module: bool = False
+    cleanup_order: list[str] = field(default_factory=list)
 
 
 @dataclass

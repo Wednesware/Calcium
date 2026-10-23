@@ -13,6 +13,6 @@ PyObject *ca_not(PyObject *value);
 PyObject *ca_contains(PyObject *item, PyObject *container, int invert);
 int ca_set_text(PyObject *dict, const char *key, const char *text);
 int ca_execute_source(const char *source, const char *filename, PyObject *globals);
-int ca_main(int argc, char **argv, const char *filename, const char *directory,
+int ca_main(int argc, char **argv, const char *filename, const char *directory, const char *python_executable,
             int (*execute)(PyObject *));
 #endif

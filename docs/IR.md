@@ -9,7 +9,8 @@ A `Program` contains target metadata, modules, constants and a source table.
 A `Module` has a qualified Python name, ordered initialization function, imports
 and function/class descriptors. A `Function` includes calling convention,
 parameters/default metadata, scopes/cells, blocks, exception regions and source
-span. Python-visible metadata remains distinct from native implementation names.
+span. The prototype additionally records ordered local cleanup in CIR so that
+observable teardown follows the selected CPython minor version. Python-visible metadata remains distinct from native implementation names.
 
 A `Block` has a stable ID, typed arguments, ordered instructions and exactly
 one terminator. Immutable temporaries are assigned once. Rebinding lives in

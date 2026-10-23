@@ -102,12 +102,15 @@ int ca_execute_source(const char *source, const char *filename, PyObject *global
     return error ? -1 : 0;
 }
 
-int ca_main(int argc, char **argv, const char *filename, const char *directory,
+int ca_main(int argc, char **argv, const char *filename, const char *directory, const char *python_executable,
             int (*execute)(PyObject *)) {
     PyConfig config;
     PyConfig_InitPythonConfig(&config);
     config.parse_argv = 0;
-    PyStatus status = PyConfig_SetBytesArgv(&config, argc, argv);
+    /* Resolve stdlib, extension paths and venv state from the selected Python,
+       rather than guessing an installation from the generated binary's path. */
+    PyStatus status = PyConfig_SetBytesString(&config, &config.program_name, python_executable);
+    if (!PyStatus_Exception(status)) status = PyConfig_SetBytesArgv(&config, argc, argv);
     if (!PyStatus_Exception(status)) status = Py_InitializeFromConfig(&config);
     PyConfig_Clear(&config);
     if (PyStatus_Exception(status)) {

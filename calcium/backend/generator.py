@@ -12,7 +12,9 @@ def cstr(text: str | bytes) -> str:
     return '"' + "".join(f"\\{byte:03o}" for byte in raw) + '"'
 
 
-def generate(program: Program, *, filename: str, directory: str, module_name: str) -> str:
+def generate(
+    program: Program, *, filename: str, directory: str, module_name: str, python_executable: str
+) -> str:
     validate(program)
     constants = {}
 
@@ -79,7 +81,7 @@ def generate(program: Program, *, filename: str, directory: str, module_name: st
         ]
     code += [
         "#ifndef CALCIUM_EXTENSION",
-        f"int main(int argc, char **argv) {{ return ca_main(argc, argv, {cstr(filename)}, {cstr(directory)}, ca_execute); }}",
+        f"int main(int argc, char **argv) {{ return ca_main(argc, argv, {cstr(filename)}, {cstr(directory)}, {cstr(python_executable)}, ca_execute); }}",
         "#else",
         "static int ca_exec_extension(PyObject *module) {",
         "    PyObject *g = PyModule_GetDict(module);",
@@ -235,9 +237,7 @@ def emit_function(fn: Function, constants: dict) -> list[str]:
             ]
     out += ["error:", "    saved_error = PyErr_GetRaisedException();", "cleanup:;"]
     out += [f"    Py_CLEAR(v{i});" for i in reversed(range(fn.registers))]
-    cleanup = [slot for name, slot in reversed(list(slots.items())) if name.startswith("$")]
-    cleanup += [slot for name, slot in reversed(list(slots.items())) if not name.startswith("$")]
-    out += [f"    Py_CLEAR({slot});" for slot in cleanup]
+    out += [f"    Py_CLEAR({slots[name]});" for name in fn.cleanup_order]
     if not fn.module:
         out.append("    Py_LeaveRecursiveCall();")
     out += [

@@ -17,7 +17,10 @@ edges and jump/branch/iterator/return terminators. An ownership dataflow check
 rejects use-after-release and inconsistent live registers at joins. C temporaries
 start NULL; normal paths release expressions, transfer returns and clear bindings.
 Error cleanup saves/restores the pending Python exception while releasing owned
-references. Functions participate in CPython's recursion guard.
+references. Function cleanup order is part of CIR and follows the target minor:
+CPython 3.12/3.13 clear declared locals forward; 3.14 clears them in reverse.
+Nested boolean value lowering also follows the target's observable truth-testing
+behavior. Functions participate in CPython's recursion guard.
 
 The initial representation is uniformly `PyObject *`. Inference reports literal
 facts and conservative assignment/branch/loop unions; annotations never authorize
@@ -64,7 +67,9 @@ only the entry source is embedded, and dependencies/resources are not bundled.
 
 Script `__file__`/`sys.argv[0]` use the absolute source path, and its original
 parent directory is placed first on the runtime search path. The working directory
-is inherited. The artifact therefore retains source-directory dependencies and is
+is inherited. Interpreter path initialization uses the selected Python executable,
+including its virtualenv and site-packages, instead of guessing a Python prefix
+from the generated binary location. That Python installation must remain available. The artifact therefore retains source-directory dependencies and is
 not a portable package bundle. Python executable/loader/import-path implementation
 details may differ from `python script.py`; these are not claimed identical.
 
@@ -74,7 +79,7 @@ Native functions are `PyCFunction` wrappers with a GC-managed context containing
 module globals and constants. They are not `types.FunctionType`, do not expose
 normal `__code__`/closure/default metadata and do not create ordinary Python frames.
 Some argument TypeError wording, tracing/profiling, recursion-depth thresholds,
-`sys.executable`, loader metadata and traceback presentation consequently differ.
+loader metadata and traceback presentation consequently differ.
 
 Obvious frame-sensitive builtins and function metadata select fallback, but
 static detection cannot find indirect reflection through every alias or external
@@ -100,9 +105,8 @@ skipped. An analysis success means accepted lowering/fallback, not runtime succe
   execution in its host interpreter. No host initialization/finalization.
 
 Native builds currently require Linux, a matching host/target CPython minor in
-3.12–3.14, a GIL-enabled build, compatible SDK/runtime and GCC or Clang. Local
-validation is on Linux x86-64 / CPython 3.14; CI admits other minors only after its
-matrix passes. Header version checks prevent mixing a generated program with a
+3.12–3.14, a GIL-enabled build, compatible SDK/runtime and GCC or Clang. The regression suite is run on Linux x86-64 across CPython 3.12, 3.13 and 3.14;
+the GitHub Actions matrix checks all three minors. Header version checks prevent mixing a generated program with a
 different minor. Cross compilation, free-threading and subinterpreters are not
 supported. Extension module names must be ASCII identifiers matching the output
 filename; `--target shared` rejects a general C ABI rather than confusing it with

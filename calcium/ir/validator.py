@@ -35,6 +35,8 @@ def validate(program: Program):
             raise CalciumInternalError("missing or duplicate blocks")
         if len(fn.locals) != len(set(fn.locals)) or not set(fn.parameters) <= set(fn.locals):
             raise CalciumInternalError("invalid local/parameter slots")
+        if len(fn.cleanup_order) != len(fn.locals) or set(fn.cleanup_order) != set(fn.locals):
+            raise CalciumInternalError("incomplete local ownership cleanup")
         definitions = set()
         for block in fn.blocks:
             term = block.terminator

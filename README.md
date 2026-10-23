@@ -13,7 +13,7 @@ whole-module CPython fallback, or fail with `--no-fallback`.
 
 Use a conventional GIL-enabled CPython 3.12–3.14 on Linux. Native builds additionally
 need GCC or Clang, matching Python development headers, and shared `libpython`
-for executables. Python 3.14 is validated locally; CI checks the three minor versions.
+for executables. Differential tests cover Python 3.12, 3.13 and 3.14 locally and in CI.
 
 ```sh
 python -m pip install -e .

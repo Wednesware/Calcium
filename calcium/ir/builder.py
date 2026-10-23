@@ -1,4 +1,5 @@
 import ast
+import sys
 from types import CodeType
 
 from ..frontend.analysis import BINARY, COMPARE, UNARY
@@ -48,6 +49,13 @@ class Builder:
         if self.current.terminator is None:
             value = self.constant(None)
             self.current.terminator = Terminator("return", [value])
+        # CPython 3.14 changed frame local teardown from declaration order to
+        # reverse order. Preserve that observable order in the lifetime IR.
+        hidden = [name for name in reversed(self.fn.locals) if name.startswith("$")]
+        declared = [name for name in self.fn.locals if not name.startswith("$")]
+        self.fn.cleanup_order = hidden + (
+            list(reversed(declared)) if sys.version_info >= (3, 14) else declared
+        )
 
     def block(self):
         block = Block(f"b{len(self.fn.blocks)}")
@@ -116,7 +124,9 @@ class Builder:
             )
 
     def branch_value(self, node, slot, yes, no):
-        if isinstance(node, ast.BoolOp):
+        # 3.12/3.13 materialize a nested BoolOp result before testing it again;
+        # 3.14 fuses its jumps. __bool__ callbacks can observe the difference.
+        if isinstance(node, ast.BoolOp) and sys.version_info >= (3, 14):
             for value in node.values[:-1]:
                 onward = self.block()
                 self.branch_value(

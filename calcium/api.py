@@ -211,6 +211,7 @@ class Calcium:
             filename=str(snapshot.path),
             directory=str(snapshot.path.parent),
             module_name=module_name,
+            python_executable=result.metadata["python"]["executable"],
         )
         (directory / "program.c").write_text(text, encoding="utf-8")
         (directory / "program.h").write_text(
@@ -224,6 +225,7 @@ class Calcium:
             "source": str(snapshot.path),
             "mode": program.mode,
             "python_minor": minor,
+            "python_executable": result.metadata["python"]["executable"],
             "optimization": self.optimization,
             "runtime_abi": 1,
             "fallbacks": result.fallbacks,

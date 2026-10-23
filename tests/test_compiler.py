@@ -444,3 +444,31 @@ print(events)
     baseline = subprocess.check_output([sys.executable, "-c", runner, str(source)])
     native = subprocess.check_output([sys.executable, "-c", runner, output])
     assert native == baseline
+
+
+def test_selected_virtualenv_runtime_paths(tmp_path):
+    environment = tmp_path / "environment"
+    subprocess.run([sys.executable, "-m", "venv", "--without-pip", str(environment)], check=True)
+    python = environment / "bin" / "python"
+    packages = subprocess.check_output(
+        [str(python), "-I", "-c", 'import sysconfig; print(sysconfig.get_path("purelib"))'],
+        text=True,
+    ).strip()
+    from pathlib import Path
+
+    Path(packages, "calcium_runtime_probe.py").write_text("value = 17\n")
+    source = tmp_path / "environment.py"
+    source.write_text(
+        "import sys, calcium_runtime_probe\nprint(sys.executable, sys.prefix, calcium_runtime_probe.value)\n"
+    )
+    result = Calcium(target="executable", python=str(python)).build(
+        source, output=tmp_path / "program"
+    )
+    assert result.success, result.diagnostics
+    baseline = subprocess.run([str(python), str(source)], capture_output=True)
+    native = subprocess.run([str(result.executable)], capture_output=True)
+    assert (native.returncode, native.stdout, native.stderr) == (
+        baseline.returncode,
+        baseline.stdout,
+        baseline.stderr,
+    )

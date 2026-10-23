@@ -15,7 +15,7 @@ class ToolchainError(RuntimeError):
 def python_config(executable: str) -> dict:
     script = """import json, sys, sysconfig, platform
 print(json.dumps({"version": list(sys.version_info[:2]), "implementation": sys.implementation.name,
-"platform": sys.platform, "machine": platform.machine(), "prefix": sys.base_prefix,
+"platform": sys.platform, "machine": platform.machine(), "prefix": sys.base_prefix, "executable": sys.executable,
 "include": sysconfig.get_path("include"), "platinclude": sysconfig.get_path("platinclude"),
 "config": {k: sysconfig.get_config_var(k) for k in ["LIBDIR", "LDLIBRARY", "LIBS", "SYSLIBS", "LINKFORSHARED", "EXT_SUFFIX", "Py_GIL_DISABLED"]}}))"""
     try:
