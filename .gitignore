@@ -1,0 +1,21 @@
+# Python and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+# Generated compiler and distribution artifacts
+build/
+dist/
+.coverage
+htmlcov/
+# Local secrets and editor state
+.env
+.env.*
+!.env.example
+.idea/
+.vscode/
+.DS_Store
