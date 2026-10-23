@@ -1,26 +1,39 @@
 # Roadmap and architecture review
 
-Status: Phase 0 proposal prepared; architecture approval is pending. No production
-implementation is authorized by the project brief until that review is complete.
+Status: implementation began following the user’s explicit authorization on
+2026-10-23: “Please generate Calcium itself now.” See [current implementation
+status](IMPLEMENTATION.md) for delivered scope; later milestones remain planned.
 The milestone numbers describe dependency order, not deadlines or speed promises.
 See [Architecture](ARCHITECTURE.md) for D01–D09 and risks.
 
-## Approval record
+## Implementation authorization
+
+The user explicitly requested implementation after receiving the architecture PR.
+That instruction authorizes starting production work without another approval
+round. The prototype follows the proposed pipeline/CPython/CIR direction, with
+scope documented in [Implementation](IMPLEMENTATION.md). CPython 3.14 is the local
+validation target because it is installed with development headers; CI covers
+3.12–3.14. Phase 1 is substantially implemented and some Phase 2/future target
+capabilities use reported CPython fallback. Native specialization, complete project
+compilation and later phases remain open. License selection (D09) remains pending.
+
+## Original design decision register
 
 | Item | Proposed resolution | Status / reviewer / date |
 | --- | --- | --- |
-| D01 | Embedded, GIL-enabled CPython; public version-specific API | Pending |
-| D02 | Python 3.12/Linux x86-64/GCC+Clang/C11 first | Pending |
-| D03 | Hybrid CIR: SSA temporaries, explicit slots/effects/error edges | Pending |
-| D04 | Identical compatibility contract at all O-levels; guarded native types | Pending |
-| D05 | Reported whole-function/module fallback, optional rejection | Pending |
-| D06 | Executable first, extension later; generic shared ABI deferred | Pending |
-| D07 | Optional Magnesium, Iodine deferred pending version compatibility | Pending |
-| D08 | Explicit native introspection exclusions and fallback boundary | Pending |
+| D01 | Embedded, GIL-enabled CPython; public version-specific API | Implementation direction authorized; long-term details proposed |
+| D02 | Python 3.12/Linux x86-64/GCC+Clang/C11 first | Implementation direction authorized; long-term details proposed |
+| D03 | Hybrid CIR: SSA temporaries, explicit slots/effects/error edges | Implementation direction authorized; long-term details proposed |
+| D04 | Identical compatibility contract at all O-levels; guarded native types | Implementation direction authorized; long-term details proposed |
+| D05 | Reported whole-function/module fallback, optional rejection | Implementation direction authorized; long-term details proposed |
+| D06 | Executable first, extension later; generic shared ABI deferred | Implementation direction authorized; long-term details proposed |
+| D07 | Optional Magnesium, Iodine deferred pending version compatibility | Implementation direction authorized; long-term details proposed |
+| D08 | Explicit native introspection exclusions and fallback boundary | Implementation direction authorized; long-term details proposed |
 | D09 | Maintainer-selected open-source license | Pending; blocks distribution |
 
-The review should explicitly approve or amend D01–D08 and the Phase 1 subset below.
-Record reviewer, date, linked review and any amended contracts here before coding.
+The original review checklist asked for explicit review of D01–D08 and the
+Phase 1 subset below. Subsequent user authorization to generate Calcium superseded
+that pause; further material compatibility changes should remain explicit.
 A PR creation, automated check or absence of objections does not itself grant
 approval. License selection and dependency release validation are not inferred
 from other Wednesware projects.

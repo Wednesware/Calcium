@@ -1,9 +1,8 @@
 # Correctness and performance validation
 
-Status: planned test strategy, not executed compiler tests. This Phase 0 proposal
-has no compiler to test. Current verification covers document presence, internal
-links, required design topics and diff hygiene. Production test infrastructure
-begins only after architecture approval.
+This is the long-term testing strategy. The implemented differential/native/CLI
+suite lives in `tests/`; see [Implementation](IMPLEMENTATION.md) for the current
+validation boundary. The additional campaigns below remain staged work.
 
 ## Stage tests
 

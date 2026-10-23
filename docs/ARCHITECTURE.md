@@ -1,8 +1,7 @@
 # Architecture proposal
 
 Status: proposed, not approved. This document and its linked specifications
-fulfill Phase 0 of [the project brief](../CALCIUM_INFO.md). No compiler is
-implemented in this change. Recommendations below are decisions to review,
+fulfill Phase 0 of [the project brief](../CALCIUM_INFO.md). Implementation is now available; see the [current implementation contract](IMPLEMENTATION.md). Recommendations below are decisions to review,
 not claims of delivered compatibility.
 
 ## Objectives and feasibility
@@ -158,7 +157,9 @@ errors and artifact paths.
 
 ## Maintainer decision register
 
-All entries are **proposed / pending approval**. Record reviewer, date and
+The user authorized starting implementation on 2026-10-23. These remain the
+long-term decision register; [Implementation](IMPLEMENTATION.md) records concrete
+prototype choices and any changes to the initial target. Record reviewer, date and
 rationale in [Roadmap](ROADMAP.md) when resolved.
 
 | ID | Recommended decision | Alternative / tradeoff |
@@ -173,8 +174,9 @@ rationale in [Roadmap](ROADMAP.md) when resolved.
 | D08 | Introspection exclusions and conservative fallback boundary | Full native frame emulation is not an initial commitment |
 | D09 | Choose open-source license before release | No license inferred from sibling projects |
 
-Production implementation starts only after explicit review of D01–D08 and the
-Phase 1 acceptance contract. D09 blocks distribution rather than design work.
+Implementation subsequently began on the user’s explicit instruction to generate
+Calcium; see [Implementation](IMPLEMENTATION.md) for concrete decisions and scope.
+D09 remains a distribution decision.
 
 ## Primary technical references
 

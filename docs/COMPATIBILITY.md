@@ -1,6 +1,7 @@
 # Python compatibility contract
 
-Status: proposal; **no feature is currently implemented or validated**. A parsed
+Long-term compatibility proposal; see [Implementation](IMPLEMENTATION.md) for
+current tested features and exclusions. A parsed
 construct is not necessarily compilable, and CPython fallback is not evidence of
 native coverage. First proposed target is conventional CPython 3.12 on Linux
 x86-64; other minors/platforms require explicit validation.
@@ -130,4 +131,4 @@ Each release must publish a tested feature/platform/version matrix and known
 exceptions, label fallback versus native coverage and include reproductions for
 limitations. Support for an external package is demonstrated on specific versions;
 loading CPython does not justify a blanket ecosystem compatibility claim.
-The current repository is an architecture proposal with no runtime guarantees.
+The current runtime validation boundary is documented in [Implementation](IMPLEMENTATION.md); full Python compatibility is not claimed.

@@ -1,6 +1,7 @@
 # Proposed CLI and Python API
 
-Status: design only. None of the commands or API examples below are implemented.
+This document specifies the longer-term interface. See [current implementation
+scope](IMPLEMENTATION.md) and command `--help` for delivered options.
 The CLI is noninteractive by default. Compiler internals return diagnostics;
 presentation is a separate adapter. See [Architecture](ARCHITECTURE.md).
 
@@ -97,7 +98,7 @@ available with explicit debug/verbose handling.
 
 ## Python API
 
-Proposed, not currently importable from this design repository:
+Public API design; the implemented subset is described in [Implementation](IMPLEMENTATION.md):
 
 ```python
 from calcium import Calcium
