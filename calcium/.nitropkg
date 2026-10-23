@@ -1,4 +1,5 @@
 {
-    "name": "ca",
+    "name": "calcium",
+    "command": "ca",
     "author": "Wednesware"
 }
