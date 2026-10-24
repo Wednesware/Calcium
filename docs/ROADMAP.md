@@ -19,7 +19,8 @@ capabilities use reported CPython fallback. Recursive project/package compilatio
 fallback, checked integer operations at O2, literal branch simplification at O3,
 and native object caching. Version 26.4 adds checked integer kernels, native
 structured exceptions/comprehensions/context managers, separate compute benchmarks
-and Linux CPython bundles. Broader specialization and later phases remain open.
+and Linux CPython bundles. Version 26.5 adds static optimization/fallback coverage reports. Broader
+specialization and later phases remain open.
 MIT licensing was selected by the maintainer for 26.3. See [Status](STATUS.md).
 
 ## Original design decision register

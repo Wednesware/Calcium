@@ -1,15 +1,19 @@
-# Validation status for 26.4
+# Validation status for 26.5
 
 The suite now runs generated C at O0–O3, including checked-integer boundaries,
 subclasses, expanded arguments, signatures/defaults, chained comparisons with
 custom truth objects, native syntax additions, mixed definition fallback, and
 object-cache reuse/invalidation/corruption. The Python matrix is 3.12–3.14.
 `tests/test_sanitizers.py` adds opt-in UBSan runs for arithmetic and lifetime/error
-paths. Version 26.4 passes 302 tests on each of CPython 3.12, 3.13 and 3.14,
+paths. Version 26.5 passes 308 tests on each of CPython 3.12, 3.13 and 3.14,
 with two opt-in UBSan tests run separately using GCC and Clang. Added coverage
 includes checked scalar kernels and guard misses, native exception cleanup and
 context-manager descriptor ordering, comprehension scope, compute benchmark
 validation, and bundle relocation after removing sources/dependency environments.
+Report coverage includes qualified names, enclosing module/class/function fallback
+boundaries, overlapping categories, Unicode columns, strict rejection, partial
+analysis, namespace packages, manifest output and clean CLI JSON. Analysis tests
+verify that input programs are never executed.
 Wheel/sdist and isolated installed-wheel smoke checks pass across the matrix.
 The broader test strategy below remains a design, not a coverage claim.
 
