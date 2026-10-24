@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 26.4 — 2026-10-24
 
 - Add checked unboxed integer functions/loops and guarded direct scalar self-recursion at O2/O3.
 - Lower ordinary exception handlers, finally, synchronous context managers, comprehensions, dynamic dict keys and set expansion natively.

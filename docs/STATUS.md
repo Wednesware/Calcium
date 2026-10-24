@@ -1,4 +1,4 @@
-# Remaining-work ledger — current branch
+# Remaining-work ledger — 26.4
 
 This ledger distinguishes shipped work from architecture projects. A passing
 regression suite establishes tested behavior; it does not establish complete
