@@ -60,13 +60,14 @@ class Analysis:
 
 
 class Capability(ast.NodeVisitor):
-    def __init__(self, source: Source):
+    def __init__(self, source: Source, closure_lines=frozenset()):
         self.source = source
         self.reasons: list[dict] = []
         self.depth = 0
         self.definition_fallbacks: set[int] = set()
+        self.closure_lines = closure_lines
 
-    def reject(self, node: ast.AST, reason: str):
+    def reject(self, node: ast.AST, reason: str, category="unsupported_syntax"):
         line = getattr(node, "lineno", 1)
         offset = getattr(node, "col_offset", 0)
         text = self.source.text.splitlines()[line - 1] if self.source.text.splitlines() else ""
@@ -78,11 +79,24 @@ class Capability(ast.NodeVisitor):
                 "construct": type(node).__name__,
                 "reason": reason,
                 "boundary": "module",
+                "category": category,
             }
         )
 
     def generic_visit(self, node):
-        self.reject(node, f"{type(node).__name__} has no native lowering yet")
+        category = {
+            "Lambda": "lambdas",
+            "Yield": "generators",
+            "YieldFrom": "generators",
+            "Nonlocal": "closures",
+            "Match": "pattern_matching",
+            "TryStar": "exception_groups",
+            "AsyncFor": "async",
+            "AsyncWith": "async",
+            "Await": "async",
+            "AnnAssign": "annotations",
+        }.get(type(node).__name__, "unsupported_syntax")
+        self.reject(node, f"{type(node).__name__} has no native lowering yet", category)
 
     def visit_Module(self, node):
         for item in node.body:
@@ -94,16 +108,22 @@ class Capability(ast.NodeVisitor):
 
     def visit_Name(self, node):
         if node.id in REFLECTION:
-            self.reject(node, "frame-sensitive builtin or mutable builtins mapping")
+            self.reject(
+                node, "frame-sensitive builtin or mutable builtins mapping", "dynamic_features"
+            )
 
     def visit_Import(self, node):
         pass
 
     def visit_ImportFrom(self, node):
         if node.module == "__future__":
-            self.reject(node, "future compiler flags require whole-module fallback")
+            self.reject(
+                node,
+                f"future compiler flags ({', '.join(a.name for a in node.names)}) require whole-module fallback",
+                "future_flags",
+            )
         if any(alias.name == "*" for alias in node.names):
-            self.reject(node, "star imports require code-object fallback")
+            self.reject(node, "star imports require code-object fallback", "dynamic_features")
 
     def visit_Expr(self, node):
         self.visit(node.value)
@@ -137,7 +157,9 @@ class Capability(ast.NodeVisitor):
             "__annotations__",
             "__dict__",
         }:
-            self.reject(node, "native function metadata is not Python function metadata")
+            self.reject(
+                node, "native function metadata is not Python function metadata", "dynamic_features"
+            )
         self.visit(node.value)
 
     def visit_Subscript(self, node):
@@ -176,7 +198,9 @@ class Capability(ast.NodeVisitor):
     def visit_Call(self, node):
         if isinstance(node.func, ast.Name) and node.func.id == "type" and len(node.args) > 1:
             self.reject(
-                node, "dynamic class construction requires Python function descriptor behavior"
+                node,
+                "dynamic class construction requires Python function descriptor behavior",
+                "classes",
             )
         self.visit(node.func)
         for arg in node.args:
@@ -226,12 +250,24 @@ class Capability(ast.NodeVisitor):
         args = node.args
         if "\x00" in (ast.get_docstring(node, clean=False) or ""):
             self.reject(node, "function docstrings containing NUL require fallback")
-        if self.depth or node.decorator_list or node.returns or node.type_params:
-            self.reject(node, "nested/decorated/annotated/generic functions require fallback")
+        if self.depth:
+            self.reject(
+                node,
+                "nested functions require closure-aware native lowering",
+                "closures" if node.lineno in self.closure_lines else "nested_functions",
+            )
+        if node.decorator_list:
+            self.reject(node, "decorated functions require fallback", "decorators")
+        if node.returns:
+            self.reject(
+                node, "return annotations retain runtime behavior through fallback", "annotations"
+            )
+        if node.type_params:
+            self.reject(node, "generic functions require fallback", "generics")
         all_args = args.posonlyargs + args.args + args.kwonlyargs
         all_args += [arg for arg in (args.vararg, args.kwarg) if arg is not None]
         if any(arg.annotation is not None for arg in all_args):
-            self.reject(node, "annotations retain runtime behavior through fallback")
+            self.reject(node, "annotations retain runtime behavior through fallback", "annotations")
         for value in args.defaults + [v for v in args.kw_defaults if v is not None]:
             self.visit(value)
         self.depth += 1
@@ -241,22 +277,32 @@ class Capability(ast.NodeVisitor):
         if len(self.reasons) > start:
             self.definition_fallbacks.add(id(node))
             for reason in self.reasons[start:]:
-                reason.update(boundary="definition", definition=node.name)
+                reason.update(
+                    boundary="definition", definition=node.name, definition_line=node.lineno
+                )
 
     def visit_ClassDef(self, node):
-        self.reject(node, "class bodies execute through reported Python definition fallback")
+        self.reject(
+            node, "class bodies execute through reported Python definition fallback", "classes"
+        )
         self.definition_fallbacks.add(id(node))
-        self.reasons[-1].update(boundary="definition", definition=node.name)
+        self.reasons[-1].update(
+            boundary="definition", definition=node.name, definition_line=node.lineno
+        )
 
     def visit_AsyncFunctionDef(self, node):
-        self.reject(node, "async functions execute through reported Python definition fallback")
+        self.reject(
+            node, "async functions execute through reported Python definition fallback", "async"
+        )
         self.definition_fallbacks.add(id(node))
-        self.reasons[-1].update(boundary="definition", definition=node.name)
+        self.reasons[-1].update(
+            boundary="definition", definition=node.name, definition_line=node.lineno
+        )
 
     def visit_ListComp(self, node):
         for generator in node.generators:
             if generator.is_async:
-                self.reject(node, "async comprehensions require resumable lowering")
+                self.reject(node, "async comprehensions require resumable lowering", "async")
             self.visit(generator.iter)
             self.visit(generator.target)
             for condition in generator.ifs:
@@ -346,6 +392,7 @@ def analyze(source: Source) -> Analysis:
         scopes.append(
             {
                 "name": table.get_name(),
+                "line": table.get_lineno(),
                 "kind": str(table.get_type()),
                 "locals": sorted(s.get_name() for s in table.get_symbols() if s.is_local()),
                 "globals": sorted(s.get_name() for s in table.get_symbols() if s.is_global()),
@@ -356,7 +403,7 @@ def analyze(source: Source) -> Analysis:
             describe(child)
 
     describe(symbols)
-    capability = Capability(source)
+    capability = Capability(source, {scope["line"] for scope in scopes if scope["free"]})
     capability.visit(tree)
     types = [
         {

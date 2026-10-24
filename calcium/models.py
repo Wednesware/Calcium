@@ -35,6 +35,7 @@ class Result:
     timings: dict[str, float] = field(default_factory=dict)
     analysis: dict[str, Any] = field(default_factory=dict)
     ir: dict[str, Any] | None = None
+    optimization_report: dict[str, Any] = field(default_factory=dict)
     schema_version: int = 1
 
     def to_dict(self) -> dict[str, Any]:

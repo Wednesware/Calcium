@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Add `--optimization-report` with static native/fallback function coverage, precise reason categories and qualified locations, enclosing fallback boundaries, JSON/API/manifest output and explicit partial-analysis reporting.
+- Distinguish closure, nested-function, decorator, annotation and generic-function fallback reasons without changing native capability.
+
 ## 26.4 — 2026-10-24
 
 - Add checked unboxed integer functions/loops and guarded direct scalar self-recursion at O2/O3.

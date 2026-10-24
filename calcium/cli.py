@@ -134,6 +134,11 @@ def parser():
         cmd.set_defaults(fallback=True)
         cmd.add_argument("--report-optimizations", action="store_true")
         cmd.add_argument("--report-fallbacks", action="store_true")
+        cmd.add_argument(
+            "--optimization-report",
+            action="store_true",
+            help="show static module/function lowering coverage and fallback reasons",
+        )
         if name not in ["run"]:
             cmd.add_argument("--format", choices=["text", "json"], default="text")
         if name in ["inspect", "transpile", "build", "run"]:
@@ -218,6 +223,10 @@ def display(result, args):
         print(json.dumps(result.fallbacks, indent=2), file=sys.stderr)
     if args.report_optimizations:
         print(json.dumps(result.optimizations, indent=2), file=sys.stderr)
+    if args.optimization_report and result.optimization_report:
+        from .reporting import format_optimization_report
+
+        print(format_optimization_report(result.optimization_report), file=sys.stderr)
     if args.verbose and "toolchain" in result.metadata:
         print(json.dumps(result.metadata["toolchain"], indent=2), file=sys.stderr)
     if result.success:
