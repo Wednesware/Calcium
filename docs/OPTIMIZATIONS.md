@@ -3,8 +3,9 @@
 The full framework below is a design proposal. Delivered in 26.3: O0 baseline,
 O1 unreachable blocks, O2 checked exact-integer add/subtract/multiply, O3 immutable
 literal branch simplification, and corresponding GCC/Clang optimization flags.
-Values still box at operation boundaries; general unboxed regions, CSE, inlining
-and loop transformations remain planned. See [Implementation](IMPLEMENTATION.md).
+The current branch adds checked pure-integer scalar kernels, range/while regions
+and guarded direct self-recursion at O2/O3. Other values remain boxed; general
+specialization, CSE, inlining and loop transformations remain planned. See [Implementation](IMPLEMENTATION.md).
 
 All levels preserve the same declared Python compatibility
 contract. O3 is not permission to trust annotations or change arithmetic rules.

@@ -38,12 +38,14 @@ Use GIL-enabled CPython 3.12–3.14 on Linux. Builds need GCC or Clang, matching
 Python development headers, and shared libpython for executables. A relocated
 Python installation is supported when its matching library is under its current
 prefix. Generated executables still require compatible CPython, its standard
-library, and external runtime dependencies. They are not standalone bundles.
+library, and external runtime dependencies. Use `--bundle` to include that runtime
+in a relocatable Linux directory; see [Deployment](docs/DEPLOYMENT.md).
 
 Project imports compile recursively into separate C files. Directory inputs
 include local Python modules; script inputs follow static imports. Add source
 roots with `--include-path` and dynamically selected modules with `--include-all`.
-External dependencies and data resources are not bundled. See [Packages](docs/PACKAGES.md).
+Ordinary executables leave external dependencies and data on the host. Bundles
+copy the selected Python environment and package data. See [Packages](docs/PACKAGES.md).
 
 Native objects are cached by preprocessed C, compiler configuration, Python SDK,
 and optimization flags. Every build relinks against current libraries. Use
@@ -57,7 +59,9 @@ or `--emit-ast`.
 Native lowering covers literals, containers, arithmetic, chained comparisons,
 short circuiting, conditionals, loops, unpacking (including starred assignment),
 f-strings, assignment expressions, imports, global bindings, deletion, assertions,
-explicit raises, and calls with positional, named, `*args`, and `**kwargs` arguments.
+explicit raises, `try`/`except`/`else`/`finally`, synchronous `with`, list/set/dict
+comprehensions, dynamic dict keys/set expansion, and calls with positional, named,
+`*args`, and `**kwargs` arguments.
 Module-level functions support positional-only and keyword-only parameters,
 defaults, variadic arguments, recursion, and aliases. Attribute and subscript
 augmented assignment evaluate their targets once.
@@ -74,17 +78,33 @@ Fallback is CPython execution, not native acceleration.
 O0 is the baseline; O1 removes unreachable IR blocks. O2 adds exact-integer
 add/subtract/multiply fast paths with checked machine arithmetic and CPython
 fallback for overflow, large values, and subclasses. O3 also simplifies branches
-on immutable literal constants. Values remain boxed at operation boundaries;
-unboxed numerical regions are future work. All levels preserve assertions and
+on immutable literal constants. Eligible pure-integer functions keep locals and
+loop arithmetic in native C scalars, with checked overflow and a generic slow path.
+Guarded self-recursion calls the scalar implementation directly. Other operations
+remain boxed. General specialization and inlining remain open. All levels preserve assertions and
 arbitrary-precision arithmetic. No general speedup is promised.
 
 Native functions remain C builtins: normal Python frames, code objects, exact
 function introspection, some argument-error wording, and traceback formatting
-differ. Native exception handlers, comprehensions, pattern matching, dynamic
-class machinery, other platforms, free-threading, subinterpreters, standalone
-runtime, and a general C ABI remain future work. Read the [implementation
+differ. Pattern matching, native class/closure/generator machinery, other platforms,
+free-threading, subinterpreters, a CPython-free runtime, and a general C ABI remain
+future work. Read the [implementation
 contract](docs/IMPLEMENTATION.md) and [remaining-work ledger](docs/STATUS.md)
 before relying on support.
+
+## Measure computation separately
+
+```sh
+ca examples/compute.py --benchmark --function sum_squares --arguments '[1000000]' -O3
+ca examples/compute.py --benchmark --function fibonacci --arguments '[25]' -O3
+ca examples/compute.py --benchmark --function containers --arguments '[20000]' -O3
+```
+
+`--function` excludes startup/imports, validates typed results, output, exceptions
+and working-directory file hashes before publishing timings, and reports raw
+samples, medians, IQR and whole-process peak RSS. The ordinary benchmark still
+measures startup too. [Recorded measurements](docs/BENCHMARKS.md) apply to these
+workloads and this machine, not to Nitrogen or every Python program.
 
 ## Python API
 

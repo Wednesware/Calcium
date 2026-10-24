@@ -63,14 +63,18 @@ that this release does not claim to remove.
 | Arithmetic | Python numeric protocols for binary and unary operations, including division, powers, shifts and bitwise operators |
 | Comparisons | Chained comparisons, identity, membership and rich comparisons; short circuiting evaluates operands once and preserves rich-comparison result objects |
 | Expressions | Calls with positional/named/expanded arguments, attributes, indexing/slicing, f-strings, assignment expressions, conditional expressions, short circuiting |
-| Containers | List, tuple, set and dict literals; list/tuple/dict expansion; indexed/attribute stores; nested/starred unpacking; dynamic dictionary keys and set expansion select fallback |
-| Control flow | If/else, while/for including else, break, continue, return, pass, assert and explicit/bare raise |
+| Containers | List, tuple, set and dict literals; list/tuple/dict expansion; indexed/attribute stores; nested/starred unpacking; dynamic dictionary keys and set expansion |
+| Control flow | If/else, while/for including else, break, continue, return, pass, assert, explicit/bare raise, try/except/else/finally and synchronous with |
 | Deletion/global | Names, attributes and subscripts; global declaration |
 | Functions | Module-level undecorated definitions; positional-only/keyword-only parameters, defaults, variadic args/kwargs, recursion and aliases |
 | Augmented assignment | Names, attributes and subscripts; targets evaluated once; Python in-place protocols |
 
-Annotations, nested functions, decorators, classes, comprehensions, exception
-handlers, context managers, generators, async, pattern matching and unsupported
+List/set/dict comprehensions use native iterator CFGs and private target slots.
+Exception edges enter cleanup landing pads, restore handled exception state, and
+route return/break/continue through pending finally/with actions. Exception groups
+(`except*`) and async comprehensions/context managers still need fallback.
+
+Annotations, nested functions, decorators, classes, generators, async, pattern matching and unsupported
 operators require compatibility execution. Unsupported module-level function,
 async-function and class definitions use **definition-level fallback**, preserving
 native neighboring statements and functions. Reasons carry `boundary: definition`
@@ -147,7 +151,17 @@ O2 additionally rewrites add/subtract/multiply to checked exact-integer fast pat
 `PyLong_CheckExact` guards each operand, `PyLong_AsLongAndOverflow` checks conversion,
 and compiler overflow intrinsics check the machine operation. Any type/range miss
 uses the original CPython numeric API; bools and subclasses keep generic dispatch.
-Results are immediately boxed, so unboxed regions are not implemented.
+Those individual operations still box results. Eligible pure-integer functions also
+receive a validated scalar kernel IR: exact integer arguments, checked long
+arithmetic, native locals, range/while loops and guarded self-recursion. They box
+at the public return, retaining original parameter/constant objects where needed
+for return identity. Range and recursive callable bindings are guarded. Overflow,
+uninitialized locals, unsupported argument types and iteration budgets decline
+to the original generic CFG. Replay is limited to functions proven free of heap
+writes and unknown calls. The budget is 100 million loop iterations per kernel
+invocation. Floats, arbitrary function specialization/inlining and resumable
+mid-function deoptimization are not implemented. Native frame/tracing exclusions
+still apply; kernels hold the GIL and do not provide CPython bytecode scheduling.
 O3 also folds branches on immutable literal constants, inserting the required
 register release before removing unreachable blocks. Assertions remain active at
 all levels. Passes run on native portions of mixed modules and report decisions.
@@ -186,8 +200,14 @@ No compiler command installs dependencies or makes network calls.
 Benchmarks compare stdout/stderr/exit status before measurements and on every
 repetition. A mismatch produces no timings. End-to-end subprocess samples include
 startup and report raw samples, medians, ranges and their ratio. They do not compare
-filesystem effects or measure peak RSS, kernel-only computation or fallback
-instruction percentages yet. Use repeatable workloads without stateful side effects.
+filesystem effects or measure peak RSS. `--function NAME` instead loads a file as
+an extension and times repeated calls after imports. It compares type-tagged
+builtin results, exception classes/messages, stdout/stderr and private working
+directory file hashes. Fixture copying, result validation and imports are outside
+timing. It reports raw samples, medians, IQR and whole-child peak RSS (including
+validation overhead). Absolute-path/external effects are not sandboxed; function
+results must be supported builtin values. Dynamic fallback instruction percentages
+remain unimplemented. See [Benchmarks](BENCHMARKS.md).
 
 ## Validation and remaining work
 
@@ -205,8 +225,9 @@ default layouts, arithmetic operation domains and tuple access bounds from verif
 unpack operations. CIR schema is version 2 and runtime ABI is version 3.
 
 Next milestones are more complete exception/lifetime/finalizer tests, function wrapper
-metadata, checked unboxed numeric regions, additional optimization passes,
-standalone deployment and additional platform validation.
+metadata, broader numeric specialization, additional optimization passes,
+and additional platform validation. Relocatable Linux CPython bundles are available
+through `Calcium.bundle` / `--bundle`; see [Deployment](DEPLOYMENT.md).
 The longer-term [Roadmap](ROADMAP.md) remains the direction rather than a claim
 that every phase has been completed. Magnesium/Iodine are not required: their
 compatibility issue remains documented in [Architecture](ARCHITECTURE.md).

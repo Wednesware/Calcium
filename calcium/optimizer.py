@@ -21,6 +21,18 @@ def optimize(program: Program, level: int) -> list[dict]:
     if level and program.mode in {"native", "mixed"}:
         for fn in program.functions:
             if level >= 2:
+                if fn.kernel is not None:
+                    fn.kernel["enabled"] = True
+                    decisions.append(
+                        {
+                            "pass": "unboxed-integer-region",
+                            "function": fn.name,
+                            "loops": fn.kernel["loops"],
+                            "boxing": "only at public return",
+                            "guards": fn.kernel["guards"],
+                            "replay": fn.kernel["replay"],
+                        }
+                    )
                 count = 0
                 for block in fn.blocks:
                     for op in block.instructions:
@@ -66,9 +78,18 @@ def optimize(program: Program, level: int) -> list[dict]:
                 name = pending.pop()
                 if name not in seen:
                     seen.add(name)
-                    pending.extend(blocks[name].terminator.targets)
+                    block = blocks[name]
+                    pending.extend(block.terminator.targets)
+                    pending.extend(
+                        op.error for op in block.instructions if op.error not in (None, "error")
+                    )
+                    if block.terminator.error not in (None, "error"):
+                        pending.append(block.terminator.error)
             removed = len(fn.blocks) - len(seen)
             fn.blocks[:] = [b for b in fn.blocks if b.name in seen]
+            fn.exception_handlers = {
+                name: slots for name, slots in fn.exception_handlers.items() if name in seen
+            }
             decisions.append(
                 {
                     "pass": "unreachable-blocks",

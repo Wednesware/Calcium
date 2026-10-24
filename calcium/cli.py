@@ -48,6 +48,11 @@ def normalize_argv(argv):
         "--warmups",
         "--timeout",
         "--cache-dir",
+        "--function",
+        "--arguments",
+        "--keyword-arguments",
+        "--working-directory",
+        "--resource",
     }
     value = False
     for arg in argv:
@@ -142,10 +147,29 @@ def parser():
                 "--no-cache", action="store_true", help="recompile every C translation unit"
             )
             cmd.add_argument(
-                "--cache-dir", type=Path, help="override the native object cache directory"
+                "--cache-dir",
+                type=Path,
+                help="override the native object cache directory",
             )
         if name in ["build", "run"]:
             cmd.add_argument("--keep-c", action="store_true")
+            cmd.add_argument(
+                "--bundle",
+                action="store_true",
+                help="include CPython in a relocatable Linux folder",
+            )
+            cmd.add_argument(
+                "--resource",
+                action="append",
+                default=[],
+                type=Path,
+                help="additional project data file/directory to bundle",
+            )
+            cmd.add_argument(
+                "--no-dependencies",
+                action="store_true",
+                help="bundle standard library only, excluding installed packages",
+            )
         if name in ["build", "transpile"]:
             cmd.add_argument(
                 "--target",
@@ -153,6 +177,18 @@ def parser():
                 default="c" if name == "transpile" else "executable",
             )
         if name == "benchmark":
+            cmd.add_argument(
+                "--function", help="benchmark a function body; exclude startup/imports"
+            )
+            cmd.add_argument("--arguments", default="[]", help="JSON positional argument array")
+            cmd.add_argument(
+                "--keyword-arguments", default="{}", help="JSON keyword argument object"
+            )
+            cmd.add_argument(
+                "--working-directory",
+                type=Path,
+                help="copy this fixture directory for each timed function call",
+            )
             cmd.add_argument("--warmups", type=int, default=1)
             cmd.add_argument("--repeat", type=int, default=7)
             cmd.add_argument("--timeout", type=float, default=60)
@@ -209,6 +245,25 @@ def display(result, args):
 def benchmark(compiler, args, program_args):
     if args.repeat < 1 or args.warmups < 0 or args.timeout <= 0:
         raise ValueError("benchmark repeat/timeout must be positive and warmups nonnegative")
+    if args.function:
+        from .benchmark import benchmark_function
+
+        if args.source is None or args.module is not None:
+            raise ValueError("--function currently needs a source file")
+        positional, keywords = json.loads(args.arguments), json.loads(args.keyword_arguments)
+        if not isinstance(positional, list) or not isinstance(keywords, dict):
+            raise ValueError("--arguments must be a JSON array and --keyword-arguments an object")
+        return benchmark_function(
+            compiler,
+            args.source,
+            function=args.function,
+            arguments=positional,
+            keywords=keywords,
+            repeat=args.repeat,
+            warmups=args.warmups,
+            timeout=args.timeout,
+            working_directory=args.working_directory,
+        )
     print(
         "Benchmark executes the program repeatedly; timings include process startup.",
         file=sys.stderr,
@@ -358,6 +413,11 @@ def main(argv=None):
             raise ValueError("choose a source path or --module, not both")
         if args.command == "transpile" and target != "c":
             raise ValueError("transpile only emits C; use build for native targets")
+        if args.command in {"build", "run"}:
+            if (args.resource or args.no_dependencies) and not args.bundle:
+                raise ValueError("--resource and --no-dependencies require --bundle")
+            if args.bundle and (args.keep_c or args.emit_ir or args.emit_ast):
+                raise ValueError("use a separate --transpile build to retain bundle intermediates")
         compiler = Calcium(
             optimization=args.optimization,
             target=target,
@@ -380,13 +440,28 @@ def main(argv=None):
             result = compiler.transpile(args.source, module=args.module, output=args.output)
         elif args.command == "benchmark":
             result = benchmark(compiler, args, program_args)
+        elif getattr(args, "bundle", False):
+            if target != "executable":
+                raise ValueError("--bundle requires target executable")
+            result = compiler.bundle(
+                args.source,
+                module=args.module,
+                output=args.output,
+                resources=args.resource,
+                dependencies=not args.no_dependencies,
+            )
         else:
             result = compiler.build(args.source, module=args.module, output=args.output)
         display(result, args)
         if not result.success:
             return error_status(result)
         if args.command == "run":
-            status = subprocess.run([str(result.executable), *program_args]).returncode
+            executable = (
+                Path(result.metadata["bundle"]["directory"]) / "run"
+                if args.bundle
+                else result.executable
+            )
+            status = subprocess.run([str(executable), *program_args]).returncode
             return 128 - status if status < 0 else status
         if args.command == "benchmark" and args.format != "json":
             print(json.dumps(result.metadata["benchmark"], indent=2))

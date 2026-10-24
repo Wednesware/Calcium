@@ -19,6 +19,8 @@ def python_config(executable: str) -> dict:
     script = """import json, sys, sysconfig, platform
 print(json.dumps({"version": list(sys.version_info[:2]), "implementation": sys.implementation.name,
 "platform": sys.platform, "machine": platform.machine(), "prefix": sys.base_prefix, "executable": sys.executable,
+"base_executable": sys._base_executable, "stdlib": sysconfig.get_path("stdlib"),
+"purelib": sysconfig.get_path("purelib"), "platlib": sysconfig.get_path("platlib"),
 "include": sysconfig.get_path("include"), "platinclude": sysconfig.get_path("platinclude"),
 "config": {k: sysconfig.get_config_var(k) for k in ["LIBDIR", "LDLIBRARY", "LIBS", "SYSLIBS", "LINKFORSHARED", "EXT_SUFFIX", "Py_GIL_DISABLED"]}}))"""
     try:
@@ -92,7 +94,7 @@ def compile_c(
                 library = relocated
         if not library.is_file():
             raise ToolchainError(f"embeddable shared libpython missing: {library}")
-        command += [str(library), f"-Wl,-rpath,{library.parent}"]
+        command += [str(library), "-Wl,-rpath,$ORIGIN/lib", f"-Wl,-rpath,{library.parent}"]
         command += shlex.split(cfg["LINKFORSHARED"] or "")
     command += shlex.split(cfg["LIBS"] or "") + shlex.split(cfg["SYSLIBS"] or "")
     try:

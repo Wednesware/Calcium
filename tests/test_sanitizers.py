@@ -22,11 +22,13 @@ def test_ubsan_checked_arithmetic_and_error_cleanup(tmp_path, compiler):
     )
     wrapper.chmod(0o755)
     source = tmp_path / "sanitized.py"
-    source.write_text("""def arithmetic(a, b):
+    source.write_text("""def scalar(a, b):
+    return a * b + a - b
+def arithmetic(a, b):
     return a + b, a - b, a * b
 for a in [-2**100, -2**63, -1, 0, 1, 2**63-1, 2**100]:
     for b in [-2**100, -2**63, -1, 0, 1, 2**63-1, 2**100]:
-        print(arithmetic(a, b))
+        print(arithmetic(a, b), scalar(a, b))
 def fail(value):
     left, *middle, right = value
     assert left < right, (left, right)

@@ -1,6 +1,7 @@
 import re
 
 from ..models import CalciumInternalError
+from .kernels import validate_kernel
 from .nodes import Program
 
 OPS = {
@@ -44,8 +45,28 @@ OPS = {
     "to_tuple",
     "unpack_ex",
     "python_definition",
+    "error_get",
+    "error_set",
+    "exception_take",
+    "handled_get",
+    "handled_set",
+    "exception_raise",
+    "exception_match",
+    "special",
+    "with_exit",
+    "clear_binding",
+    "set_update",
+    "set_add",
 }
-PURE_CLEANUP = {"drop", "clear"}
+PURE_CLEANUP = {
+    "drop",
+    "clear",
+    "handled_set",
+    "exception_raise",
+    "clear_binding",
+    "error_get",
+    "error_set",
+}
 
 
 def validate(program: Program):
@@ -63,6 +84,10 @@ def validate(program: Program):
     if not program.functions[0].module or any(fn.module for fn in program.functions[1:]):
         raise CalciumInternalError("invalid module entry")
     for fn in program.functions:
+        try:
+            validate_kernel(fn)
+        except (KeyError, TypeError, AttributeError, RecursionError) as exc:
+            raise CalciumInternalError("malformed typed native kernel") from exc
         if not isinstance(fn.registers, int) or fn.registers < 0:
             raise CalciumInternalError("invalid register count")
         expected_parameters = (
@@ -85,6 +110,12 @@ def validate(program: Program):
             raise CalciumInternalError("invalid local/parameter slots")
         if len(fn.cleanup_order) != len(fn.locals) or set(fn.cleanup_order) != set(fn.locals):
             raise CalciumInternalError("incomplete local ownership cleanup")
+        if any(
+            label not in blocks or not set(names) <= set(fn.locals)
+            for label, names in fn.exception_handlers.items()
+        ):
+            raise CalciumInternalError("invalid exception landing pad")
+        errors = {"error", *fn.exception_handlers}
         definitions = set()
         for block in fn.blocks:
             term = block.terminator
@@ -101,10 +132,10 @@ def validate(program: Program):
             }[term.op]
             if (len(term.args), len(term.targets)) != expected:
                 raise CalciumInternalError("terminator arity mismatch")
-            if term.op in {"branch", "next"} and term.error != "error":
+            if term.op in {"branch", "next", "error"} and term.error not in errors:
                 raise CalciumInternalError("missing terminator exception edge")
             for op in block.instructions:
-                if op.op not in OPS or (op.op not in PURE_CLEANUP and op.error != "error"):
+                if op.op not in OPS or (op.op not in PURE_CLEANUP and op.error not in errors):
                     raise CalciumInternalError("unknown operation or missing exception edge")
                 arities = {
                     "constant": 0,
@@ -141,6 +172,18 @@ def validate(program: Program):
                     "to_tuple": 1,
                     "unpack_ex": 1,
                     "python_definition": 0,
+                    "error_get": 0,
+                    "error_set": 1,
+                    "exception_take": 0,
+                    "handled_get": 0,
+                    "handled_set": 1,
+                    "exception_raise": 1,
+                    "exception_match": 2,
+                    "special": 1,
+                    "with_exit": 2,
+                    "clear_binding": 0,
+                    "set_update": 2,
+                    "set_add": 2,
                 }
                 if op.op in arities and len(op.args) != arities[op.op]:
                     raise CalciumInternalError("instruction arity mismatch")
@@ -195,6 +238,12 @@ def validate(program: Program):
                     "kwargs_set",
                     "dict_merge",
                     "python_definition",
+                    "handled_set",
+                    "error_set",
+                    "exception_raise",
+                    "clear_binding",
+                    "set_update",
+                    "set_add",
                 }
                 if op.op == "raise" and len(op.args) not in (0, 1, 2):
                     raise CalciumInternalError("raise argument layout mismatch")
@@ -246,8 +295,8 @@ def validate(program: Program):
                         raise CalciumInternalError("tuple access is out of bounds")
         # Ownership/dominance fixed point. Every reachable predecessor must agree
         # on live register ownership; mutable slots carry merged values instead.
-        incoming = {fn.blocks[0].name: frozenset()}
-        pending = [fn.blocks[0].name]
+        incoming = {name: frozenset() for name in [fn.blocks[0].name, *fn.exception_handlers]}
+        pending = list(incoming)
         while pending:
             name = pending.pop()
             block = blocks[name]

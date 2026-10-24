@@ -1,10 +1,13 @@
 import ast
 import sys
 import textwrap
+import warnings
 from types import CodeType
 
 from ..frontend.analysis import BINARY, COMPARE, UNARY
 from ..frontend.constants import MISSING, encode, folded
+from ..frontend.lowering import incremental_dict
+from .kernels import discover_kernel
 from .nodes import Block, Function, Instruction, Program, Terminator
 
 
@@ -31,11 +34,51 @@ class Builder:
         if not module:
             # CPython's scope allocator supplies the target-version local order;
             # compiling creates a code object but never executes the function.
-            scope = compile(
-                ast.Module(body=[node], type_ignores=[]), "<scope>", "exec", dont_inherit=True
-            )
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", SyntaxWarning)
+                scope = compile(
+                    ast.Module(body=[node], type_ignores=[]), "<scope>", "exec", dont_inherit=True
+                )
             code = next(value for value in scope.co_consts if isinstance(value, CodeType))
             locals_ = list(code.co_varnames)
+
+            class Bindings(ast.NodeVisitor):
+                names = set(params)
+
+                def visit_Name(self, item):
+                    if isinstance(item.ctx, (ast.Store, ast.Del)):
+                        self.names.add(item.id)
+
+                def visit_Import(self, item):
+                    self.names.update(a.asname or a.name.split(".")[0] for a in item.names)
+
+                def visit_ImportFrom(self, item):
+                    self.names.update(a.asname or a.name for a in item.names)
+
+                def visit_ExceptHandler(self, item):
+                    if item.name:
+                        self.names.add(item.name)
+                    self.generic_visit(item)
+
+                def visit_FunctionDef(self, item):
+                    self.names.add(item.name)
+
+                visit_AsyncFunctionDef = visit_FunctionDef
+                visit_ClassDef = visit_FunctionDef
+
+                def visit_ListComp(self, item):
+                    for child in ast.walk(item):
+                        if isinstance(child, ast.NamedExpr):
+                            self.names.add(child.target.id)
+
+                visit_DictComp = visit_ListComp
+                visit_SetComp = visit_ListComp
+                visit_GeneratorExp = visit_ListComp
+
+            bindings = Bindings()
+            for statement in node.body:
+                bindings.visit(statement)
+            locals_ = [name for name in locals_ if name in bindings.names]
         doc = ast.get_docstring(node, clean=False)
         self.fn = Function(
             "<module>" if module else node.name,
@@ -53,8 +96,12 @@ class Builder:
         self.functions = functions
         self.definition_fallbacks = definition_fallbacks
         self.source = source
+        self.error_target = "error"
+        self.cleanups = []
+        self.aliases = {}
+        self.handler_starts = {}
         self.current = self.block()
-        self.loops: list[tuple[str, str]] = []
+        self.loops: list[tuple[str, str, int]] = []
         body = node.body
         if (
             body
@@ -78,6 +125,12 @@ class Builder:
         self.fn.cleanup_order = hidden + (
             list(reversed(declared)) if sys.version_info >= (3, 14) else declared
         )
+        if not module:
+            self.fn.kernel = discover_kernel(node, self.fn.locals)
+        for label, start in self.handler_starts.items():
+            self.fn.exception_handlers[label] = [
+                name for name in self.fn.locals[start:] if name.startswith("$")
+            ]
 
     def block(self):
         block = Block(f"b{len(self.fn.blocks)}")
@@ -92,7 +145,7 @@ class Builder:
     def emit(self, op, args=None, *, data=None, line=1, result=True, raises=True):
         value = self.reg() if result else None
         self.current.instructions.append(
-            Instruction(op, args or [], value, data, line, "error" if raises else None)
+            Instruction(op, args or [], value, data, line, self.error_target if raises else None)
         )
         return value
 
@@ -113,10 +166,10 @@ class Builder:
         return name
 
     def save(self, name, value, line=1):
-        self.emit("store", [value], data=name, result=False, line=line)
+        self.emit("store", [value], data=self.aliases.get(name, name), result=False, line=line)
 
     def load(self, name, line=1):
-        return self.emit("load", data=name, line=line)
+        return self.emit("load", data=self.aliases.get(name, name), line=line)
 
     def condition(self, node, yes, no):
         """A truth context must not re-test a short-circuited user object."""
@@ -144,7 +197,7 @@ class Builder:
         else:
             value = self.expr(node)
             self.current.terminator = Terminator(
-                "branch", [value], [yes.name, no.name], error="error"
+                "branch", [value], [yes.name, no.name], error=self.error_target
             )
 
     def branch_value(self, node, slot, yes, no):
@@ -166,7 +219,7 @@ class Builder:
             value = self.expr(node)
             self.save(slot, value)
             self.current.terminator = Terminator(
-                "branch", [value], [yes.name, no.name], error="error"
+                "branch", [value], [yes.name, no.name], error=self.error_target
             )
 
     def value_to(self, node, slot, end):
@@ -289,8 +342,38 @@ class Builder:
             for arg in args:
                 self.drop(arg)
             return out
+        if isinstance(node, (ast.ListComp, ast.SetComp, ast.DictComp)):
+            return self.comprehension(node)
         if isinstance(node, (ast.List, ast.Tuple, ast.Set, ast.Dict)):
-            if isinstance(node, ast.Dict) and any(key is None for key in node.keys):
+            if isinstance(node, ast.Set) and any(
+                isinstance(item, ast.Starred) for item in node.elts
+            ):
+                result = self.emit("container", data="set", line=line)
+                chunk = []
+
+                def flush():
+                    if chunk:
+                        values = [self.expr(item) for item in chunk]
+                        temporary = self.emit("container", values, data="set", line=line)
+                        for value in values:
+                            self.drop(value)
+                        self.emit("set_update", [result, temporary], result=False, line=line)
+                        self.drop(temporary)
+                        chunk.clear()
+
+                for item in node.elts:
+                    if isinstance(item, ast.Starred):
+                        flush()
+                        value = self.expr(item.value)
+                        self.emit("set_update", [result, value], result=False, line=line)
+                        self.drop(value)
+                    else:
+                        chunk.append(item)
+                flush()
+                return result
+            if isinstance(node, ast.Dict) and (
+                any(key is None for key in node.keys) or incremental_dict(node)
+            ):
                 result = self.emit("container", data="dict", line=line)
                 for key, value_node in zip(node.keys, node.values):
                     if key is None:
@@ -413,7 +496,7 @@ class Builder:
                 if yes is None:
                     self.save(result, value)
                 self.current.terminator = Terminator(
-                    "branch", [value], [onward.name, end.name], error="error"
+                    "branch", [value], [onward.name, end.name], error=self.error_target
                 )
                 if not final:
                     self.current = onward
@@ -574,7 +657,11 @@ class Builder:
                 self.drop(value)
             elif isinstance(node, ast.Return):
                 value = self.expr(node.value) if node.value is not None else self.constant(None)
-                self.current.terminator = Terminator("return", [value])
+                self.transfer("return", value=value)
+            elif isinstance(node, ast.Try):
+                self.try_statement(node)
+            elif isinstance(node, ast.With):
+                self.with_statement(node.items, node.body)
             elif isinstance(node, ast.If):
                 yes, no, join = self.block(), self.block(), self.block()
                 self.condition(node.test, yes, no)
@@ -604,7 +691,7 @@ class Builder:
                     iterator = self.load(iterator_slot)
                     item = self.reg()
                     self.current.terminator = Terminator(
-                        "next", [iterator], [body.name, otherwise.name], item, "error"
+                        "next", [iterator], [body.name, otherwise.name], item, self.error_target
                     )
                     self.current = body
                     self.assign(node.target, item)
@@ -612,7 +699,7 @@ class Builder:
                 else:
                     self.condition(node.test, body, otherwise)
                     self.current = body
-                self.loops.append((exit_.name, header.name))
+                self.loops.append((exit_.name, header.name, len(self.cleanups)))
                 self.statements(node.body)
                 self.loops.pop()
                 self.jump(header)
@@ -626,21 +713,21 @@ class Builder:
                     self.emit("clear", data=iterator_slot, result=False, raises=False)
             elif isinstance(node, (ast.Break, ast.Continue)):
                 target = self.loops[-1][0 if isinstance(node, ast.Break) else 1]
-                self.current.terminator = Terminator("jump", targets=[target])
+                self.transfer("jump", target=target, depth=self.loops[-1][2])
             elif isinstance(node, ast.Assert):
                 okay, failed = self.block(), self.block()
                 self.condition(node.test, okay, failed)
                 self.current = failed
                 args = [self.expr(node.msg)] if node.msg is not None else []
                 self.emit("assert_fail", args, result=False, line=node.lineno)
-                self.current.terminator = Terminator("error")
+                self.current.terminator = Terminator("error", error=self.error_target)
                 self.current = okay
             elif isinstance(node, ast.Raise):
                 args = [self.expr(node.exc)] if node.exc is not None else []
                 if node.cause is not None:
                     args.append(self.expr(node.cause))
                 self.emit("raise", args, result=False, line=node.lineno)
-                self.current.terminator = Terminator("error")
+                self.current.terminator = Terminator("error", error=self.error_target)
             elif isinstance(node, ast.Delete):
                 for target in node.targets:
                     self.delete(target)
@@ -648,6 +735,323 @@ class Builder:
                 pass
             elif not isinstance(node, ast.Pass):
                 raise AssertionError(f"unclassified statement: {type(node).__name__}")
+
+    def comprehension(self, node):
+        line = node.lineno
+        first = self.expr(node.generators[0].iter)
+        iterator = self.emit("iter", [first], line=line)
+        self.drop(first)
+        iterator_slot = self.hidden()
+        self.save(iterator_slot, iterator)
+        self.drop(iterator)
+        aliases = self.aliases.copy()
+        allocated = []
+        targets = set()
+        for generator in node.generators:
+            for item in ast.walk(generator.target):
+                if isinstance(item, ast.Name) and item.id not in targets:
+                    targets.add(item.id)
+                    self.aliases[item.id] = self.hidden()
+                    allocated.append(self.aliases[item.id])
+        kind = (
+            "dict"
+            if isinstance(node, ast.DictComp)
+            else "set"
+            if isinstance(node, ast.SetComp)
+            else "list"
+        )
+        result_slot = self.hidden()
+        result = self.emit("container", data=kind, line=line)
+        self.save(result_slot, result)
+        self.drop(result)
+
+        def loop(index):
+            generator = node.generators[index]
+            slot = iterator_slot if index == 0 else self.hidden()
+            if index:
+                value = self.expr(generator.iter)
+                it = self.emit("iter", [value], line=line)
+                self.drop(value)
+                self.save(slot, it)
+                self.drop(it)
+            header, body, end = self.block(), self.block(), self.block()
+            self.jump(header)
+            self.current = header
+            it = self.load(slot)
+            item = self.reg()
+            self.current.terminator = Terminator(
+                "next", [it], [body.name, end.name], item, self.error_target
+            )
+            self.current = body
+            self.assign(generator.target, item)
+            self.drop(item)
+            for predicate in generator.ifs:
+                onward = self.block()
+                self.condition(predicate, onward, header)
+                self.current = onward
+            if index + 1 < len(node.generators):
+                loop(index + 1)
+            else:
+                target = self.load(result_slot)
+                if kind == "dict":
+                    key, value = self.expr(node.key), self.expr(node.value)
+                    self.emit("setitem", [target, key, value], result=False, line=line)
+                    self.drop(key)
+                else:
+                    value = self.expr(node.elt)
+                    self.emit(
+                        "set_add" if kind == "set" else "args_append",
+                        [target, value],
+                        result=False,
+                        line=line,
+                    )
+                self.drop(value)
+                self.drop(target)
+            self.jump(header)
+            self.current = end
+            self.emit("clear", data=slot, result=False, raises=False)
+
+        loop(0)
+        for name in reversed(allocated):
+            self.emit("clear", data=name, result=False, raises=False)
+        self.aliases = aliases
+        result = self.load(result_slot, line)
+        self.emit("clear", data=result_slot, result=False, raises=False)
+        return result
+
+    def handler(self):
+        block = self.block()
+        self.handler_starts[block.name] = len(self.fn.locals)
+        return block
+
+    def clear_hidden(self, name):
+        self.emit("clear", data=name, result=False, raises=False)
+
+    def exception_state(self):
+        previous, caught = self.hidden(), self.hidden()
+        value = self.emit("exception_take")
+        self.save(caught, value)
+        old = self.emit("handled_get")
+        self.save(previous, old)
+        self.drop(old)
+        self.emit("handled_set", [value], result=False, raises=False)
+        self.drop(value)
+        return {"kind": "exception", "previous": previous, "caught": caught, "binding": None}
+
+    def finish_exception(self, action):
+        pending = self.emit("error_get", raises=False)
+        if action["binding"]:
+            self.emit("clear_binding", data=action["binding"], result=False, raises=False)
+        previous = self.load(action["previous"])
+        self.emit("handled_set", [previous], result=False, raises=False)
+        self.drop(previous)
+        self.clear_hidden(action["previous"])
+        self.clear_hidden(action["caught"])
+        self.emit("error_set", [pending], result=False, raises=False)
+        self.drop(pending)
+
+    def cleanup(self, action):
+        if action["kind"] == "exception":
+            self.finish_exception(action)
+        elif action["kind"] == "finally":
+            self.statements(action["body"])
+        else:
+            exit_function = self.load(action["exit"])
+            none = self.constant(None)
+            result = self.emit(
+                "call", [exit_function, none, none, none], data={"positional": 3, "keywords": []}
+            )
+            self.drop(result)
+            self.drop(none)
+            self.drop(exit_function)
+            self.clear_hidden(action["exit"])
+
+    def transfer(self, kind, *, value=None, target=None, depth=0):
+        pending = None
+        if value is not None:
+            pending = self.hidden()
+            self.save(pending, value)
+            self.drop(value)
+        actions, error = self.cleanups, self.error_target
+        for index in reversed(range(depth, len(actions))):
+            action = actions[index]
+            self.cleanups = actions[:index]
+            self.error_target = action["outer"]
+            self.cleanup(action)
+            if self.current.terminator is not None:
+                self.cleanups, self.error_target = actions, error
+                return
+        self.cleanups, self.error_target = actions, error
+        if pending:
+            value = self.load(pending)
+            self.clear_hidden(pending)
+        self.current.terminator = Terminator(
+            kind, [value] if value is not None else [], [target] if target else []
+        )
+
+    def try_statement(self, node):
+        if node.finalbody:
+            dispatch, end = self.handler(), self.block()
+            outer = self.error_target
+            action = {"kind": "finally", "body": node.finalbody, "outer": outer}
+            self.cleanups.append(action)
+            self.error_target = dispatch.name
+            inner = ast.Try(
+                body=node.body, handlers=node.handlers, orelse=node.orelse, finalbody=[]
+            )
+            if node.handlers:
+                self.try_statement(inner)
+            else:
+                self.statements(node.body)
+            self.cleanups.pop()
+            self.error_target = outer
+            if self.current.terminator is None:
+                self.statements(node.finalbody)
+                self.jump(end)
+            self.current = dispatch
+            state = self.exception_state()
+            state["outer"] = outer
+            failure = self.handler()
+            self.error_target = failure.name
+            self.cleanups.append(state)
+            self.statements(node.finalbody)
+            self.cleanups.pop()
+            self.error_target = outer
+            if self.current.terminator is None:
+                exception = self.load(state["caught"])
+                self.finish_exception(state)
+                self.emit("exception_raise", [exception], result=False, raises=False)
+                self.drop(exception)
+                self.current.terminator = Terminator("error", error=outer)
+            self.current = failure
+            self.finish_exception(state)
+            self.current.terminator = Terminator("error", error=outer)
+            self.current = end
+            return
+        dispatch, otherwise, end = self.handler(), self.block(), self.block()
+        outer = self.error_target
+        self.error_target = dispatch.name
+        self.statements(node.body)
+        self.jump(otherwise)
+        self.error_target = outer
+        self.current = otherwise
+        self.statements(node.orelse)
+        self.jump(end)
+        self.current = dispatch
+        state = self.exception_state()
+        state["outer"] = outer
+        failure = self.handler()
+        self.error_target = failure.name
+        for handler in node.handlers:
+            body, next_handler = self.block(), self.block()
+            if handler.type is not None:
+                exception, expected = self.load(state["caught"]), self.expr(handler.type)
+                matches = self.emit("exception_match", [exception, expected])
+                self.drop(exception)
+                self.drop(expected)
+                self.current.terminator = Terminator(
+                    "branch", [matches], [body.name, next_handler.name], error=self.error_target
+                )
+            else:
+                self.jump(body)
+            self.current = body
+            current_state = dict(state, binding=handler.name)
+            handler_failure = self.handler()
+            self.error_target = handler_failure.name
+            if handler.name:
+                value = self.load(state["caught"])
+                self.save(handler.name, value)
+                self.drop(value)
+            self.cleanups.append(current_state)
+            self.statements(handler.body)
+            self.cleanups.pop()
+            self.error_target = outer
+            if self.current.terminator is None:
+                self.finish_exception(current_state)
+                self.jump(end)
+            self.current = handler_failure
+            self.finish_exception(current_state)
+            self.current.terminator = Terminator("error", error=outer)
+            self.current = next_handler
+            self.error_target = failure.name
+        exception = self.load(state["caught"])
+        self.finish_exception(state)
+        self.emit("exception_raise", [exception], result=False, raises=False)
+        self.drop(exception)
+        self.current.terminator = Terminator("error", error=outer)
+        self.current = failure
+        self.error_target = outer
+        self.finish_exception(state)
+        self.current.terminator = Terminator("error", error=outer)
+        self.current = end
+
+    def with_statement(self, items, body):
+        item, rest = items[0], items[1:]
+        manager = self.expr(item.context_expr)
+        # CPython 3.14's LOAD_SPECIAL sequence changed observable descriptor
+        # binding order from 3.12/3.13's BEFORE_WITH implementation.
+        if sys.version_info >= (3, 14):
+            exit_function = self.emit("special", [manager], data="__exit__")
+            enter_function = self.emit("special", [manager], data="__enter__")
+        else:
+            enter_function = self.emit("special", [manager], data="__enter__")
+            exit_function = self.emit("special", [manager], data="__exit__")
+        self.drop(manager)
+        exit_slot = self.hidden()
+        self.save(exit_slot, exit_function)
+        self.drop(exit_function)
+        entered = self.emit("call", [enter_function], data={"positional": 0, "keywords": []})
+        self.drop(enter_function)
+        dispatch, end = self.handler(), self.block()
+        outer = self.error_target
+        action = {"kind": "with", "exit": exit_slot, "outer": outer}
+        self.cleanups.append(action)
+        self.error_target = dispatch.name
+        if item.optional_vars is not None:
+            self.assign(item.optional_vars, entered)
+        self.drop(entered)
+        if rest:
+            self.with_statement(rest, body)
+        else:
+            self.statements(body)
+        self.cleanups.pop()
+        self.error_target = outer
+        if self.current.terminator is None:
+            self.cleanup(action)
+            self.jump(end)
+        self.current = dispatch
+        state = self.exception_state()
+        state["outer"] = outer
+        failure = self.handler()
+        self.error_target = failure.name
+        self.cleanups.append(state)
+        exception = self.load(state["caught"])
+        exit_function = self.load(exit_slot)
+        result = self.emit("with_exit", [exit_function, exception])
+        self.drop(exit_function)
+        self.drop(exception)
+        suppressed, propagated = self.block(), self.block()
+        self.current.terminator = Terminator(
+            "branch", [result], [suppressed.name, propagated.name], error=failure.name
+        )
+        self.cleanups.pop()
+        self.error_target = outer
+        self.current = suppressed
+        self.finish_exception(state)
+        self.clear_hidden(exit_slot)
+        self.jump(end)
+        self.current = propagated
+        exception = self.load(state["caught"])
+        self.finish_exception(state)
+        self.clear_hidden(exit_slot)
+        self.emit("exception_raise", [exception], result=False, raises=False)
+        self.drop(exception)
+        self.current.terminator = Terminator("error", error=outer)
+        self.current = failure
+        self.finish_exception(state)
+        self.clear_hidden(exit_slot)
+        self.current.terminator = Terminator("error", error=outer)
+        self.current = end
 
     def delete(self, target):
         if isinstance(target, ast.Name):

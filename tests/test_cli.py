@@ -66,6 +66,34 @@ def test_benchmark(tmp_path):
     assert "benchmark" not in json.loads(mismatch.stdout)["metadata"]
 
 
+def test_function_benchmark_cli(tmp_path):
+    source = tmp_path / "compute.py"
+    source.write_text("def work(n):\n    return n*n\n")
+    run = cli(
+        source,
+        "--benchmark",
+        "--function",
+        "work",
+        "--arguments",
+        "[1000]",
+        "--repeat",
+        "2",
+        "-O3",
+        "--format",
+        "json",
+    )
+    assert run.returncode == 0, run.stderr
+    report = json.loads(run.stdout)["metadata"]["benchmark"]
+    assert report["function"] == "work" and len(report["calcium"]["samples_seconds"]) == 2
+
+
+def test_bundle_run_cli(tmp_path):
+    source = tmp_path / "app.py"
+    source.write_text("print('bundled')")
+    run = cli(source, "--bundle", "--no-dependencies", "--run", "-o", tmp_path / "bundle")
+    assert run.returncode == 0 and run.stdout == "bundled\n", run.stderr
+
+
 def test_preserve_existing_output_on_failure(tmp_path):
     source = tmp_path / "source.py"
     source.write_text("print(1)")

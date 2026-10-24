@@ -1,0 +1,167 @@
+[
+  {
+    "measurement": "function-call wall time; interpreter startup and imports excluded",
+    "function": "sum_squares",
+    "arguments": [
+      1000000
+    ],
+    "keyword_arguments": {},
+    "cpython": {
+      "samples_seconds": [
+        0.039674212,
+        0.040829613,
+        0.040065995,
+        0.039213943,
+        0.039449853,
+        0.03976402,
+        0.038828902,
+        0.040149852,
+        0.04020745
+      ],
+      "median_seconds": 0.03976402,
+      "iqr_seconds": 0.0006999989999999998,
+      "min_seconds": 0.038828902,
+      "max_seconds": 0.040829613
+    },
+    "calcium": {
+      "samples_seconds": [
+        0.001375101,
+        0.00138539,
+        0.001393414,
+        0.001409425,
+        0.001369039,
+        0.001393024,
+        0.00138533,
+        0.001366004,
+        0.00136429
+      ],
+      "median_seconds": 0.00138533,
+      "iqr_seconds": 2.3985000000000022e-05,
+      "min_seconds": 0.00136429,
+      "max_seconds": 0.001409425
+    },
+    "peak_rss_bytes": {
+      "cpython": 28418048,
+      "calcium": 28418048
+    },
+    "rss_scope": "whole benchmark child process; includes interpreter and validation overhead",
+    "warmups": 2,
+    "repeat": 9,
+    "correctness": "typed builtin result, exception, stdout/stderr, filesystem file hashes per repetition",
+    "filesystem_scope": "private working directory; absolute paths and external side effects are not sandboxed",
+    "platform": "Linux-7.2.11-zen1-1-zen-x86_64-with-glibc2.44",
+    "machine": "x86_64",
+    "python": "3.14.8 (main, Oct  2 2026, 10:23:31) [GCC 16.2.1 20260810]",
+    "speedup": 28.70364461897165
+  },
+  {
+    "measurement": "function-call wall time; interpreter startup and imports excluded",
+    "function": "fibonacci",
+    "arguments": [
+      25
+    ],
+    "keyword_arguments": {},
+    "cpython": {
+      "samples_seconds": [
+        0.00545069,
+        0.005589339,
+        0.005577327,
+        0.005521243,
+        0.00548296,
+        0.005447455,
+        0.005566487,
+        0.005506875,
+        0.005514249
+      ],
+      "median_seconds": 0.005514249,
+      "iqr_seconds": 8.352699999999991e-05,
+      "min_seconds": 0.005447455,
+      "max_seconds": 0.005589339
+    },
+    "calcium": {
+      "samples_seconds": [
+        0.000945568,
+        0.001249005,
+        0.000945939,
+        0.000943053,
+        0.000939316,
+        0.000942813,
+        0.0009471,
+        0.000943734,
+        0.000940789
+      ],
+      "median_seconds": 0.000943734,
+      "iqr_seconds": 3.125999999999997e-06,
+      "min_seconds": 0.000939316,
+      "max_seconds": 0.001249005
+    },
+    "peak_rss_bytes": {
+      "cpython": 29335552,
+      "calcium": 29335552
+    },
+    "rss_scope": "whole benchmark child process; includes interpreter and validation overhead",
+    "warmups": 2,
+    "repeat": 9,
+    "correctness": "typed builtin result, exception, stdout/stderr, filesystem file hashes per repetition",
+    "filesystem_scope": "private working directory; absolute paths and external side effects are not sandboxed",
+    "platform": "Linux-7.2.11-zen1-1-zen-x86_64-with-glibc2.44",
+    "machine": "x86_64",
+    "python": "3.14.8 (main, Oct  2 2026, 10:23:31) [GCC 16.2.1 20260810]",
+    "speedup": 5.843011908016454
+  },
+  {
+    "measurement": "function-call wall time; interpreter startup and imports excluded",
+    "function": "containers",
+    "arguments": [
+      20000
+    ],
+    "keyword_arguments": {},
+    "cpython": {
+      "samples_seconds": [
+        0.00204855,
+        0.002044913,
+        0.002154027,
+        0.002043821,
+        0.002086351,
+        0.002064229,
+        0.002105777,
+        0.002100256,
+        0.002080911
+      ],
+      "median_seconds": 0.002080911,
+      "iqr_seconds": 5.170599999999989e-05,
+      "min_seconds": 0.002043821,
+      "max_seconds": 0.002154027
+    },
+    "calcium": {
+      "samples_seconds": [
+        0.001643433,
+        0.001656206,
+        0.001727009,
+        0.001648973,
+        0.001692665,
+        0.001720256,
+        0.001679129,
+        0.001648832,
+        0.001633965
+      ],
+      "median_seconds": 0.001656206,
+      "iqr_seconds": 4.3833000000000066e-05,
+      "min_seconds": 0.001633965,
+      "max_seconds": 0.001727009
+    },
+    "peak_rss_bytes": {
+      "cpython": 29335552,
+      "calcium": 29335552
+    },
+    "rss_scope": "whole benchmark child process; includes interpreter and validation overhead",
+    "warmups": 2,
+    "repeat": 9,
+    "correctness": "typed builtin result, exception, stdout/stderr, filesystem file hashes per repetition",
+    "filesystem_scope": "private working directory; absolute paths and external side effects are not sandboxed",
+    "platform": "Linux-7.2.11-zen1-1-zen-x86_64-with-glibc2.44",
+    "machine": "x86_64",
+    "python": "3.14.8 (main, Oct  2 2026, 10:23:31) [GCC 16.2.1 20260810]",
+    "speedup": 1.2564324727721068
+  }
+]

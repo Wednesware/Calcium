@@ -45,6 +45,9 @@ prints the version. Neither needs a compiler or Python SDK.
 | `-O0` … `-O3` | Optimization level; default O0; see implementation contract |
 | `--python PATH` | Matching target CPython executable |
 | `--compiler gcc\|clang` | Native builds only |
+| `--bundle` | Build/run: relocatable Linux folder containing CPython |
+| `--resource PATH` | Bundle: repeatable extra data path inside a project root |
+| `--no-dependencies` | Bundle: copy standard library only |
 | `--target c\|executable\|extension` | Build target; default executable; transpile requires C |
 | `--allow-fallback` | Explicitly enable reported compatibility execution (already the CLI default) |
 | `--no-fallback` | Reject all Python code-object fallback |
@@ -104,3 +107,11 @@ artifact methods accept `output=`. The default API target remains C for compatib
 Expected source/environment failures produce `success=False`; invalid configuration
 raises `ValueError`; compiler invariant failures raise `CalciumInternalError`.
 Analysis executes no analyzed source and imports no project dependencies.
+
+Function benchmarks accept `--function NAME`, JSON `--arguments` /
+`--keyword-arguments`, and optional `--working-directory PATH` fixture. They time
+the call after imports; see [Benchmarks](BENCHMARKS.md).
+
+`Calcium.bundle(source, output="dist/app", resources=(), dependencies=True)`
+returns a result whose bundle metadata records its directory. Run its `run`
+launcher; `result.executable` is the underlying native binary.

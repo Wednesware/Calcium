@@ -102,14 +102,43 @@ int ca_execute_source(const char *source, const char *filename, PyObject *global
     return error ? -1 : 0;
 }
 
+static const char **ca_source_roots = NULL;
+static int ca_source_root_count = 0;
+void ca_bundle_configure(const char **roots, int count) {
+    ca_source_roots = roots; ca_source_root_count = count;
+}
+PyObject *ca_source_path(const char *original) {
+    const char *bundle = getenv("CALCIUM_BUNDLE_ROOT");
+    int selected = -1; size_t longest = 0;
+    if (bundle) for (int i = 0; i < ca_source_root_count; i++) {
+        size_t n = strlen(ca_source_roots[i]);
+        if (n > longest && !strncmp(original, ca_source_roots[i], n) &&
+            (!original[n] || original[n] == '/')) { selected = i; longest = n; }
+    }
+    if (selected < 0) return PyUnicode_DecodeFSDefault(original);
+    PyObject *root = PyUnicode_DecodeFSDefault(bundle);
+    PyObject *suffix = PyUnicode_DecodeFSDefault(original + longest);
+    PyObject *result = root && suffix ? PyUnicode_FromFormat("%U/app/source%d%U", root, selected, suffix) : NULL;
+    Py_XDECREF(root); Py_XDECREF(suffix); return result;
+}
+
 int ca_main(int argc, char **argv, const char *filename, const char *directory, const char *python_executable,
             int (*execute)(PyObject *)) {
     PyConfig config;
     PyConfig_InitPythonConfig(&config);
     config.parse_argv = 0;
+    const char *bundle_python = getenv("CALCIUM_BUNDLE_PYTHON");
+    if (getenv("CALCIUM_BUNDLE_ROOT") && bundle_python) {
+        python_executable = bundle_python;
+        config.use_environment = 0;
+        config.user_site_directory = 0;
+        config.safe_path = 1;
+    }
     /* Resolve stdlib, extension paths and venv state from the selected Python,
        rather than guessing an installation from the generated binary's path. */
     PyStatus status = PyConfig_SetBytesString(&config, &config.program_name, python_executable);
+    if (!PyStatus_Exception(status) && bundle_python && getenv("CALCIUM_BUNDLE_HOME"))
+        status = PyConfig_SetBytesString(&config, &config.home, getenv("CALCIUM_BUNDLE_HOME"));
     if (!PyStatus_Exception(status)) status = PyConfig_SetBytesArgv(&config, argc, argv);
     if (!PyStatus_Exception(status)) status = Py_InitializeFromConfig(&config);
     PyConfig_Clear(&config);
@@ -121,9 +150,9 @@ int ca_main(int argc, char **argv, const char *filename, const char *directory, 
     PyObject *main_module = PyImport_AddModule("__main__");
     PyObject *globals = main_module ? PyModule_GetDict(main_module) : NULL;
     PyObject *path = PySys_GetObject("path");
-    PyObject *entry = PyUnicode_DecodeFSDefault(directory);
+    PyObject *entry = ca_source_path(directory);
     PyObject *args = PySys_GetObject("argv");
-    PyObject *script = PyUnicode_DecodeFSDefault(filename);
+    PyObject *script = ca_source_path(filename);
     if (!globals || !entry || !script || !path || !args) goto error;
     if (PyList_Insert(path, 0, entry) < 0 || PyList_SetItem(args, 0, Py_NewRef(script)) < 0) goto error;
     if (PyDict_SetItemString(globals, "__file__", script) < 0 ||
@@ -433,4 +462,78 @@ error:;
     Py_XDECREF(rest); Py_XDECREF(result); Py_DECREF(iterator);
     if (error) PyErr_SetRaisedException(error);
     return NULL;
+}
+
+PyObject *ca_exception_take(void) {
+    PyObject *exception = PyErr_GetRaisedException();
+    if (!exception) PyErr_SetString(PyExc_SystemError, "missing exception on CIR error edge");
+    return exception;
+}
+
+PyObject *ca_handled_get(void) {
+    PyObject *exception = PyErr_GetHandledException();
+    return exception ? exception : Py_NewRef(Py_None);
+}
+
+void ca_handled_set(PyObject *exception) {
+    PyErr_SetHandledException(exception == Py_None ? NULL : Py_NewRef(exception));
+}
+
+PyObject *ca_exception_match(PyObject *exception, PyObject *expected) {
+    if (PyTuple_Check(expected)) {
+        for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(expected); i++) {
+            if (!PyExceptionClass_Check(PyTuple_GET_ITEM(expected, i))) goto invalid;
+        }
+    } else if (!PyExceptionClass_Check(expected)) goto invalid;
+    int matched = PyErr_GivenExceptionMatches(exception, expected);
+    if (matched < 0) return NULL;
+    return PyBool_FromLong(matched);
+invalid:
+    PyErr_SetString(PyExc_TypeError, "catching classes that do not inherit from BaseException is not allowed");
+    return NULL;
+}
+
+PyObject *ca_special(PyObject *object, const char *name) {
+    PyObject *mro = Py_TYPE(object)->tp_mro;
+    for (Py_ssize_t i = 0; mro && i < PyTuple_GET_SIZE(mro); i++) {
+        PyTypeObject *base = (PyTypeObject *)PyTuple_GET_ITEM(mro, i);
+        PyObject *dict = PyType_GetDict(base);
+        PyObject *value = PyDict_GetItemString(dict, name);
+        if (value) {
+            Py_INCREF(value);
+            descrgetfunc get = Py_TYPE(value)->tp_descr_get;
+            PyObject *bound = get ? get(value, object, (PyObject *)Py_TYPE(object)) : Py_NewRef(value);
+            Py_DECREF(value);
+            return bound;
+        }
+        if (PyErr_Occurred()) return NULL;
+    }
+    PyErr_Format(PyExc_TypeError, "'%.200s' object does not support the context manager protocol (missing %s)", Py_TYPE(object)->tp_name, name);
+    return NULL;
+}
+
+PyObject *ca_with_exit(PyObject *exit_function, PyObject *exception) {
+    PyObject *traceback = PyException_GetTraceback(exception);
+    if (!traceback) {
+        if (PyErr_Occurred()) return NULL;
+        traceback = Py_NewRef(Py_None);
+    }
+    PyObject *result = PyObject_CallFunctionObjArgs(exit_function, (PyObject *)Py_TYPE(exception), exception, traceback, NULL);
+    Py_DECREF(traceback);
+    return result;
+}
+
+int ca_set_update(PyObject *target, PyObject *values) {
+    PyObject *result = PyObject_CallMethod(target, "update", "O", values);
+    if (!result) return -1;
+    Py_DECREF(result);
+    return 0;
+}
+
+PyObject *ca_error_get(void) {
+    PyObject *exception = PyErr_GetRaisedException();
+    return exception ? exception : Py_NewRef(Py_None);
+}
+void ca_error_set(PyObject *exception) {
+    PyErr_SetRaisedException(exception == Py_None ? NULL : Py_NewRef(exception));
 }

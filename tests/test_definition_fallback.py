@@ -51,8 +51,8 @@ print(counter + Counter(2), native(2, 3), list(generator()), events)
     assert result.metadata["mode"] == "mixed"
     assert all(reason["boundary"] == "definition" for reason in result.fallbacks)
     functions = {f["name"] for f in result.ir["functions"]}
-    assert {"native", "decorator"} <= functions
-    assert not {"closure_factory", "Counter", "generator", "exceptions"} & functions
+    assert {"native", "decorator", "exceptions"} <= functions
+    assert not {"closure_factory", "Counter", "generator"} & functions
     source.rename(tmp_path / "hidden.py")
     actual = subprocess.run([str(result.executable)], capture_output=True)
     assert (actual.returncode, actual.stdout, actual.stderr) == (

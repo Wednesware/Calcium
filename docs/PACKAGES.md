@@ -77,9 +77,9 @@ C translation units and execute code-object fallback. Such modules are labeled
 need for original project source files but is **not** full native C conversion.
 
 The supported Python syntax is listed in [Implementation](IMPLEMENTATION.md).
-Imports no longer select fallback. Defaults, annotations, classes, generators,
-exception handlers and other previously unsupported native syntax remain subject
-to the same language capability checks. No optimization level weakens this policy.
+Imports, defaults, ordinary exception handlers, synchronous context managers and
+list/set/dict comprehensions now lower natively. Annotations, classes, closures,
+generators and async still need reported fallback or a strict-mode diagnostic. No optimization level weakens this policy.
 
 ## Inspect the result
 
@@ -171,3 +171,6 @@ assert all(m["mode"] in {"native", "namespace"}
 fallback; `True` explicitly enables compatibility mode. Each of `analyze`,
 `inspect`, `transpile`, and `build` accepts either a source/directory argument or
 `module=`, together with project configuration on the immutable compiler instance.
+
+Relocatable Linux bundles also include package data, matching CPython and selected
+environment dependencies; see [Deployment](DEPLOYMENT.md).

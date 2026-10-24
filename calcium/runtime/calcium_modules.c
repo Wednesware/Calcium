@@ -25,7 +25,7 @@ static PyObject *ca_spec(const CaModule *entry, PyObject *loader) {
     if (PyDict_SetItemString(kwargs, "is_package", entry->package ? Py_True : Py_False) < 0) goto done;
     spec = PyObject_Call(factory, args, kwargs);
     if (!spec) goto done;
-    PyObject *filename = entry->namespace_package ? Py_NewRef(Py_None) : PyUnicode_DecodeFSDefault(entry->filename);
+    PyObject *filename = entry->namespace_package ? Py_NewRef(Py_None) : ca_source_path(entry->filename);
     if (!filename || PyObject_SetAttrString(spec, "origin", filename) < 0 ||
         PyObject_SetAttrString(spec, "has_location", entry->namespace_package ? Py_False : Py_True) < 0) {
         Py_XDECREF(filename); Py_CLEAR(spec); goto done;
@@ -35,7 +35,7 @@ static PyObject *ca_spec(const CaModule *entry, PyObject *loader) {
         PyObject *path = PyList_New(0);
         if (!path) { Py_CLEAR(spec); goto done; }
         for (const char **p = entry->search_locations; p && *p; p++) {
-            PyObject *directory = PyUnicode_DecodeFSDefault(*p);
+            PyObject *directory = ca_source_path(*p);
             if (!directory || PyList_Append(path, directory) < 0) {
                 Py_XDECREF(directory); Py_DECREF(path); Py_CLEAR(spec); goto done;
             }
@@ -96,7 +96,30 @@ static PyObject *ca_loader_get_filename(PyObject *self, PyObject *name) {
     if (!text) return NULL;
     const CaModule *entry = ca_find((CaImporter *)self, text);
     if (!entry) { PyErr_SetString(PyExc_ImportError, "unknown compiled module"); return NULL; }
-    return PyUnicode_DecodeFSDefault(entry->filename);
+    return ca_source_path(entry->filename);
+}
+
+static PyObject *ca_resource_files(PyObject *directory, PyObject *ignored) {
+    (void)ignored; return Py_NewRef(directory);
+}
+static PyMethodDef ca_files_method = {"files", ca_resource_files, METH_NOARGS, NULL};
+static PyObject *ca_resource_reader(PyObject *self, PyObject *name) {
+    const char *text = PyUnicode_AsUTF8(name);
+    if (!text) return NULL;
+    const CaModule *entry = ca_find((CaImporter *)self, text);
+    if (!entry || !entry->package) Py_RETURN_NONE;
+    PyObject *pathlib = PyImport_ImportModule("pathlib");
+    PyObject *factory = pathlib ? PyObject_GetAttrString(pathlib, "Path") : NULL;
+    Py_XDECREF(pathlib);
+    PyObject *path = ca_source_path(entry->directory);
+    PyObject *directory = factory && path ? PyObject_CallOneArg(factory, path) : NULL;
+    Py_XDECREF(factory); Py_XDECREF(path);
+    if (!directory) return NULL;
+    PyObject *files = PyCFunction_New(&ca_files_method, directory);
+    Py_DECREF(directory);
+    PyObject *reader = files ? PyModule_New("calcium.ResourceReader") : NULL;
+    if (reader && PyObject_SetAttrString(reader, "files", files) < 0) Py_CLEAR(reader);
+    Py_XDECREF(files); return reader;
 }
 
 static PyMethodDef ca_importer_methods[] = {
@@ -105,6 +128,7 @@ static PyMethodDef ca_importer_methods[] = {
     {"exec_module", ca_loader_exec_module, METH_O, NULL},
     {"get_source", ca_loader_get_source, METH_O, NULL},
     {"get_filename", ca_loader_get_filename, METH_O, NULL},
+    {"get_resource_reader", ca_resource_reader, METH_O, NULL},
     {NULL, NULL, 0, NULL}
 };
 
