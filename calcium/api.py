@@ -24,6 +24,7 @@ from .ir.nodes import Program
 from .ir.validator import validate
 from .models import Artifact, Diagnostic, Result
 from .optimizer import optimize
+from .reporting import module_report, optimization_report
 
 
 def _artifact(path: Path, kind: str) -> Artifact:
@@ -112,6 +113,8 @@ class Calcium:
         result = Result()
         start = perf_counter()
         snapshot = analysis = None
+        coverage = []
+        discovered_modules = None
         active = str(source or module)
         try:
             config = python_config(str(self.python))
@@ -123,6 +126,7 @@ class Calcium:
                 include_all=self.include_all,
                 library=self.target == "extension",
             )
+            discovered_modules = len(project.modules)
             snapshot = project.entry.source
             if snapshot is None:
                 raise ValueError("entry must contain executable Python source")
@@ -158,6 +162,16 @@ class Calcium:
             analyses, programs, records = {}, {}, []
             for name, item in sorted(project.modules.items()):
                 if item.namespace:
+                    coverage.append(
+                        {
+                            "name": name,
+                            "path": str(item.path),
+                            "mode": "namespace",
+                            "fallbacks": [],
+                            "functions": [],
+                            "classes": [],
+                        }
+                    )
                     records.append(
                         {
                             "name": name,
@@ -176,6 +190,7 @@ class Calcium:
                 active = str(item.path)
                 current = analyze(item.source)
                 analyses[name] = current
+                coverage.append(module_report(name, item.source, current))
                 result.diagnostics.extend(current.diagnostics)
                 reasons = [
                     dict(reason, module=name, path=str(item.path)) for reason in current.fallbacks
@@ -280,6 +295,13 @@ class Calcium:
         except OSError as exc:
             result.diagnostics.append(Diagnostic("C103", str(exc), active, stage="loader"))
         finally:
+            if discovered_modules is not None:
+                result.optimization_report = optimization_report(
+                    coverage,
+                    result.optimizations,
+                    complete=len(coverage) == discovered_modules,
+                    discovered_modules=discovered_modules,
+                )
             result.timings["analysis"] = perf_counter() - start
         return result, snapshot, analysis, None
 
@@ -385,6 +407,7 @@ class Calcium:
             "optimization": self.optimization,
             "runtime_abi": 3,
             "fallbacks": result.fallbacks,
+            "optimization_report": result.optimization_report,
             "runtime_dependencies": result.runtime_dependencies,
         }
         (directory / "manifest.json").write_text(

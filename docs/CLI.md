@@ -115,3 +115,9 @@ the call after imports; see [Benchmarks](BENCHMARKS.md).
 `Calcium.bundle(source, output="dist/app", resources=(), dependencies=True)`
 returns a result whose bundle metadata records its directory. Run its `run`
 launcher; `result.executable` is the underlying native binary.
+
+`--optimization-report` prints static module/function coverage, qualified names,
+located fallback reasons and optimizer decisions to stderr. JSON output, the API
+and emitted manifests expose `optimization_report`; strict rejection still returns
+coverage when analysis completes. See [Optimization report](OPTIMIZATION_REPORT.md).
+This does not measure startup or runtime hotness.

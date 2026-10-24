@@ -21,6 +21,7 @@ ca main.py --check --no-fallback
 ca main.py --inspect --emit-ir
 ca main.py --transpile -o build/c --emit-ir
 ca main.py -O2 --report-optimizations
+ca my_package/ -O3 --optimization-report
 ca main.py --benchmark --repeat 7 --format json
 ca --module my_package.cli --project-root ./src
 ca --info
@@ -91,6 +92,14 @@ free-threading, subinterpreters, a CPython-free runtime, and a general C ABI rem
 future work. Read the [implementation
 contract](docs/IMPLEMENTATION.md) and [remaining-work ledger](docs/STATUS.md)
 before relying on support.
+
+## Inspect native coverage
+
+`ca check my_package/ -O3 --optimization-report` lists native/fallback function
+counts, qualified names, located reasons and enclosing module/class/function
+boundaries without executing the application. JSON/API results and C manifests
+include the same static report. See [Optimization report](docs/OPTIMIZATION_REPORT.md)
+for counting rules and an analysis-only Discribe example.
 
 ## Measure computation separately
 
