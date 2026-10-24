@@ -5,7 +5,10 @@ import shlex
 import shutil
 import subprocess
 import sys
+from hashlib import sha256
 from pathlib import Path
+
+from .cache import cached_object
 
 
 class ToolchainError(RuntimeError):
@@ -47,6 +50,7 @@ def compile_c(
     target: str,
     optimization: int,
     debug: bool,
+    cache_dir: Path | None = None,
 ) -> dict:
     selected = (
         shutil.which(compiler) if compiler else (shutil.which("gcc") or shutil.which("clang"))
@@ -75,10 +79,17 @@ def compile_c(
         command += ["-g", "-Wall", "-Wextra"]
     if target == "extension":
         command += ["-shared", "-fPIC", "-DCALCIUM_EXTENSION=1"]
+    compile_flags = list(command)
     # The emission directory is private and contains only generated sources.
     command += [str(path) for path in sorted(directory.glob("*.c"))] + ["-o", str(output)]
     if target == "executable":
         library = Path(cfg["LIBDIR"] or "") / (cfg["LDLIBRARY"] or "")
+        # Relocatable CPython distributions can retain the build-time LIBDIR.
+        # Only search the queried interpreter's own prefix for the same library.
+        if not library.is_file() and cfg["LDLIBRARY"]:
+            relocated = Path(config["prefix"]) / "lib" / cfg["LDLIBRARY"]
+            if relocated.is_file():
+                library = relocated
         if not library.is_file():
             raise ToolchainError(f"embeddable shared libpython missing: {library}")
         command += [str(library), f"-Wl,-rpath,{library.parent}"]
@@ -88,9 +99,68 @@ def compile_c(
         version = subprocess.run(
             [selected, "--version"], capture_output=True, text=True, check=True, timeout=15
         ).stdout.splitlines()[0]
+        cache_reports = []
+        compile_commands = []
+        warnings = []
+        if cache_dir is not None and not debug:
+            # Stabilize compiler-generated __FILE__ strings across private staging
+            # directories. The preprocessor fingerprints all included headers.
+            compile_flags += [f"-ffile-prefix-map={directory}=/calcium/generated"]
+            objects = output.parent / "objects"
+            objects.mkdir()
+            for source in sorted(directory.glob("*.c")):
+                object_file = objects / (source.stem + ".o")
+                compile_command = [*compile_flags, "-c", str(source), "-o", str(object_file)]
+                compile_commands.append(compile_command)
+                report = cached_object(
+                    compile_flags,
+                    source,
+                    object_file,
+                    directory=directory,
+                    cache=cache_dir,
+                    identity={
+                        "compiler": version,
+                        "compiler_sha256": sha256(Path(selected).read_bytes()).hexdigest(),
+                        "python": config,
+                    },
+                )
+                if report is None:
+                    compiled = subprocess.run(
+                        compile_command, capture_output=True, text=True, timeout=120
+                    )
+                    if compiled.returncode:
+                        raise ToolchainError(
+                            f"C compiler exited {compiled.returncode}:\n{compiled.stderr}"
+                        )
+                    warnings.append(compiled.stderr)
+                    cache_reports.append({"source": source.name, "hit": False})
+                else:
+                    if "run" in report:
+                        failed = report["run"]
+                        raise ToolchainError(
+                            f"C compiler exited {failed.returncode}:\n{failed.stderr}"
+                        )
+                    warnings.append(report.pop("warnings"))
+                    cache_reports.append(dict(report, source=source.name))
+            # Reuse linker flags from the original command after its -o OUTPUT.
+            tail = command[command.index("-o") + 2 :]
+            command = [
+                selected,
+                *(["-shared", "-fPIC"] if target == "extension" else []),
+                *(str(p) for p in sorted(objects.glob("*.o"))),
+                "-o",
+                str(output),
+                *tail,
+            ]
         run = subprocess.run(command, capture_output=True, text=True, timeout=120)
     except (OSError, subprocess.SubprocessError) as exc:
         raise ToolchainError(f"native toolchain failed: {exc}") from exc
     if run.returncode:
         raise ToolchainError(f"C compiler exited {run.returncode}:\n{run.stderr}")
-    return {"compiler": version, "command": command, "warnings": run.stderr}
+    return {
+        "compiler": version,
+        "command": command,
+        "compile_commands": compile_commands,
+        "warnings": "".join(warnings) + run.stderr,
+        "cache": cache_reports,
+    }

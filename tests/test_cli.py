@@ -21,7 +21,7 @@ def test_cli_commands(tmp_path):
     source.write_text("print(42)")
     assert cli("--version").stdout.startswith(f"Calcium {__version__}")
     info = json.loads(cli("info", "--format", "json").stdout)
-    assert info["optimization_levels"] == [0, 1]
+    assert info["optimization_levels"] == [0, 1, 2, 3]
     checked = cli("check", source, "--format", "json")
     assert checked.returncode == 0
     assert json.loads(checked.stdout)["metadata"]["mode"] == "native"
@@ -32,7 +32,7 @@ def test_cli_commands(tmp_path):
     assert (tmp_path / "c" / "program.cir.json").is_file()
     run = cli("run", source, "--output", tmp_path / "program", "-O1")
     assert run.returncode == 0 and run.stdout == "42\n"
-    assert cli("check", source, "-O3").returncode == 2
+    assert cli("check", source, "-O4").returncode == 2
     assert cli("build", source, "--target", "shared").returncode == 2
     assert cli("transpile", source, "--compiler", "gcc").returncode == 2
     assert cli("transpile", source, "--target", "executable").returncode == 2
@@ -44,10 +44,10 @@ def test_run_arguments_and_exit_status(tmp_path):
     source.write_text("import sys\nprint(sys.argv[1:])\nraise SystemExit(7)")
     result = cli("run", source, "--output", tmp_path / "program", "--", "--hello", "two words")
     assert result.returncode == 7 and result.stdout == "['--hello', 'two words']\n"
-    assert "fallback" in result.stderr
+    assert "fallback" not in result.stderr
     strict = cli("check", source, "--no-fallback", "--format", "json")
-    assert strict.returncode == 1
-    assert not json.loads(strict.stdout)["success"]
+    assert strict.returncode == 0
+    assert json.loads(strict.stdout)["success"]
 
 
 def test_benchmark(tmp_path):
@@ -99,3 +99,58 @@ def test_reject_symlink_and_foreign_output(tmp_path):
     with pytest.raises(ValueError, match="non-Calcium"):
         Calcium().transpile(source, output=emitted)
     assert (emitted / "user.txt").read_text() == "mine"
+
+
+def test_path_first_build_and_action_options(tmp_path):
+    source = tmp_path / "hello.py"
+    source.write_text("print(42)")
+    output = tmp_path / "hello"
+    built = cli(source, "-o", output)
+    assert built.returncode == 0, built.stderr
+    assert output.is_file()
+    assert subprocess.check_output([str(output)]) == b"42\n"
+    run = cli(source, "--run", "-o", output)
+    assert run.returncode == 0 and run.stdout == "42\n"
+    for action in ("--inspect", "--check"):
+        report = cli(source, action, "--format", "json")
+        assert report.returncode == 0, report.stderr
+        assert json.loads(report.stdout)["success"]
+    emitted = cli("--transpile", source, "-o", tmp_path / "generated")
+    assert emitted.returncode == 0, emitted.stderr
+    assert (tmp_path / "generated" / "program.c").is_file()
+    assert cli(source, "--inspect", "--run").returncode == 2
+    assert "ca SOURCE" in cli("--help").stdout
+
+
+def test_path_first_package_and_program_arguments(tmp_path):
+    package = tmp_path / "my_package"
+    package.mkdir()
+    (package / "__init__.py").write_text("value = 42")
+    (package / "__main__.py").write_text(
+        "from . import value\nimport sys\nprint(value, sys.argv[1:])"
+    )
+    output = tmp_path / "program"
+    built = cli(package, "-o", output)
+    assert built.returncode == 0, built.stderr
+    run = cli(package, "--run", "-o", output, "--", "--inspect", "two words")
+    assert run.returncode == 0, run.stderr
+    assert run.stdout == "42 ['--inspect', 'two words']\n"
+    module = cli("-m", "my_package", "--project-root", tmp_path, "-o", output)
+    assert module.returncode == 0, module.stderr
+    # Values that happen to be action names are never consumed as selectors.
+    report = cli(package, "--check", "--python", "--inspect")
+    assert report.returncode == 2
+
+
+def test_package_build_allows_reported_compatibility_by_default(tmp_path):
+    package = tmp_path / "app"
+    package.mkdir()
+    (package / "__init__.py").write_text("class Item:\n    value = 42\n")
+    (package / "__main__.py").write_text("from . import Item\nprint(Item.value)")
+    result = cli(package, "--run", "-o", tmp_path / "program")
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "42\n"
+    assert "definition fallback" in result.stderr
+    strict = cli(package, "--check", "--no-fallback", "--format", "json")
+    assert strict.returncode == 1
+    assert not json.loads(strict.stdout)["success"]

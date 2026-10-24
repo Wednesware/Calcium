@@ -1,4 +1,4 @@
-"""Noninteractive CLI; executing user programs is confined to run/benchmark."""
+"""Build a path by default; explicit actions remain available as options/commands."""
 
 import argparse
 import json
@@ -17,18 +17,89 @@ from .api import Calcium
 from .backend.toolchain import ToolchainError, python_config
 from .models import CalciumInternalError
 
+COMMANDS = {"info", "check", "inspect", "transpile", "build", "run", "benchmark"}
+ACTIONS = {"--" + name: name for name in COMMANDS}
+
+
+def normalize_argv(argv):
+    """Normalize the path-first interface without touching option values or script args."""
+    if not argv or argv == ["--version"] or argv == ["-h"] or argv == ["--help"]:
+        return argv
+    # Existing subcommands remain an exact compatibility interface. Use ./build
+    # to select a source directory whose name is also a command.
+    if argv[0] in COMMANDS:
+        return argv
+    command = "build"
+    remaining = []
+    selected = []
+    takes_value = {
+        "--module",
+        "-m",
+        "--project-root",
+        "--include-path",
+        "-O",
+        "--python",
+        "--format",
+        "--output",
+        "-o",
+        "--compiler",
+        "--target",
+        "--repeat",
+        "--warmups",
+        "--timeout",
+        "--cache-dir",
+    }
+    value = False
+    for arg in argv:
+        if value:
+            remaining.append(arg)
+            value = False
+        elif arg in ACTIONS:
+            selected.append(arg)
+            command = ACTIONS[arg]
+        else:
+            remaining.append(arg)
+            value = arg in takes_value
+    if len(selected) > 1:
+        raise ValueError("choose one action: " + ", ".join(selected))
+    return [command, *remaining]
+
 
 def parser():
-    root = argparse.ArgumentParser(prog="ca", description="Wednesware Calcium")
+    root = argparse.ArgumentParser(
+        prog="ca",
+        usage="ca SOURCE [options] | ca --module MODULE [options]",
+        description="Compile a Python script or package to an executable.",
+        epilog=(
+            "Examples: ca main.py; ca my_package/; ca main.py --run; "
+            "ca main.py --inspect; ca main.py --transpile. "
+            "Actions: --build (default), --run, --check, --inspect, --transpile, "
+            "--benchmark, --info. Existing subcommands also work. "
+            "Use ca --build --help for build options."
+        ),
+    )
     root.add_argument("--version", action="version", version=f"Calcium {__version__}")
-    commands = root.add_subparsers(dest="command", required=True)
+    actions = root.add_mutually_exclusive_group()
+    for name, help_text in (
+        ("build", "build an executable (default)"),
+        ("run", "build and execute; pass program arguments after --"),
+        ("check", "check supported syntax without building"),
+        ("inspect", "show analysis and intermediate representation"),
+        ("transpile", "emit C sources without building"),
+        ("benchmark", "compare execution with CPython"),
+        ("info", "show runtime and compiler availability"),
+    ):
+        actions.add_argument("--" + name, action="store_true", help=help_text)
+    commands = root.add_subparsers(
+        prog="ca", dest="command", required=True, title="Legacy commands"
+    )
     info = commands.add_parser("info", help="runtime and toolchain availability")
     info.add_argument("--python", default=sys.executable)
     info.add_argument("--format", choices=["text", "json"], default="text")
     for name in ["check", "inspect", "transpile", "build", "run", "benchmark"]:
         cmd = commands.add_parser(name)
         cmd.add_argument("source", type=Path, nargs="?")
-        cmd.add_argument("--module", help="module or package entry, like python -m")
+        cmd.add_argument("-m", "--module", help="module or package entry, like python -m")
         cmd.add_argument("--project-root", type=Path)
         cmd.add_argument("--include-path", type=Path, action="append", default=[])
         cmd.add_argument(
@@ -55,7 +126,7 @@ def parser():
             const=True,
             help="explicitly allow reported Python code-object fallback in project modules",
         )
-        cmd.set_defaults(fallback=None)
+        cmd.set_defaults(fallback=True)
         cmd.add_argument("--report-optimizations", action="store_true")
         cmd.add_argument("--report-fallbacks", action="store_true")
         if name not in ["run"]:
@@ -64,9 +135,15 @@ def parser():
             cmd.add_argument("--emit-ir", action="store_true")
             cmd.add_argument("--emit-ast", action="store_true")
         if name in ["transpile", "build", "run"]:
-            cmd.add_argument("--output", type=Path)
+            cmd.add_argument("-o", "--output", type=Path)
         if name in ["build", "run", "benchmark"]:
             cmd.add_argument("--compiler", choices=["gcc", "clang"])
+            cmd.add_argument(
+                "--no-cache", action="store_true", help="recompile every C translation unit"
+            )
+            cmd.add_argument(
+                "--cache-dir", type=Path, help="override the native object cache directory"
+            )
         if name in ["build", "run"]:
             cmd.add_argument("--keep-c", action="store_true")
         if name in ["build", "transpile"]:
@@ -249,6 +326,10 @@ def main(argv=None):
         split = argv.index("--")
         program_args, argv = argv[split + 1 :], argv[:split]
     root = parser()
+    try:
+        argv = normalize_argv(argv)
+    except ValueError as exc:
+        root.error(str(exc))
     args = root.parse_args(argv)
     if program_args and args.command not in ["run", "benchmark"]:
         root.error("arguments after -- are only supported by run and benchmark")
@@ -258,7 +339,7 @@ def main(argv=None):
                 "calcium_version": __version__,
                 "python": python_config(args.python),
                 "compilers": {name: shutil.which(name) for name in ["gcc", "clang"]},
-                "optimization_levels": [0, 1],
+                "optimization_levels": [0, 1, 2, 3],
                 "targets": ["c", "executable", "extension"],
                 "native_frames": False,
             }
@@ -290,6 +371,8 @@ def main(argv=None):
             keep_c=getattr(args, "keep_c", False),
             emit_ir=getattr(args, "emit_ir", False),
             emit_ast=getattr(args, "emit_ast", False),
+            cache=not getattr(args, "no_cache", False),
+            cache_dir=getattr(args, "cache_dir", None),
         )
         if args.command in ["check", "inspect"]:
             result = compiler.inspect(args.source, module=args.module)

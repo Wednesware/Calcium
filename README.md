@@ -1,74 +1,98 @@
 # Calcium
 
-Calcium is Wednesware's Python-to-C compiler. It lowers a supported
-Python subset through a control-flow IR into readable C11 and optionally builds
-executables or CPython extension modules with GCC or Clang.
+Calcium is Wednesware's Python-to-C compiler. It lowers supported Python through
+control-flow IR into C11 and builds executables or CPython extension modules.
 
-**Version 26.2.** Generated code uses CPython
-object APIs; native numeric specialization and general speedups are not yet
-implemented. Project imports are recursively compiled into separate C files. Project builds
-reject unsupported syntax by default; `--allow-fallback` explicitly enables reported
-per-module Python compatibility mode. Isolated single-file inputs retain the earlier
-fallback default; `--no-fallback` enforces native lowering everywhere.
-
-## Install and run
-
-Use a conventional GIL-enabled CPython 3.12–3.14 on Linux. Native builds additionally
-need GCC or Clang, matching Python development headers, and shared `libpython`
-for executables. Differential tests cover Python 3.12, 3.13 and 3.14 locally and in CI.
+**Version 26.3.** Build a script or package directly:
 
 ```sh
 python -m pip install -e .
-calcium info
-calcium check examples/factorial.py --no-fallback
-calcium transpile examples/factorial.py --output build/c --emit-ir
-calcium build examples/factorial.py --output build/factorial --compiler gcc
-./build/factorial
-calcium run examples/factorial.py -O1
-calcium inspect examples/factorial.py --emit-ir
-calcium run examples/dynamic.py --report-fallbacks
+ca main.py
+ca my_package/
 ```
 
-## Packages and whole projects
+The default output is `build/<entry>/<entry>`. A package executable needs
+`__main__.py`. Select another action with an option:
 
 ```sh
-ca transpile path/to/package --output build/c --emit-ir
-ca build path/to/package --output build/myapp
-ca build --module my_package.cli --project-root ./src --output build/myapp
-ca build project/main.py --include-all --output build/myapp
+ca main.py -o build/myapp
+ca main.py --run -- one --another
+ca main.py --check --no-fallback
+ca main.py --inspect --emit-ir
+ca main.py --transpile -o build/c --emit-ir
+ca main.py -O2 --report-optimizations
+ca main.py --benchmark --repeat 7 --format json
+ca --module my_package.cli --project-root ./src
+ca --info
 ```
 
-Every discovered project source, including package initializers and imported local
-modules, gets its own C translation unit. Generated executables link those units and
-run without the original Python project sources. Directory inputs include all local
-Python modules; script inputs recursively follow static imports. `--include-path`
-adds source roots; `--include-all` includes dynamically selected modules. Inspect
-`manifest.json` for per-module C filenames, native/fallback status and external
-runtime dependencies. See [package transpilation](docs/PACKAGES.md) for details.
+`--build` is the default. Existing `ca build`, `ca run`, `ca inspect`, and the
+other subcommands remain available. `calcium` and `python -m calcium` expose the
+same interface. Use `ca --help` for actions and `ca --build --help` for build
+options. Runtime arguments follow `--`; only `--run` and `--benchmark` execute
+the program. Run propagates its exit status.
 
-`python -m calcium` works directly from a checkout. For script arguments, use
-`calcium run script.py -- one --another`. `run` returns the program's exit status.
-`transpile` emits `program.c`, `program.h`, separate runtime sources, a manifest
-and a source map without invoking a C compiler. Native builds retain all module C/IR/AST
-sidecars with `--keep-c`, `--emit-ir` or `--emit-ast`.
+## Installation and deployment
 
-```sh
-calcium build examples/factorial.py --target extension
-calcium benchmark examples/factorial.py --repeat 7 --format json
-```
+Use GIL-enabled CPython 3.12–3.14 on Linux. Builds need GCC or Clang, matching
+Python development headers, and shared libpython for executables. A relocated
+Python installation is supported when its matching library is under its current
+prefix. Generated executables still require compatible CPython, its standard
+library, and external runtime dependencies. They are not standalone bundles.
 
-An extension is imported using its generated module name inside a matching
-CPython host. It is distinct from a general C shared library, whose ABI is not
-implemented. Executables require compatible CPython/stdlib and any runtime
-imports; they are not standalone application bundles.
+Project imports compile recursively into separate C files. Directory inputs
+include local Python modules; script inputs follow static imports. Add source
+roots with `--include-path` and dynamically selected modules with `--include-all`.
+External dependencies and data resources are not bundled. See [Packages](docs/PACKAGES.md).
+
+Native objects are cached by preprocessed C, compiler configuration, Python SDK,
+and optimization flags. Every build relinks against current libraries. Use
+`--no-cache` to recompile, `--cache-dir PATH` to choose a location, or `--verbose`
+to see hit/miss reports. Debug builds bypass the cache. Cache failures do not
+block a build. Generated C and IR can be retained using `--keep-c`, `--emit-ir`,
+or `--emit-ast`.
+
+## Language support
+
+Native lowering covers literals, containers, arithmetic, chained comparisons,
+short circuiting, conditionals, loops, unpacking (including starred assignment),
+f-strings, assignment expressions, imports, global bindings, deletion, assertions,
+explicit raises, and calls with positional, named, `*args`, and `**kwargs` arguments.
+Module-level functions support positional-only and keyword-only parameters,
+defaults, variadic arguments, recursion, and aliases. Attribute and subscript
+augmented assignment evaluate their targets once.
+
+Classes, closures, decorators, annotated functions, generators, async functions,
+and function bodies containing unsupported syntax use **reported definition-level
+fallback** when allowed. Supported neighboring code remains native; the module
+is labeled `mixed`. Unsupported module-level syntax uses whole-module fallback.
+No fallback occurs during analysis. The CLI allows reported compatibility execution by default, including projects;
+`--no-fallback` requires all-native lowering. The API preserves its earlier policy:
+isolated scripts allow fallback, and projects require `fallback=True`.
+Fallback is CPython execution, not native acceleration.
+
+O0 is the baseline; O1 removes unreachable IR blocks. O2 adds exact-integer
+add/subtract/multiply fast paths with checked machine arithmetic and CPython
+fallback for overflow, large values, and subclasses. O3 also simplifies branches
+on immutable literal constants. Values remain boxed at operation boundaries;
+unboxed numerical regions are future work. All levels preserve assertions and
+arbitrary-precision arithmetic. No general speedup is promised.
+
+Native functions remain C builtins: normal Python frames, code objects, exact
+function introspection, some argument-error wording, and traceback formatting
+differ. Native exception handlers, comprehensions, pattern matching, dynamic
+class machinery, other platforms, free-threading, subinterpreters, standalone
+runtime, and a general C ABI remain future work. Read the [implementation
+contract](docs/IMPLEMENTATION.md) and [remaining-work ledger](docs/STATUS.md)
+before relying on support.
 
 ## Python API
 
 ```python
 from calcium import Calcium
 
-result = Calcium(target="executable", optimization=1).build(
-    "examples/factorial.py", output="build/factorial"
+result = Calcium(target="executable", optimization=2).build(
+    "main.py", output="build/myapp"
 )
 if result.success:
     print(result.executable)
@@ -77,54 +101,27 @@ else:
         print(diagnostic.code, diagnostic.message)
 ```
 
-`analyze`, `inspect`, `transpile` and `build` return structured diagnostics,
-artifacts, CIR, scope/type facts, fallback/optimization reports and timings.
-Analysis never executes the analyzed program or downloads its dependencies.
-There are no AI-service credentials or network requirements for compilation.
-
-## Support and limits
-
-Native lowering covers literals, bindings, containers, arithmetic, comparisons,
-calls, attributes/indexing, short circuiting, conditionals, loops, simple functions,
-returns, and simple augmented assignments. Arbitrary-precision integer arithmetic
-uses CPython APIs. Native functions accept fixed positional-or-keyword parameters;
-annotations, defaults, nested functions, classes, exception handlers, generators and async remain unsupported by native
-lowering. Projects report errors for these constructs unless compatibility fallback
-is explicitly enabled. Ordinary imports are lowered natively.
-
-O0 is the baseline; O1 also removes unreachable CIR blocks. O2/O3, a general C ABI
-and standalone runtime are future work.
-Native functions are C builtins: Python frames, code objects, exact function
-introspection, some argument-error messages and native traceback formatting differ.
-Use fallback execution for programs requiring those Python details. Read the
-[current implementation contract](docs/IMPLEMENTATION.md) before relying on support.
-
-Benchmarks validate stdout/stderr/exit status before timing and label startup
-costs. They execute the program repeatedly and do not compare filesystem effects;
-use repeatable workloads. No fixed speedup or full Python compatibility is claimed.
+`analyze`, `inspect`, `transpile`, and `build` return diagnostics, artifacts,
+IR, scope/type facts, fallback/optimization reports, and timings. Analysis never
+executes source or downloads dependencies. Compilation uses no network services.
 
 ## Development
 
 ```sh
-python -m pip install -e '.[test]' ruff
+python -m pip install -e '.[test]' ruff build
 python -m pytest -q
 ruff check calcium tests
 ruff format --check calcium tests examples
+python -m build
 ```
 
-Tests compile generated C with both available compilers, compare native/fallback
-execution with CPython at O0/O1, import extensions, and verify error, reference,
-output-protection, CLI and packaging behavior. See [Testing](docs/TESTING.md).
+Tests compile real C, compare execution with CPython at O0–O3, import extensions,
+and check diagnostics, lifetime behavior, project imports without original sources,
+cache behavior, CLI, and packaging. See [Testing](docs/TESTING.md).
 
-The architecture began with a design review; implementation was subsequently
-authorized by the maintainer. See
-[Architecture](docs/ARCHITECTURE.md), [CIR](docs/IR.md),
-[Type System](docs/TYPE_SYSTEM.md), [Runtime](docs/RUNTIME.md),
-[Optimizations](docs/OPTIMIZATIONS.md), [CLI/API](docs/CLI.md),
-[Compatibility](docs/COMPATIBILITY.md), and [Roadmap](docs/ROADMAP.md) for the
-longer-term design. These design documents include capabilities not yet delivered;
-the implementation contract describes what exists today.
+The longer-term design remains in [Architecture](docs/ARCHITECTURE.md),
+[CIR](docs/IR.md), [Type System](docs/TYPE_SYSTEM.md), [Runtime](docs/RUNTIME.md),
+[Optimizations](docs/OPTIMIZATIONS.md), and [Roadmap](docs/ROADMAP.md).
+Calcium is separate from Kefir. Magnesium and Iodine are optional future adapters.
 
-Calcium is separate from Kefir, Wednesware's Nuitka-based application builder.
-Magnesium and Iodine remain optional future CLI adapters, with no compiler dependency.
-Licensing metadata remains unchanged; no license is inferred from sibling projects.
+Licensed under the [MIT License](LICENSE).

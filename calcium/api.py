@@ -93,12 +93,12 @@ class Calcium:
     project_root: str | Path | None = None
     include_paths: tuple[str | Path, ...] = ()
     include_all: bool = False
+    cache: bool = True
+    cache_dir: str | Path | None = None
 
     def __post_init__(self):
-        if self.optimization not in (0, 1):
-            raise ValueError(
-                "only -O0 and -O1 are implemented; O2/O3 specialization is not available"
-            )
+        if self.optimization not in (0, 1, 2, 3):
+            raise ValueError("optimization must be between 0 and 3")
         if self.target not in {"c", "executable", "extension"}:
             raise ValueError(
                 "target must be c, executable or extension; a general shared-library ABI is not implemented"
@@ -193,11 +193,19 @@ class Calcium:
                         )
                     continue
                 if reasons:
-                    program = Program([], "fallback", item.source.text)
+                    whole_module = any(reason["boundary"] != "definition" for reason in reasons)
+                    if whole_module:
+                        program = Program([], "fallback", item.source.text)
+                    else:
+                        program = build_ir(
+                            current.tree,
+                            definition_fallbacks=current.definition_fallbacks,
+                            source=item.source.text,
+                        )
                     result.diagnostics.append(
                         Diagnostic(
                             "C102",
-                            f"module {name} uses CPython code-object fallback; no native coverage",
+                            f"module {name} uses CPython {'whole-module' if whole_module else 'definition'} fallback",
                             str(item.path),
                             severity="warning",
                         )
@@ -373,7 +381,7 @@ class Calcium:
             "python_minor": minor,
             "python_executable": result.metadata["python"]["executable"],
             "optimization": self.optimization,
-            "runtime_abi": 2,
+            "runtime_abi": 3,
             "fallbacks": result.fallbacks,
             "runtime_dependencies": result.runtime_dependencies,
         }
@@ -446,6 +454,15 @@ class Calcium:
                     target=self.target,
                     optimization=self.optimization,
                     debug=self.debug,
+                    cache_dir=(
+                        Path(self.cache_dir)
+                        if self.cache_dir is not None
+                        else Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+                        / "calcium"
+                        / "objects-v1"
+                    )
+                    if self.cache
+                    else None,
                 )
                 retained = self.keep_c or self.emit_ir or self.emit_ast
                 if retained:

@@ -1,3 +1,8 @@
+> CLI update in 26.3: `ca package/` builds directly. Reported compatibility
+> execution is allowed by default in the CLI; use `--no-fallback` for native-only
+> enforcement. The API retains its strict project default unless `fallback=True`.
+> Definition-level fallback can produce module mode `mixed`.
+
 # Package and project transpilation in 26.2
 
 Calcium discovers project imports without importing or executing their Python

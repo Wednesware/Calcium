@@ -62,7 +62,7 @@ def generate(
                     f"static PyMethodDef {fn.symbol}_def = {{{cstr(fn.name)}, (PyCFunction)(void(*)(void)){fn.symbol}, METH_VARARGS | METH_KEYWORDS, {'NULL' if fn.doc is None else cstr(fn.doc)}}};"
                 )
         for fn in program.functions:
-            code.extend(emit_function(fn, constants))
+            code.extend(emit_function(fn, constants, filename=filename))
         code += [
             "static int ca_execute(PyObject *g) {",
             f"    PyObject *context = PyTuple_New({len(constants) + 1});",
@@ -106,9 +106,15 @@ def generate(
     return "\n".join(code)
 
 
-def emit_function(fn: Function, constants: dict) -> list[str]:
-    out = [
-        f"static PyObject *{fn.symbol}(PyObject *context, PyObject *args, PyObject *kwargs) {{",
+def emit_function(fn: Function, constants: dict, *, filename: str) -> list[str]:
+    out = [f"static PyObject *{fn.symbol}(PyObject *context, PyObject *args, PyObject *kwargs) {{"]
+    if not fn.module:
+        out += [
+            "    PyObject *defaults = PyTuple_GET_ITEM(context, 1);",
+            "    PyObject *kwdefaults = PyTuple_GET_ITEM(context, 2);",
+            "    context = PyTuple_GET_ITEM(context, 0);",
+        ]
+    out += [
         "    PyObject *g = PyTuple_GET_ITEM(context, 0);",
         "    PyObject *result = NULL, *saved_error = NULL;",
         "    int truth = 0;",
@@ -120,21 +126,19 @@ def emit_function(fn: Function, constants: dict) -> list[str]:
         out.append(
             '    if (Py_EnterRecursiveCall(" while calling a Calcium function")) return NULL;'
         )
-        n = len(fn.parameters)
-        out.append(f"    PyObject *bound[{max(1, n)}] = {{NULL}};")
         out.append(
-            "    static char *keywords[] = {"
+            "    static const char *keywords[] = {"
             + ", ".join(cstr(p) for p in fn.parameters)
-            + (", " if n else "")
+            + (", " if fn.parameters else "")
             + "NULL};"
         )
-        fmt = cstr("O" * n + ":" + fn.name)
-        addresses = "".join(f", &bound[{i}]" for i in range(n))
         out.append(
-            f"    if (!PyArg_ParseTupleAndKeywords(args, kwargs, {fmt}, keywords{addresses})) goto error;"
+            f"    PyObject *bound = ca_bind({cstr(fn.name)}, args, kwargs, {fn.posonly}, {fn.positional}, {len(fn.kwonly)}, {int(fn.vararg is not None)}, {int(fn.kwarg is not None)}, keywords, defaults, kwdefaults);"
         )
+        out.append("    if (!bound) goto error;")
         for i, name in enumerate(fn.parameters):
-            out.append(f"    {slots[name]} = Py_NewRef(bound[{i}]);")
+            out.append(f"    {slots[name]} = Py_NewRef(PyTuple_GET_ITEM(bound, {i}));")
+        out.append("    Py_DECREF(bound);")
     else:
         out.append("    (void)args; (void)kwargs;")
     out.append(f"    goto {fn.blocks[0].name};")
@@ -164,9 +168,71 @@ def emit_function(fn: Function, constants: dict) -> list[str]:
                     out.append(f"    Py_XSETREF({slots[op.data]}, Py_NewRef({args[0]}));")
                 else:
                     status = f"PyDict_SetItemString(g, {cstr(op.data)}, {args[0]})"
+            elif op.op == "delete":
+                if op.data in slots:
+                    slot = slots[op.data]
+                    out.append(
+                        f"    if (!{slot}) {{ PyErr_Format(PyExc_UnboundLocalError, \"cannot access local variable '%s' where it is not associated with a value\", {cstr(op.data)}); goto error; }}"
+                    )
+                    out.append(f"    Py_CLEAR({slot});")
+                else:
+                    status = f"ca_delete_global(g, {cstr(op.data)})"
+            elif op.op == "python_definition":
+                status = f"ca_execute_source({cstr(op.data)}, {cstr(filename)}, g)"
+            elif op.op == "delattr":
+                status = f"PyObject_DelAttrString({args[0]}, {cstr(op.data)})"
+            elif op.op == "delitem":
+                status = f"PyObject_DelItem({', '.join(args)})"
+            elif op.op == "assert_fail":
+                if args:
+                    # Calling AssertionError preserves a tuple as one argument.
+                    expr_args = f"(PyObject *[]){{{args[0]}}}"
+                    out.append(
+                        f"    result = ca_call(PyExc_AssertionError, 1, 0, {expr_args}, NULL);"
+                    )
+                    out.append("    if (!result) goto error;")
+                    out.append(
+                        "    PyErr_SetObject(PyExc_AssertionError, result); Py_CLEAR(result);"
+                    )
+                else:
+                    out.append("    PyErr_SetNone(PyExc_AssertionError);")
+            elif op.op == "raise":
+                status = f"ca_raise({args[0] if args else 'NULL'}, {args[1] if len(args) > 1 else 'NULL'})"
+            elif op.op == "args_append":
+                status = f"PyList_Append({args[0]}, {args[1]})"
+            elif op.op == "args_extend":
+                status = f"ca_args_extend({args[0]}, {args[1]})"
+            elif op.op == "dict_merge":
+                status = f"PyDict_Update({args[0]}, {args[1]})"
+            elif op.op == "to_tuple":
+                expr = f"PyList_AsTuple({args[0]})"
+            elif op.op == "unpack_ex":
+                expr = f"ca_unpack_ex({args[0]}, {op.data['before']}, {op.data['after']})"
+            elif op.op == "kwargs_set":
+                status = f"ca_keyword_set({args[0]}, {cstr(op.data)}, {args[1]})"
+            elif op.op == "kwargs_merge":
+                status = f"ca_keywords_merge({args[0]}, {args[1]})"
+            elif op.op == "call_ex":
+                expr = f"ca_call_ex({', '.join(args)})"
+            elif op.op == "convert_string":
+                function = {115: "PyObject_Str", 114: "PyObject_Repr", 97: "PyObject_ASCII"}[
+                    op.data
+                ]
+                expr = f"{function}({args[0]})"
+            elif op.op == "format":
+                expr = f"PyObject_Format({', '.join(args)})"
+            elif op.op == "join_string":
+                array = "(PyObject *[]){" + (", ".join(args) or "NULL") + "}"
+                expr = f"ca_join_string({len(args)}, {array})"
+            elif op.op == "unpack":
+                expr = f"ca_unpack({args[0]}, {op.data})"
+            elif op.op == "tuple_item":
+                expr = f"Py_NewRef(PyTuple_GET_ITEM({args[0]}, {op.data}))"
             elif op.op == "constant":
                 index = constants[json.dumps(op.data, sort_keys=True)][0]
                 expr = f"Py_NewRef(PyTuple_GET_ITEM(context, {index}))"
+            elif op.op == "checked_binary":
+                expr = f"ca_checked_{op.data}({', '.join(args)})"
             elif op.op in {"binary", "inplace"}:
                 name = "".join(part.title() for part in op.data.split("_"))
                 name = ("InPlace" if op.op == "inplace" else "") + name
@@ -222,7 +288,13 @@ def emit_function(fn: Function, constants: dict) -> list[str]:
             elif op.op == "iter":
                 expr = f"PyObject_GetIter({args[0]})"
             elif op.op == "function":
-                expr = f'PyCFunction_NewEx(&{op.data}_def, context, PyDict_GetItemString(g, "__name__"))'
+                array = "(PyObject *[]){" + (", ".join(args) or "NULL") + "}"
+                keys = (
+                    "(const char *[]){"
+                    + (", ".join(cstr(n) for n in op.data["kwdefaults"]) or "NULL")
+                    + "}"
+                )
+                expr = f'ca_make_function(&{op.data["symbol"]}_def, context, PyDict_GetItemString(g, "__name__"), {op.data["posdefaults"]}, {len(op.data["kwdefaults"])}, {array}, {keys})'
             elif op.op in {"call", "container"}:
                 values = args[1:] if op.op == "call" else args
                 array = "(PyObject *[]){" + (", ".join(values) or "NULL") + "}"
@@ -261,6 +333,8 @@ def emit_function(fn: Function, constants: dict) -> list[str]:
                 f"    Py_CLEAR({value});",
                 f"    if ({item}) goto {term.targets[0]}; else goto {term.targets[1]};",
             ]
+        elif term.op == "error":
+            out.append("    goto error;")
     out += ["error:", "    saved_error = PyErr_GetRaisedException();", "cleanup:;"]
     out += [f"    Py_CLEAR(v{i});" for i in reversed(range(fn.registers))]
     out += [f"    Py_CLEAR({slots[name]});" for name in fn.cleanup_order]
@@ -285,7 +359,9 @@ def constant_expression(data, constants):
     if kind == "float":
         number = float(value)
         literal = (
-            number.hex()
+            ("-Py_NAN" if math.copysign(1.0, number) < 0 else "Py_NAN")
+            if math.isnan(number)
+            else number.hex()
             if math.isfinite(number)
             else ("-Py_HUGE_VAL" if number < 0 else "Py_HUGE_VAL")
         )

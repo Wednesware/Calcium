@@ -153,7 +153,7 @@ errors and artifact paths.
 | Packaging versus compilation | Executables may miss stdlib/data/dependencies | Document runtime needs; packaging kept separate from Kefir |
 | Frontend version changes | Syntax acceptance differs from semantics | Per-minor adapters and matrix before extending support |
 | Large compiler scope | Premature compatibility claims | Narrow vertical slices and measurable exit criteria |
-| License not selected | Cannot promise a licensed release | Maintainer license decision before distribution |
+| Licensing | Resolved for 26.3 | Maintainer explicitly selected MIT |
 
 ## Maintainer decision register
 
@@ -172,7 +172,7 @@ rationale in [Roadmap](ROADMAP.md) when resolved.
 | D06 | Python extension ABI first; reject general shared ABI initially | General C ABI requires versioned handles and lifetime contract |
 | D07 | Magnesium optional; defer Iodine pending compatibility fix | Mandatory dependencies would impede CI and portability |
 | D08 | Introspection exclusions and conservative fallback boundary | Full native frame emulation is not an initial commitment |
-| D09 | Choose open-source license before release | No license inferred from sibling projects |
+| D09 | MIT selected by maintainer for 26.3 | LICENSE included; no sibling-project inference |
 
 Implementation subsequently began on the user’s explicit instruction to generate
 Calcium; see [Implementation](IMPLEMENTATION.md) for concrete decisions and scope.
