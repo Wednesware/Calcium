@@ -1,4 +1,4 @@
-# Calcium 26.4 implementation contract
+# Calcium 26.5 implementation contract
 
 This is the current delivery contract. [Package transpilation](PACKAGES.md)
 describes the project/compiler-import additions in 26.2. The other specification documents describe
@@ -37,7 +37,17 @@ create distinct objects. This uses no source evaluation. The pool currently hold
 all compiled constants while its module/function contexts remain alive, which can
 retain more memory than individual Python code objects.
 
-## 26.4 delivery
+## 26.5 delivery
+
+Version 26.5 adds `--optimization-report`: static module/function coverage,
+qualified source locations, categorized fallback reasons and known enclosing
+blocking boundaries. The same report is available through JSON, the Python API
+and emitted manifests, including strict-mode rejection and partial-analysis
+coverage where available. This release improves diagnostic visibility; it does
+not add native language support or runtime speedups. See the
+[release notes](releases/26.5.md) and [report reference](OPTIMIZATION_REPORT.md).
+
+## Features retained from 26.4
 
 Version 26.4 adds checked unboxed integer kernels and guarded native self-recursion
 at O2/O3, native structured exception handling/context managers/comprehensions,

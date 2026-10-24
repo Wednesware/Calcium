@@ -1,4 +1,4 @@
-# Remaining-work ledger — 26.4
+# Remaining-work ledger — 26.5
 
 This ledger distinguishes shipped work from architecture projects. A passing
 regression suite establishes tested behavior; it does not establish complete
@@ -11,6 +11,7 @@ Python compatibility or every possible lifetime/finalizer behavior.
 | Missing native expressions | Delivered: chained comparisons, f-strings, walrus, call expansion |
 | Assignment limits | Delivered: nested/starred unpacking; attribute/subscript augmented assignment; globals; deletion |
 | Native assertion/raise | Delivered, including explicit causes and reraising the active exception |
+| Fallback visibility | Delivered: `--optimization-report`, qualified definitions and located categories, enclosing fallback boundaries, static counts, JSON/API/manifest output and partial-report marking; startup/runtime profiling remains open |
 | Whole-module fallback penalty | Reduced: complete function/class/async definitions have reported individual boundaries; enclosing native code remains compiled |
 | Native exceptions/classes/closures | Delivered: ordinary handlers, finally, synchronous context managers and list/set/dict comprehensions. Still incomplete: classes, closures, decorators, generators, async and except* use reported compatibility execution |
 | Dynamic dict keys/set expansion | Delivered native dynamic keys and set expansion, with evaluation/hash-order differential checks; broader adversarial coverage remains useful |

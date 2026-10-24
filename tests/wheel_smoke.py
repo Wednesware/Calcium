@@ -18,7 +18,7 @@ def main():
             cwd=root,
             text=True,
         )
-        assert version.strip() == "Calcium 26.4", version
+        assert version.strip() == "Calcium 26.5", version
         license_name = subprocess.check_output(
             [
                 sys.executable,
