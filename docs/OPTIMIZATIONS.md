@@ -3,7 +3,7 @@
 The full framework below is a design proposal. Delivered in 26.3: O0 baseline,
 O1 unreachable blocks, O2 checked exact-integer add/subtract/multiply, O3 immutable
 literal branch simplification, and corresponding GCC/Clang optimization flags.
-The current branch adds checked pure-integer scalar kernels, range/while regions
+Version 26.4 adds checked pure-integer scalar kernels, range/while regions
 and guarded direct self-recursion at O2/O3. Other values remain boxed; general
 specialization, CSE, inlining and loop transformations remain planned. See [Implementation](IMPLEMENTATION.md).
 

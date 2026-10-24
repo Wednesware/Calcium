@@ -3,7 +3,7 @@
 Calcium is Wednesware's Python-to-C compiler. It lowers supported Python through
 control-flow IR into C11 and builds executables or CPython extension modules.
 
-**Version 26.3.** Build a script or package directly:
+**Version 26.4.** Build a script or package directly:
 
 ```sh
 python -m pip install -e .

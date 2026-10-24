@@ -1,4 +1,4 @@
-# Calcium 26.3 implementation contract
+# Calcium 26.4 implementation contract
 
 This is the current delivery contract. [Package transpilation](PACKAGES.md)
 describes the project/compiler-import additions in 26.2. The other specification documents describe
@@ -37,7 +37,16 @@ create distinct objects. This uses no source evaluation. The pool currently hold
 all compiled constants while its module/function contexts remain alive, which can
 retain more memory than individual Python code objects.
 
-## 26.3 delivery
+## 26.4 delivery
+
+Version 26.4 adds checked unboxed integer kernels and guarded native self-recursion
+at O2/O3, native structured exception handling/context managers/comprehensions,
+function-body benchmarks, and relocatable Linux CPython bundles. See the
+[release notes](releases/26.4.md), [benchmarks](BENCHMARKS.md) and
+[deployment guide](DEPLOYMENT.md). The details and exclusions below define
+the delivered scope.
+
+## Features retained from 26.3
 
 Path-first CLI (`ca main.py`, `ca my_package/`) builds by default. Actions are
 options (`--inspect`, `--transpile`, `--run`, and others); legacy commands work.
