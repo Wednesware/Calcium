@@ -1,144 +1,106 @@
-# Proposed CLI and Python API
+# CLI and Python API
 
-This document specifies the longer-term interface. See [current implementation
-scope](IMPLEMENTATION.md) and command `--help` for delivered options.
-The CLI is noninteractive by default. Compiler internals return diagnostics;
-presentation is a separate adapter. See [Architecture](ARCHITECTURE.md).
+The default action compiles a script or package to an executable:
 
-## Commands
+```sh
+ca main.py
+ca my_package/
+ca main.py -o build/myapp
+ca -m my_package.cli --project-root ./src
+```
 
-| Command | Contract | Executes analyzed program? |
+A package executable needs `__main__.py`; a project directory needs `main.py` or
+`__main__.py`. The default native output is `build/<entry>/<entry>`.
+
+## Actions
+
+| Action option | Behavior | Executes program? |
 | --- | --- | --- |
-| `calcium transpile main.py` | Analyze/lower and emit complete C artifact directory; no C compiler required | No |
-| `calcium build main.py` | Transpile, probe toolchain and compile requested native artifact | No |
-| `calcium run main.py -- args` | Build executable then launch with inherited streams and specified arguments | Yes |
-| `calcium check main.py` | Parse, resolve scopes, infer facts and validate lowering capability; diagnostics only | No |
-| `calcium inspect main.py` | Print analysis, selected CIR and requested reports; no artifact directory by default | No |
-| `calcium benchmark main.py` | Validate observable equivalence, then measure CPython/native runs | Yes, repeatedly |
-| `calcium info` | Print Calcium/host/target/runtime/toolchain availability | No user program |
+| `--build` (default) | Build an executable or selected target | No |
+| `--run` | Build and execute; pass arguments after `--` | Yes |
+| `--check` | Check source, scopes, capability, and IR | No |
+| `--inspect` | Print analysis, IR, and requested reports | No |
+| `--transpile` | Emit C/runtime/manifest without invoking a C compiler | No |
+| `--benchmark` | Validate output and compare repeated CPython/native runs | Yes |
+| `--info` | Show runtime and compiler configuration | No |
 
-`check` success means the selected support/fallback policy accepts the input; it
-is not proof of runtime success. Known missing external dependencies are reported
-without importing them. `info` reports unvalidated configurations as such.
-`--help` and `--version` do not require Python development headers or a C compiler.
+Action options can precede or follow a source. Select one action. Every action
+also retains its old subcommand spelling, such as `ca build main.py` or
+`ca inspect main.py`. A source directory named `build` or another command must
+use a path, such as `ca ./build`. Options are parsed before `--`; everything after
+it is a program argument. `--run` and `--benchmark` accept those arguments.
 
-Project entry: `calcium build --project-root ./src --module package.main`.
-A source path and `--module` are mutually exclusive. A bare directory requires
-an explicit module entry. A script has script semantics; module entry has `-m`
-semantics, including package metadata. Project roots also constrain static source
-discovery; they do not disable runtime imports outside the root.
+`ca --help` lists actions. `ca --build --help` lists build options. `ca --version`
+prints the version. Neither needs a compiler or Python SDK.
 
-## Options and applicability
+## Options
 
-| Option | Proposed behavior |
+| Option | Applies to / behavior |
 | --- | --- |
-| `-O0` … `-O3` | Default O0 until validated optimizer release; unavailable levels fail explicitly |
-| `--output PATH` | C target: directory; native target: final artifact path; never overwrite sources |
-| `--target c\|executable\|extension\|shared` | Default `c` for transpile, executable for build; shared reserved and initially rejected |
-| `--compiler gcc\|clang` | Native commands only; explicit choice overrides automatic GCC-then-Clang search |
-| `--python PATH` | Select target CPython executable; query version/config without executing user sources |
-| `--debug` | Source comments, mapping metadata and native debug info; no changed Python semantics |
-| `--verbose` | Compiler-stage details and redacted toolchain commands on stderr |
-| `--keep-c` | Preserve intermediate generated directory after successful native build |
-| `--emit-ir` | Write versioned JSON and human-readable core CIR sidecars; inspect prints CIR |
-| `--emit-ast` | Write target-version AST dump sidecar; inspect prints AST |
-| `--report-optimizations` | Decisions including declined transformations, evidence and source locations |
-| `--report-fallbacks` | Each fallback boundary/reason and static coverage, not a speed estimate |
-| `--format text\|json` | Structured analysis/diagnostics/results for check, inspect, info and benchmark |
-| `--no-fallback` | Reject any operation requiring CPython code-object fallback; ordinary object API operations remain allowed |
-| `--project-root PATH`, `--module NAME` | Explicit project source root and module entry |
-| `--help`, `--version` | Immediate information, no compilation |
+| `-o`, `--output PATH` | Build/run/transpile: native file or C-output directory |
+| `-m`, `--module NAME` | Module entry; mutually exclusive with source path |
+| `--project-root PATH` | Primary project source root |
+| `--include-path PATH` | Additional root; repeatable |
+| `--include-all` | Include dynamic local modules under primary root |
+| `-O0` … `-O3` | Optimization level; default O0; see implementation contract |
+| `--python PATH` | Matching target CPython executable |
+| `--compiler gcc\|clang` | Native builds only |
+| `--target c\|executable\|extension` | Build target; default executable; transpile requires C |
+| `--allow-fallback` | Explicitly enable reported compatibility execution (already the CLI default) |
+| `--no-fallback` | Reject all Python code-object fallback |
+| `--keep-c` | Build/run: preserve generated C beside native output |
+| `--emit-ir`, `--emit-ast` | Preserve intermediate sidecars; inspect prints them |
+| `--no-cache` | Native commands: compile all translation units again |
+| `--cache-dir PATH` | Override default `$XDG_CACHE_HOME/calcium/objects-v1` or `~/.cache/calcium/objects-v1` |
+| `--debug` | Native debug information; bypass object cache |
+| `--verbose` | Print toolchain commands and cache hit/miss metadata |
+| `--report-fallbacks` | Print compatibility boundaries and reasons |
+| `--report-optimizations` | Print applied passes and their guards |
+| `--format text\|json` | Machine-readable results, except run |
+| `--warmups N`, `--repeat N`, `--timeout SECONDS` | Benchmark only; defaults 1, 7, 60 |
 
-`transpile --target executable` is a usage error; it never secretly invokes a
-compiler. `build --target c` delegates to C emission without compiler probing;
-`--compiler` is then a usage error. `run` and `benchmark` require executable target.
-`check` and `inspect` accept analysis, optimization and report options; native
-compiler/target/output/keep-c options are usage errors. AST/IR sidecars require
-an artifact-producing command or inspect. `--keep-c` on transpile is redundant
-and rejected. No option is silently ignored.
+Native extension output must end in the target interpreter's extension suffix;
+its filename determines the module name. General `--target shared` remains
+unsupported. Existing inputs, symlink outputs, and foreign output directories
+are protected. Failed builds preserve earlier native outputs.
 
-Default C output is `build/<entry>/`; native output is `build/<entry>/<entry>`
-with platform suffix when required. Intermediate C for a native output is stored
-in a separate temporary directory, or `<output>.calcium/` with keep-c. Sidecars
-follow that directory. Extension suffix comes from selected Python `sysconfig`;
-module export naming must match the import name. Reject incompatible entry names.
+The CLI allows reported compatibility execution by default so ordinary Python
+packages build without extra action/policy flags. `--no-fallback` rejects it
+everywhere. The API retains strict project defaults unless `fallback=True`. Definition-level
+fallback preserves neighboring native definitions and statements; unsupported
+module-level syntax selects whole-module fallback. Both are reported.
 
-Parse program arguments only after `--`. `run` propagates normal child exit
-status; on POSIX, signal termination maps to shell convention `128 + signal`.
-Compilation errors are rendered before launching, without invoking user code.
-Benchmark-specific proposal: `--warmups N`, `--repeat N` (positive), and
-`--timeout SECONDS`, with defaults 1, 7 and 60. Each workload is expected to be
-repeatable; the command warns that it runs arbitrary user code repeatedly.
-Benchmark JSON contains both timings and correctness evidence; no timing is
-published if correctness validation fails. See [Testing](TESTING.md).
+## Results and exit codes
 
-## Diagnostics and exit codes
-
-A diagnostic has `code`, `severity`, `stage`, `message`, logical path,
-start/end line and column, notes and optional help. User-facing columns are
-one-based Unicode character columns, converted from AST byte offsets. Internal
-spans retain byte offsets for lossless source mapping. Syntax errors retain the
-original source excerpt; paths are not C symbol identities.
-
-| Exit | Meaning for compiler commands |
+| Exit status | Meaning |
 | --- | --- |
-| 0 | Success, possibly with warnings |
-| 1 | Source/semantic/unsupported-feature error, or benchmark behavior mismatch |
-| 2 | Invalid command or configuration |
-| 3 | Missing runtime/toolchain/dependency or native build failure |
+| 0 | Compilation succeeded, possibly with warnings |
+| 1 | Source/unsupported-feature error or benchmark mismatch |
+| 2 | Invalid command/configuration |
+| 3 | Runtime/toolchain/build failure |
 | 4 | Internal compiler invariant failure |
 
-`run` child status overrides this compiler-command scheme after a successful build;
-its status cannot alone distinguish a user exit code from a compiler failure.
-Diagnostics identify whether launch occurred. JSON is schema-versioned and has
-no ANSI or progress text mixed into stdout. Diagnostics/progress go to stderr
-for text commands; machine result objects include their diagnostics. Do not
-print arbitrary tracebacks on expected user errors; internal debug traces remain
-available with explicit debug/verbose handling.
+After launch, run returns the child's status (signals map to `128 + signal`).
+JSON goes to stdout without ANSI. Text diagnostics go to stderr.
+Benchmarks compare stdout/stderr/status before publishing timings; workloads
+must be repeatable. Filesystem effects are not compared.
 
-## Python API
-
-Public API design; the implemented subset is described in [Implementation](IMPLEMENTATION.md):
+## API
 
 ```python
 from calcium import Calcium
 
-compiler = Calcium(optimization=0, target="c", python="/path/to/python3.12")
-result = compiler.transpile("main.py", output="build/main")
-if not result.success:
-    for diagnostic in result.diagnostics:
-        print(diagnostic.message)
+compiler = Calcium(target="executable", optimization=2, cache=True)
+result = compiler.build("main.py", output="build/myapp")
+print(result.success, result.diagnostics)
 ```
 
-Configuration fields: optimization, target, compiler, python, debug, fallback
-policy and project_root. Validate combinations before opening output paths.
-Configuration is immutable; per-call output and entry arguments do not mutate a
-shared compiler instance. No API call configures a cloud/AI client or consumes a
-network service. This project does not incorporate the unrelated local Gemini
-client found during repository inspection.
+`Calcium` is immutable. Configuration includes target, optimization, compiler,
+Python path, debug/fallback policy, project roots, retention flags, `cache`, and
+optional `cache_dir`. `analyze`/`inspect` return structured diagnostics and IR;
+`transpile`/`build` add hashed artifacts. All accept a source or `module=`, and
+artifact methods accept `output=`. The default API target remains C for compatibility.
 
-| Operation | Proposed return |
-| --- | --- |
-| `analyze(source=None, *, module=None)` | `AnalysisResult` with scopes, graph, facts, diagnostics and capability classification |
-| `inspect(source=None, *, module=None)` | `InspectionResult` adding versioned AST/CIR and optimization/fallback reports |
-| `transpile(source=None, *, module=None, output=None)` | `CompilationResult` for complete C sources/runtime/maps/manifests |
-| `build(source=None, *, module=None, output=None)` | `CompilationResult` adding native artifact and toolchain metadata |
-
-Common result fields: `schema_version`, `success`, immutable diagnostics,
-artifacts, optimization decisions, fallback records, runtime dependencies,
-metadata and timings. `Artifact` includes kind, path, content hash and target.
-Metadata includes Calcium version, target Python/ABI/platform, source hashes,
-configuration and reproducibility inputs. Timings map stage names to monotonic
-elapsed seconds and are excluded from deterministic source fingerprints.
-Analysis results have an empty artifact collection, not fake artifact paths.
-
-Expected parse/compile/environment failures return `success=False` with structured
-diagnostics; partial outputs remain unpublished and artifacts enumerate only
-valid retained files. Invalid API argument combinations raise `ValueError`;
-programming errors/invariant violations raise `CalciumInternalError`, never a
-false success. Importing Calcium performs no analysis, target initialization,
-terminal manipulation or dependency downloads. Concurrent builds use distinct
-work directories; shared caching requires locking and validated content keys.
-
-The public result schema can remain stable while AST/CIR dump schemas version
-independently. Do not expose internal mutable graphs as an accidental stable API.
+Expected source/environment failures produce `success=False`; invalid configuration
+raises `ValueError`; compiler invariant failures raise `CalciumInternalError`.
+Analysis executes no analyzed source and imports no project dependencies.

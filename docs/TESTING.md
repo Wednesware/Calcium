@@ -1,3 +1,12 @@
+# Validation status for 26.3
+
+The suite now runs generated C at O0–O3, including checked-integer boundaries,
+subclasses, expanded arguments, signatures/defaults, chained comparisons with
+custom truth objects, native syntax additions, mixed definition fallback, and
+object-cache reuse/invalidation/corruption. The Python matrix is 3.12–3.14.
+`tests/test_sanitizers.py` adds opt-in UBSan runs for arithmetic and lifetime/error
+paths. The broader test strategy below remains a design, not a coverage claim.
+
 # Correctness and performance validation
 
 This is the long-term testing strategy. The implemented differential/native/CLI

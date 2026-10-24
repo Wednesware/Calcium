@@ -1,6 +1,12 @@
 # Optimization framework
 
-Status: proposed. All levels preserve the same declared Python compatibility
+The full framework below is a design proposal. Delivered in 26.3: O0 baseline,
+O1 unreachable blocks, O2 checked exact-integer add/subtract/multiply, O3 immutable
+literal branch simplification, and corresponding GCC/Clang optimization flags.
+Values still box at operation boundaries; general unboxed regions, CSE, inlining
+and loop transformations remain planned. See [Implementation](IMPLEMENTATION.md).
+
+All levels preserve the same declared Python compatibility
 contract. O3 is not permission to trust annotations or change arithmetic rules.
 See [Type System](TYPE_SYSTEM.md) and [CIR](IR.md).
 
@@ -27,9 +33,9 @@ failure is an internal error, never permission to emit the invalid result.
 | O2 | Dominance-aware simplification, pure native CSE, guarded numeric regions | Reserved until Phase 3 proof gates pass |
 | O3 | Versioned specialization, limited inlining, loop and allocation work | Experimental candidates, not unconditional transformations |
 
-Expose only levels actually implemented. Until O2/O3 have documented behavior,
-requesting them returns an unsupported-level diagnostic rather than silently
-pretending they optimize. In a later release a level may conservatively do no
+The table describes the longer-term pass sets. O2/O3 are now available with the
+narrower delivered behavior documented above; they do not imply all proposed
+passes are implemented. In a later release a level may conservatively do no
 additional work on a particular program; report that accurately. C compiler flags
 are separate metadata, proposed `-O0`, `-O1`, `-O2`, `-O3` respectively, with strict
 semantic flags overriding unsafe toolchain defaults. Calcium O-levels never imply

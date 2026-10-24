@@ -24,7 +24,15 @@ jobs:
           ruff format --check calcium tests examples
       - name: Compile and compare against CPython with GCC and Clang
         run: python -m pytest -q
+      - name: Run UBSan arithmetic and cleanup checks
+        env:
+          CALCIUM_SANITIZERS: '1'
+        run: python -m pytest -q tests/test_sanitizers.py
       - name: Build distributable and verify bundled runtime
         run: |
           python -m build
           python -c "import zipfile, glob; z=zipfile.ZipFile(glob.glob('dist/*.whl')[0]); assert 'calcium/runtime/calcium_runtime.c' in z.namelist(); assert 'calcium/runtime/calcium_runtime.h' in z.namelist(); assert 'calcium/runtime/calcium_modules.c' in z.namelist(); import json, calcium; assert json.loads(z.read('calcium/.nitropkg'))['version'] == calcium.__version__"
+      - name: Verify installed wheel outside checkout
+        run: |
+          python -m pip install --force-reinstall --no-deps dist/*.whl
+          python tests/wheel_smoke.py

@@ -474,7 +474,9 @@ def test_include_all_cli_and_explicit_fallback_flag(tmp_path):
     baseline = run([sys.executable, root / "main.py"])
     assert_no_sources_needed(root, output, baseline)
     (root / "extra.py").write_text("class C:\n    pass\nVALUE = 55\n")
-    strict = run([sys.executable, "-m", "calcium", "check", root, "--format", "json"])
+    strict = run(
+        [sys.executable, "-m", "calcium", "check", root, "--no-fallback", "--format", "json"]
+    )
     assert strict.returncode == 1 and not json.loads(strict.stdout)["success"]
     compat = run(
         [sys.executable, "-m", "calcium", "check", root, "--allow-fallback", "--format", "json"]

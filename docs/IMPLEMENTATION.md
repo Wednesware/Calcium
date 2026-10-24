@@ -1,4 +1,4 @@
-# Calcium 26.2 implementation contract
+# Calcium 26.3 implementation contract
 
 This is the current delivery contract. [Package transpilation](PACKAGES.md)
 describes the project/compiler-import additions in 26.2. The other specification documents describe
@@ -37,6 +37,23 @@ create distinct objects. This uses no source evaluation. The pool currently hold
 all compiled constants while its module/function contexts remain alive, which can
 retain more memory than individual Python code objects.
 
+## 26.3 delivery
+
+Path-first CLI (`ca main.py`, `ca my_package/`) builds by default. Actions are
+options (`--inspect`, `--transpile`, `--run`, and others); legacy commands work.
+The [CLI reference](CLI.md) describes action options and output locations.
+Native object caching fingerprints preprocessed C (including actual system/SDK
+headers), compiler identity/configuration, target Python and flags. Private staging
+paths are normalized with the compiler's file-prefix map. Builds always relink;
+cache writes stage complete entries, reads verify object hashes, and cache failures
+fall back to ordinary compilation. Debug builds bypass caching. This is an object
+cache, not a claim of cross-host reproducible binaries. `--no-cache` and
+`--cache-dir` control reuse. Relocated CPython installations can find matching
+libpython under their queried prefix when the recorded build-time LIBDIR is stale.
+
+The project is licensed under MIT. See [remaining work](STATUS.md) for the limits
+that this release does not claim to remove.
+
 ## Native language subset
 
 | Feature | Implemented behavior |
@@ -44,30 +61,39 @@ retain more memory than individual Python code objects.
 | Constants | None, bool, arbitrary-size int, float, str, bytes; immutable tuple constants |
 | Bindings | Module/global lookup with builtins fallback; fixed function locals and unbound checks |
 | Arithmetic | Python numeric protocols for binary and unary operations, including division, powers, shifts and bitwise operators |
-| Comparisons | One comparison at a time, identity, membership and rich comparisons; no chained native comparisons yet |
-| Expressions | Calls with positional/named arguments, attributes, indexing/slicing, conditional expressions, short circuiting |
-| Containers | List, tuple, set and dict literals; indexed/attribute stores; dynamic dictionary keys conservatively select fallback |
-| Control flow | If/else, while/for including else, break, continue, return and pass |
-| Functions | Module-level undecorated definitions; fixed positional-or-keyword parameters, recursion and aliases |
-| Augmented assignment | Simple name target, Python in-place numeric/sequence protocol |
+| Comparisons | Chained comparisons, identity, membership and rich comparisons; short circuiting evaluates operands once and preserves rich-comparison result objects |
+| Expressions | Calls with positional/named/expanded arguments, attributes, indexing/slicing, f-strings, assignment expressions, conditional expressions, short circuiting |
+| Containers | List, tuple, set and dict literals; list/tuple/dict expansion; indexed/attribute stores; nested/starred unpacking; dynamic dictionary keys and set expansion select fallback |
+| Control flow | If/else, while/for including else, break, continue, return, pass, assert and explicit/bare raise |
+| Deletion/global | Names, attributes and subscripts; global declaration |
+| Functions | Module-level undecorated definitions; positional-only/keyword-only parameters, defaults, variadic args/kwargs, recursion and aliases |
+| Augmented assignment | Names, attributes and subscripts; targets evaluated once; Python in-place protocols |
 
-Defaults, positional-only/keyword-only signatures, star argument expansion,
-annotations, nested functions, decorators, classes, destructuring,
-comprehensions, exception statements/handlers, generators, async, pattern matching
-and unsupported operators require **per-module fallback**. Projects reject these
-constructs by default; `--allow-fallback` explicitly enables compatibility mode.
-Isolated single-file scripts retain the earlier fallback default. Native C functions
-and runtime object API operations still use CPython; “native” describes lowering,
-not a standalone runtime or unboxed arithmetic.
+Annotations, nested functions, decorators, classes, comprehensions, exception
+handlers, context managers, generators, async, pattern matching and unsupported
+operators require compatibility execution. Unsupported module-level function,
+async-function and class definitions use **definition-level fallback**, preserving
+native neighboring statements and functions. Reasons carry `boundary: definition`
+and the definition's name; the program and module manifest mode is `mixed`.
+Native wrappers call Python definitions through ordinary CPython protocols.
 
-Fallback compiles the embedded original source text as a code object in the
-runtime interpreter and evaluates it in the actual module dictionary. It preserves
-ordinary dynamic language execution, imports, hooks, exceptions and reflection
-within that Python code. Each reason is reported and the manifest records mode
-`fallback`; this is not native acceleration. `--no-fallback` turns those reasons
-into located compilation errors. Local project imports are independently lowered to C and linked through the
-compiled registry; original source files are not required for native modules.
-External dependencies/resources are not bundled.
+The original complete definition (including decorators and original line offsets)
+is compiled and executed once in the module globals at its original execution
+point. Its body, closures, annotations, decorators and class protocols retain
+CPython execution. A definition inside an unsupported enclosing function belongs
+to that function's fallback boundary. Analysis never executes these definitions.
+This is an explicit definition boundary, not a failed lowering repaired by skipping
+statements or repeatedly executing expressions.
+
+Unsupported module-level statements and future compiler flags use whole-module
+fallback: the original source is compiled and evaluated in the actual module
+dictionary. Native and mixed code still use CPython; “native” describes lowering,
+not a standalone runtime. Fallback is not acceleration. The CLI allows reported
+compatibility execution by default, with `--no-fallback` rejecting every boundary.
+The API preserves the earlier policy: projects require `fallback=True`; isolated
+scripts allow compatibility execution unless disabled. Local project imports are independently compiled and linked
+through the registry; original source files are not required at execution time.
+External dependencies and data resources are not bundled.
 
 Script `__file__`/`sys.argv[0]` use the absolute source path, and its original
 parent directory is placed first on the runtime search path. The working directory
@@ -116,9 +142,16 @@ supported. Extension module names must be ASCII identifiers matching the output
 filename; `--target shared` rejects a general C ABI rather than confusing it with
 an extension.
 
-O0 emits required lowering. O1 removes unreachable blocks with verifier checks;
-it does not introduce speculative numerical optimizations. O2/O3 fail explicitly.
-Native arithmetic uses CPython APIs and can incur additional overhead. No performance
+O0 emits required lowering. O1 removes unreachable blocks with verifier checks.
+O2 additionally rewrites add/subtract/multiply to checked exact-integer fast paths:
+`PyLong_CheckExact` guards each operand, `PyLong_AsLongAndOverflow` checks conversion,
+and compiler overflow intrinsics check the machine operation. Any type/range miss
+uses the original CPython numeric API; bools and subclasses keep generic dispatch.
+Results are immediately boxed, so unboxed regions are not implemented.
+O3 also folds branches on immutable literal constants, inserting the required
+register release before removing unreachable blocks. Assertions remain active at
+all levels. Passes run on native portions of mixed modules and report decisions.
+Generic arithmetic and guarded slow paths use CPython APIs and can incur overhead. No performance
 improvement is promised. Generated sources are deterministic for identical source
 locations, target/configuration and input bytes; native binaries depend on the
 host toolchain and are not claimed reproducible across hosts.
@@ -167,8 +200,13 @@ A local UBSan smoke run checks generated factorial code; this is not a comprehen
 sanitizer campaign. Wheel verification checks bundled runtime C/header files and
 an installed-package smoke build outside the checkout.
 
-Next milestones are richer CIR verification and dataflow, more complete exception/lifetime/finalizer tests, function wrapper
-metadata, checked unboxed numeric regions, and additional optimization passes.
+CIR verification additionally checks program modes, function symbols/signatures,
+default layouts, arithmetic operation domains and tuple access bounds from verified
+unpack operations. CIR schema is version 2 and runtime ABI is version 3.
+
+Next milestones are more complete exception/lifetime/finalizer tests, function wrapper
+metadata, checked unboxed numeric regions, additional optimization passes,
+standalone deployment and additional platform validation.
 The longer-term [Roadmap](ROADMAP.md) remains the direction rather than a claim
 that every phase has been completed. Magnesium/Iodine are not required: their
 compatibility issue remains documented in [Architecture](ARCHITECTURE.md).

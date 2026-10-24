@@ -204,7 +204,8 @@ PyObject *ca_import_name(PyObject *globals, const char *name, int level,
     if (!importer) { PyErr_SetString(PyExc_ImportError, "__import__ not found"); return NULL; }
     Py_INCREF(importer);
     PyObject *locals = local_count < 0 ? Py_NewRef(globals) : PyDict_New();
-    PyObject *fromlist = PyTuple_New(from_count), *module_name = PyUnicode_FromString(name), *relative = PyLong_FromLong(level);
+    PyObject *fromlist = from_count ? PyTuple_New(from_count) : Py_NewRef(Py_None);
+    PyObject *module_name = PyUnicode_FromString(name), *relative = PyLong_FromLong(level);
     PyObject *result = NULL;
     if (!locals || !fromlist || !module_name || !relative) goto done;
     for (Py_ssize_t i = 0; i < local_count; i++)

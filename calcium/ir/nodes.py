@@ -41,6 +41,11 @@ class Function:
     doc: str | None = None
     module: bool = False
     cleanup_order: list[str] = field(default_factory=list)
+    posonly: int = 0
+    positional: int = 0
+    kwonly: list[str] = field(default_factory=list)
+    vararg: str | None = None
+    kwarg: str | None = None
 
 
 @dataclass
@@ -48,7 +53,7 @@ class Program:
     functions: list[Function]
     mode: str = "native"
     fallback_source: str | None = None
-    schema_version: int = 1
+    schema_version: int = 2
 
     def to_dict(self):
         return asdict(self)

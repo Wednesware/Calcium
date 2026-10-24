@@ -14,8 +14,11 @@ round. The prototype follows the proposed pipeline/CPython/CIR direction, with
 scope documented in [Implementation](IMPLEMENTATION.md). CPython 3.14 is the local
 validation target because it is installed with development headers; CI covers
 3.12–3.14. Phase 1 is substantially implemented and some Phase 2/future target
-capabilities use reported CPython fallback. Native specialization, complete project
-compilation and later phases remain open. License selection (D09) remains pending.
+capabilities use reported CPython fallback. Recursive project/package compilation and extensions shipped in 26.2. Version
+26.3 adds path-first CLI, fuller native syntax/signatures, definition-level
+fallback, checked integer operations at O2, literal branch simplification at O3,
+and native object caching. General unboxed regions and later phases remain open.
+MIT licensing was selected by the maintainer for 26.3. See [Status](STATUS.md).
 
 ## Original design decision register
 
@@ -29,14 +32,14 @@ compilation and later phases remain open. License selection (D09) remains pendin
 | D06 | Executable first, extension later; generic shared ABI deferred | Implementation direction authorized; long-term details proposed |
 | D07 | Optional Magnesium, Iodine deferred pending version compatibility | Implementation direction authorized; long-term details proposed |
 | D08 | Explicit native introspection exclusions and fallback boundary | Implementation direction authorized; long-term details proposed |
-| D09 | Maintainer-selected open-source license | Pending; blocks distribution |
+| D09 | Maintainer-selected open-source license | Resolved: MIT, explicitly selected for 26.3 |
 
 The original review checklist asked for explicit review of D01–D08 and the
 Phase 1 subset below. Subsequent user authorization to generate Calcium superseded
 that pause; further material compatibility changes should remain explicit.
 A PR creation, automated check or absence of objections does not itself grant
-approval. License selection and dependency release validation are not inferred
-from other Wednesware projects.
+approval. MIT was explicitly selected by the maintainer; dependency release validation is
+not inferred from other Wednesware projects.
 
 ## Phase 0 — Architecture and feasibility
 

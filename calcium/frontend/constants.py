@@ -2,6 +2,7 @@
 
 import ast
 import dis
+import math
 
 MISSING = object()
 
@@ -24,13 +25,20 @@ def folded(node):
     return MISSING
 
 
-def encode(value):
+def encode(value, site=()):
     if isinstance(value, tuple):
-        data = [encode(v) for v in value]
+        data = [encode(v, (*site, i)) for i, v in enumerate(value)]
     elif isinstance(value, bytes):
         data = value.hex()
     elif isinstance(value, (str, bool, type(None))):
         data = value
+    elif isinstance(value, float) and math.isnan(value):
+        data = "-nan" if math.copysign(1.0, value) < 0 else "nan"
     else:
         data = str(value)
-    return {"type": type(value).__name__, "value": data}
+    result = {"type": type(value).__name__, "value": data}
+    # NaNs compare unequal and CPython does not merge distinct NaN constants.
+    # Source positions are deterministic and distinguish their pool entries.
+    if isinstance(value, float) and math.isnan(value):
+        result["site"] = list(site)
+    return result

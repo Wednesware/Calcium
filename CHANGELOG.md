@@ -1,5 +1,16 @@
 # Changelog
 
+## 26.3
+
+- Build scripts/packages directly with `ca PATH`; select actions with options while retaining subcommands.
+- Expand native function signatures, calls, comparisons, unpacking, formatting, assignments, deletion, assertions and raises.
+- Report definition-level Python compatibility execution without forcing supported neighboring code into fallback.
+- Add checked exact-integer arithmetic at O2 and literal-branch simplification at O3, preserving generic CPython slow paths.
+- Cache native objects by preprocessed C/configuration and relink each build; verify hashes and tolerate cache failures.
+- Fix folded NaN values/sign/constant identity and native import-hook fromlist values.
+- Resolve libpython in relocated interpreter prefixes; strengthen CIR validation and expand differential/sanitizer checks.
+- Add the maintainer-selected MIT license and update implementation/remaining-work documentation.
+
 ## 26.2
 
 - Recursively discover and transpile imported project Python files into separate

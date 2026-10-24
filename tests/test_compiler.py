@@ -115,7 +115,7 @@ print(None is None, [] is not [], 'a' == 'a', 2 != 3, 2 <= 2, 3 >= 2)
 
 
 @pytest.mark.parametrize("compiler", COMPILERS)
-@pytest.mark.parametrize("level", [0, 1])
+@pytest.mark.parametrize("level", [0, 1, 2, 3])
 @pytest.mark.parametrize("name", PROGRAMS)
 def test_native_differential(tmp_path, compiler, level, name):
     source = tmp_path / f"{name}.py"
@@ -157,7 +157,7 @@ def test_native_errors(tmp_path, source_text, exception):
 
 
 @pytest.mark.parametrize("compiler", COMPILERS)
-@pytest.mark.parametrize("level", [0, 1])
+@pytest.mark.parametrize("level", [0, 1, 2, 3])
 def test_dynamic_fallback(tmp_path, compiler, level):
     source = tmp_path / "dynamic.py"
     source.write_text("""import asyncio
@@ -171,7 +171,7 @@ asyncio.run(run())
 """)
     result = Calcium(target="executable", compiler=compiler, optimization=level).build(source)
     assert result.success and result.fallbacks
-    assert result.metadata["mode"] == "fallback"
+    assert result.metadata["mode"] == "mixed"
     baseline = subprocess.run([sys.executable, str(source)], capture_output=True, timeout=10)
     run = subprocess.run([str(result.executable)], capture_output=True, timeout=10)
     assert (run.returncode, run.stdout, run.stderr) == (
@@ -289,7 +289,7 @@ def test_build_failures_and_output_protection(tmp_path):
     source = tmp_path / "source.py"
     source.write_text("print(1)")
     with pytest.raises(ValueError):
-        Calcium(optimization=3)
+        Calcium(optimization=4)
     with pytest.raises(ValueError):
         Calcium(target="shared")
     with pytest.raises(ValueError):
