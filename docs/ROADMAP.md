@@ -17,7 +17,9 @@ validation target because it is installed with development headers; CI covers
 capabilities use reported CPython fallback. Recursive project/package compilation and extensions shipped in 26.2. Version
 26.3 adds path-first CLI, fuller native syntax/signatures, definition-level
 fallback, checked integer operations at O2, literal branch simplification at O3,
-and native object caching. General unboxed regions and later phases remain open.
+and native object caching. The current branch adds checked integer kernels, native
+structured exceptions/comprehensions/context managers, separate compute benchmarks
+and Linux CPython bundles. Broader specialization and later phases remain open.
 MIT licensing was selected by the maintainer for 26.3. See [Status](STATUS.md).
 
 ## Original design decision register

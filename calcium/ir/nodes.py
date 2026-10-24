@@ -46,6 +46,8 @@ class Function:
     kwonly: list[str] = field(default_factory=list)
     vararg: str | None = None
     kwarg: str | None = None
+    exception_handlers: dict[str, list[str]] = field(default_factory=dict)
+    kernel: dict | None = None
 
 
 @dataclass

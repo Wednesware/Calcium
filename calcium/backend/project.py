@@ -12,11 +12,18 @@ def module_id(name):
     return f"{readable}_{digest}"
 
 
-def launcher(modules, entry_name, *, module_entry, directory, python_executable, extension_name):
+def launcher(
+    modules, entry_name, *, module_entry, directory, python_executable, extension_name, roots=()
+):
     lines = [
         "/* Calcium compiled project registry; importlib controls initialization. */",
         '#include "program.h"',
     ]
+    lines.append(
+        "static const char *ca_roots[] = {"
+        + ", ".join([*(cstr(str(r)) for r in roots), "NULL"])
+        + "};"
+    )
     for module in modules:
         if not module["namespace"]:
             lines.append(f"int {module['executor']}(PyObject *globals);")
@@ -66,7 +73,7 @@ def launcher(modules, entry_name, *, module_entry, directory, python_executable,
     lines += [
         "}",
         "#ifndef CALCIUM_EXTENSION",
-        f"int main(int argc, char **argv) {{ return ca_main(argc, argv, {cstr(entry['source'])}, {cstr(directory)}, {cstr(python_executable)}, ca_project_execute); }}",
+        f"int main(int argc, char **argv) {{ ca_bundle_configure(ca_roots, {len(roots)}); return ca_main(argc, argv, {cstr(entry['source'])}, {cstr(directory)}, {cstr(python_executable)}, ca_project_execute); }}",
         "#else",
         "static int ca_exec_extension(PyObject *module) {",
         "    if (ca_project_install() < 0) return -1;",

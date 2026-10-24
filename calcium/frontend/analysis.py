@@ -195,20 +195,12 @@ class Capability(ast.NodeVisitor):
 
     def visit_Set(self, node):
         for item in node.elts:
-            if isinstance(item, ast.Starred):
-                self.reject(item, "set expansion requires fallback")
-            else:
-                self.visit(item)
+            self.visit(item.value if isinstance(item, ast.Starred) else item)
 
     def visit_Starred(self, node):
         self.visit(node.value)
 
     def visit_Dict(self, node):
-        if any(key is not None and not isinstance(key, ast.Constant) for key in node.keys):
-            self.reject(
-                node,
-                "dynamic dictionary hashing retains CPython construction order through fallback",
-            )
         for key, value in zip(node.keys, node.values):
             if key is None:
                 pass
@@ -260,6 +252,40 @@ class Capability(ast.NodeVisitor):
         self.reject(node, "async functions execute through reported Python definition fallback")
         self.definition_fallbacks.add(id(node))
         self.reasons[-1].update(boundary="definition", definition=node.name)
+
+    def visit_ListComp(self, node):
+        for generator in node.generators:
+            if generator.is_async:
+                self.reject(node, "async comprehensions require resumable lowering")
+            self.visit(generator.iter)
+            self.visit(generator.target)
+            for condition in generator.ifs:
+                self.visit(condition)
+        if isinstance(node, ast.DictComp):
+            self.visit(node.key)
+            self.visit(node.value)
+        else:
+            self.visit(node.elt)
+
+    visit_SetComp = visit_ListComp
+    visit_DictComp = visit_ListComp
+
+    def visit_Try(self, node):
+        for item in node.body + node.orelse + node.finalbody:
+            self.visit(item)
+        for handler in node.handlers:
+            if handler.type is not None:
+                self.visit(handler.type)
+            for item in handler.body:
+                self.visit(item)
+
+    def visit_With(self, node):
+        for item in node.items:
+            self.visit(item.context_expr)
+            if item.optional_vars is not None:
+                self.visit(item.optional_vars)
+        for item in node.body:
+            self.visit(item)
 
     def visit_Return(self, node):
         if node.value is not None:

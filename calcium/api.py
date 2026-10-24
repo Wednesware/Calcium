@@ -143,6 +143,7 @@ class Calcium:
                 "target": self.target,
                 "native_function_frames": False,
                 "project_root": str(project.roots[0]),
+                "project_roots": [str(p) for p in project.roots],
                 "entry_module": project.entry.name,
                 "module_entry": project.module_entry,
                 "fallback_allowed": allow_fallback,
@@ -358,6 +359,7 @@ class Calcium:
             directory=str(project.roots[0] if project.module_entry else snapshot.path.parent),
             python_executable=result.metadata["python"]["executable"],
             extension_name=module_name,
+            roots=project.roots,
         )
         (directory / "program.c").write_text(text, encoding="utf-8")
         (directory / "program.h").write_text(
@@ -478,6 +480,21 @@ class Calcium:
             result.diagnostics.append(Diagnostic("C302", str(exc), stage="toolchain"))
         result.timings["build"] = perf_counter() - start
         return result
+
+    def bundle(
+        self, source=None, *, module=None, output=None, resources=(), dependencies=True
+    ) -> Result:
+        """Build a relocatable Linux folder including its matching CPython runtime."""
+        from .deployment import bundle
+
+        return bundle(
+            self,
+            source,
+            module=module,
+            output=output,
+            resources=resources,
+            dependencies=dependencies,
+        )
 
 
 def _module_name(name):

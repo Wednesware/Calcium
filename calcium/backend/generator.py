@@ -6,11 +6,9 @@ import math
 from .. import __version__
 from ..ir.nodes import Function, Program
 from ..ir.validator import validate
-
-
-def cstr(text: str | bytes) -> str:
-    raw = text if isinstance(text, bytes) else text.encode("utf-8", "surrogatepass")
-    return '"' + "".join(f"\\{byte:03o}" for byte in raw) + '"'
+from .generator_strings import cstr
+from .kernels import KernelEmitter
+from .kernels import entry as kernel_entry
 
 
 def generate(
@@ -61,6 +59,9 @@ def generate(
                 code.append(
                     f"static PyMethodDef {fn.symbol}_def = {{{cstr(fn.name)}, (PyCFunction)(void(*)(void)){fn.symbol}, METH_VARARGS | METH_KEYWORDS, {'NULL' if fn.doc is None else cstr(fn.doc)}}};"
                 )
+        for fn in program.functions:
+            if fn.kernel and fn.kernel.get("enabled"):
+                code.extend(KernelEmitter(fn, constants).emit())
         for fn in program.functions:
             code.extend(emit_function(fn, constants, filename=filename))
         code += [
@@ -141,11 +142,14 @@ def emit_function(fn: Function, constants: dict, *, filename: str) -> list[str]:
         out.append("    Py_DECREF(bound);")
     else:
         out.append("    (void)args; (void)kwargs;")
+    if fn.kernel and fn.kernel.get("enabled"):
+        out.extend(kernel_entry(fn, slots))
     out.append(f"    goto {fn.blocks[0].name};")
     for block in fn.blocks:
         out.append(f"{block.name}:;")
         for op in block.instructions:
             args = [f"v{i}" for i in op.args]
+            route = "error" if op.error in (None, "error") else "err_" + op.error
             target = f"v{op.result}"
             expr = None
             status = None
@@ -158,7 +162,7 @@ def emit_function(fn: Function, constants: dict, *, filename: str) -> list[str]:
                 if op.data in slots:
                     slot = slots[op.data]
                     out.append(
-                        f"    if (!{slot}) {{ PyErr_Format(PyExc_UnboundLocalError, \"cannot access local variable '%s' where it is not associated with a value\", {cstr(op.data)}); goto error; }}"
+                        f"    if (!{slot}) {{ PyErr_Format(PyExc_UnboundLocalError, \"cannot access local variable '%s' where it is not associated with a value\", {cstr(op.data)}); goto {route}; }}"
                     )
                     expr = f"Py_NewRef({slot})"
                 else:
@@ -172,7 +176,7 @@ def emit_function(fn: Function, constants: dict, *, filename: str) -> list[str]:
                 if op.data in slots:
                     slot = slots[op.data]
                     out.append(
-                        f"    if (!{slot}) {{ PyErr_Format(PyExc_UnboundLocalError, \"cannot access local variable '%s' where it is not associated with a value\", {cstr(op.data)}); goto error; }}"
+                        f"    if (!{slot}) {{ PyErr_Format(PyExc_UnboundLocalError, \"cannot access local variable '%s' where it is not associated with a value\", {cstr(op.data)}); goto {route}; }}"
                     )
                     out.append(f"    Py_CLEAR({slot});")
                 else:
@@ -190,7 +194,7 @@ def emit_function(fn: Function, constants: dict, *, filename: str) -> list[str]:
                     out.append(
                         f"    result = ca_call(PyExc_AssertionError, 1, 0, {expr_args}, NULL);"
                     )
-                    out.append("    if (!result) goto error;")
+                    out.append(f"    if (!result) goto {route};")
                     out.append(
                         "    PyErr_SetObject(PyExc_AssertionError, result); Py_CLEAR(result);"
                     )
@@ -228,6 +232,35 @@ def emit_function(fn: Function, constants: dict, *, filename: str) -> list[str]:
                 expr = f"ca_unpack({args[0]}, {op.data})"
             elif op.op == "tuple_item":
                 expr = f"Py_NewRef(PyTuple_GET_ITEM({args[0]}, {op.data}))"
+            elif op.op == "exception_take":
+                expr = "ca_exception_take()"
+            elif op.op == "error_get":
+                expr = "ca_error_get()"
+            elif op.op == "error_set":
+                out.append(f"    ca_error_set({args[0]});")
+            elif op.op == "handled_get":
+                expr = "ca_handled_get()"
+            elif op.op == "handled_set":
+                out.append(f"    ca_handled_set({args[0]});")
+            elif op.op == "exception_raise":
+                out.append(f"    PyErr_SetRaisedException(Py_NewRef({args[0]}));")
+            elif op.op == "exception_match":
+                expr = f"ca_exception_match({args[0]}, {args[1]})"
+            elif op.op == "special":
+                expr = f"ca_special({args[0]}, {cstr(op.data)})"
+            elif op.op == "with_exit":
+                expr = f"ca_with_exit({args[0]}, {args[1]})"
+            elif op.op == "clear_binding":
+                if op.data in slots:
+                    out.append(f"    Py_CLEAR({slots[op.data]});")
+                else:
+                    out.append(
+                        f"    if (PyDict_DelItemString(g, {cstr(op.data)}) < 0) PyErr_Clear();"
+                    )
+            elif op.op == "set_update":
+                status = f"ca_set_update({args[0]}, {args[1]})"
+            elif op.op == "set_add":
+                status = f"PySet_Add({args[0]}, {args[1]})"
             elif op.op == "constant":
                 index = constants[json.dumps(op.data, sort_keys=True)][0]
                 expr = f"Py_NewRef(PyTuple_GET_ITEM(context, {index}))"
@@ -309,11 +342,12 @@ def emit_function(fn: Function, constants: dict, *, filename: str) -> list[str]:
             else:
                 raise AssertionError(op.op)
             if expr is not None:
-                out += [f"    {target} = {expr};", f"    if (!{target}) goto error;"]
+                out += [f"    {target} = {expr};", f"    if (!{target}) goto {route};"]
             if status is not None:
-                out.append(f"    if ({status} < 0) goto error;")
+                out.append(f"    if ({status} < 0) goto {route};")
         term = block.terminator
         value = f"v{term.args[0]}" if term.args else None
+        route = "error" if term.error in (None, "error") else "err_" + term.error
         if term.op == "return":
             out += [f"    result = {value}; {value} = NULL;", "    goto cleanup;"]
         elif term.op == "jump":
@@ -321,7 +355,7 @@ def emit_function(fn: Function, constants: dict, *, filename: str) -> list[str]:
         elif term.op == "branch":
             out += [
                 f"    truth = PyObject_IsTrue({value});",
-                "    if (truth < 0) goto error;",
+                f"    if (truth < 0) goto {route};",
                 f"    Py_CLEAR({value});",
                 f"    if (truth) goto {term.targets[0]}; else goto {term.targets[1]};",
             ]
@@ -329,12 +363,20 @@ def emit_function(fn: Function, constants: dict, *, filename: str) -> list[str]:
             item = f"v{term.result}"
             out += [
                 f"    {item} = PyIter_Next({value});",
-                f"    if (!{item} && PyErr_Occurred()) goto error;",
+                f"    if (!{item} && PyErr_Occurred()) goto {route};",
                 f"    Py_CLEAR({value});",
                 f"    if ({item}) goto {term.targets[0]}; else goto {term.targets[1]};",
             ]
         elif term.op == "error":
-            out.append("    goto error;")
+            out.append(f"    goto {route};")
+    for label, cleanup_slots in fn.exception_handlers.items():
+        out += [f"err_{label}:;", "    saved_error = PyErr_GetRaisedException();"]
+        out += [f"    Py_CLEAR(v{i});" for i in reversed(range(fn.registers))]
+        out += [f"    Py_CLEAR({slots[name]});" for name in reversed(cleanup_slots)]
+        out += [
+            "    PyErr_SetRaisedException(saved_error); saved_error = NULL;",
+            f"    goto {label};",
+        ]
     out += ["error:", "    saved_error = PyErr_GetRaisedException();", "cleanup:;"]
     out += [f"    Py_CLEAR(v{i});" for i in reversed(range(fn.registers))]
     out += [f"    Py_CLEAR({slots[name]});" for name in fn.cleanup_order]

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Add checked unboxed integer functions/loops and guarded direct scalar self-recursion at O2/O3.
+- Lower ordinary exception handlers, finally, synchronous context managers, comprehensions, dynamic dict keys and set expansion natively.
+- Add function-body benchmarks with typed result, exception, output and working-directory file checks; publish raw workload-specific samples and peak RSS.
+- Add relocatable Linux CPython bundles with selected environment dependencies, transitive non-system ELF libraries and package resources.
+- Preserve remaining architecture/platform/introspection limits explicitly in the status ledger.
+
 ## 26.3
 
 - Build scripts/packages directly with `ca PATH`; select actions with options while retaining subcommands.
