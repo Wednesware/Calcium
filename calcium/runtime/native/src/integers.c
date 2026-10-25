@@ -473,7 +473,12 @@ CaValue ca_integer_true_divide(CaRuntime *rt, CaValue a, CaValue b) {
     ca_error(rt, "ZeroDivisionError", "division by zero");
     return CA_UNBOUND;
   }
-  if(a.tag!=CA_BIG_T && b.tag!=CA_BIG_T && a.as.i>=-INT64_C(9007199254740992) && a.as.i<=INT64_C(9007199254740992) && b.as.i>=-INT64_C(9007199254740992) && b.as.i<=INT64_C(9007199254740992))return ca_float((double)a.as.i/(double)b.as.i);
+  if (a.tag != CA_BIG_T && b.tag != CA_BIG_T &&
+      a.as.i >= -INT64_C(9007199254740992) &&
+      a.as.i <= INT64_C(9007199254740992) &&
+      b.as.i >= -INT64_C(9007199254740992) &&
+      b.as.i <= INT64_C(9007199254740992))
+    return ca_float((double)a.as.i / (double)b.as.i);
   int negative = (x.sign < 0) != (y.sign < 0);
   if (!x.sign)
     return ca_float(negative ? -0.0 : 0.0);
@@ -536,4 +541,106 @@ CaValue ca_integer_true_divide(CaRuntime *rt, CaValue a, CaValue b) {
     return CA_UNBOUND;
   }
   return ca_float(negative ? -value : value);
+}
+CaValue ca_integer_bitwise(CaRuntime *rt, CaValue a, CaValue b,
+                           const char *op) {
+  if ((a.tag != CA_INT_T && a.tag != CA_BIG_T && a.tag != CA_BOOL_T) ||
+      (b.tag != CA_INT_T && b.tag != CA_BIG_T && b.tag != CA_BOOL_T)) {
+    ca_error(rt, "TypeError", "bitwise operations require integers");
+    return CA_UNBOUND;
+  }
+  Digits x, y;
+  digits(a, &x);
+  digits(b, &y);
+  if (!strcmp(op, "lshift") || !strcmp(op, "rshift")) {
+    if (y.sign < 0) {
+      ca_error(rt, "ValueError", "negative shift count");
+      return CA_UNBOUND;
+    }
+    if (!x.sign)
+      return ca_int(0);
+    int right = !strcmp(op, "rshift");
+    if (b.tag == CA_BIG_T || (uint64_t)b.as.i > SIZE_MAX / sizeof(uint32_t)) {
+      if (right)
+        return ca_int(x.sign < 0 ? -1 : 0);
+      ca_error(rt, "OverflowError", "shift count exceeds platform size");
+      return CA_UNBOUND;
+    }
+    size_t shift = (size_t)b.as.i, whole = shift / 30;
+    unsigned part = (unsigned)(shift % 30);
+    if (right) {
+      if (whole >= x.n)
+        return ca_int(x.sign < 0 ? -1 : 0);
+      CaBig *r = allocate_big(rt, x.n - whole);
+      if (!r)
+        return CA_UNBOUND;
+      r->count = x.n - whole;
+      r->sign = x.sign;
+      int discarded = 0;
+      for (size_t i = 0; i < whole; i++)
+        discarded |= x.d[i] != 0;
+      if (part)
+        discarded |= (x.d[whole] & ((1u << part) - 1)) != 0;
+      for (size_t i = 0; i < r->count; i++) {
+        uint64_t v = x.d[i + whole];
+        if (i + whole + 1 < x.n)
+          v |= (uint64_t)x.d[i + whole + 1] << 30;
+        r->limbs[i] = (uint32_t)((v >> part) & MASK);
+      }
+      CaValue value = finish(r);
+      return x.sign < 0 && discarded ? ca_numeric(rt, value, ca_int(1), '-')
+                                     : value;
+    }
+    if (whole > SIZE_MAX - x.n - 1) {
+      ca_error(rt, "MemoryError", "integer too large");
+      return CA_UNBOUND;
+    }
+    CaBig *r = allocate_big(rt, x.n + whole + 1);
+    if (!r)
+      return CA_UNBOUND;
+    r->sign = x.sign;
+    r->count = x.n + whole + 1;
+    uint64_t carry = 0;
+    for (size_t i = 0; i < x.n; i++) {
+      uint64_t v = ((uint64_t)x.d[i] << part) | carry;
+      r->limbs[i + whole] = (uint32_t)(v & MASK);
+      carry = v >> 30;
+    }
+    r->limbs[x.n + whole] = (uint32_t)carry;
+    return finish(r);
+  }
+  size_t n = (x.n > y.n ? x.n : y.n) + 1;
+  CaBig *r = allocate_big(rt, n);
+  if (!r)
+    return CA_UNBOUND;
+  r->count = n;
+  uint64_t cx = x.sign < 0, cy = y.sign < 0;
+  for (size_t i = 0; i < n; i++) {
+    uint64_t u = i < x.n ? x.d[i] : 0, v = i < y.n ? y.d[i] : 0;
+    if (x.sign < 0) {
+      u = (~u & MASK) + cx;
+      cx = u >> 30;
+      u &= MASK;
+    }
+    if (y.sign < 0) {
+      v = (~v & MASK) + cy;
+      cy = v >> 30;
+      v &= MASK;
+    }
+    r->limbs[i] = (uint32_t)(!strcmp(op, "or")    ? (u | v)
+                             : !strcmp(op, "and") ? (u & v)
+                                                  : (u ^ v));
+  }
+  r->sign = (r->limbs[n - 1] & (1u << 29)) ? -1 : 1;
+  if (r->sign < 0) {
+    uint64_t carry = 1;
+    for (size_t i = 0; i < n; i++) {
+      uint64_t v = (~r->limbs[i] & MASK) + carry;
+      r->limbs[i] = (uint32_t)(v & MASK);
+      carry = v >> 30;
+    }
+  }
+  CaValue value = finish(r);
+  return a.tag == CA_BOOL_T && b.tag == CA_BOOL_T ? ca_bool(value.as.i != 0)
+                                                  : value;
 }

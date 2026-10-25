@@ -19,7 +19,7 @@ def main():
             cwd=root,
             text=True,
         )
-        assert version.strip() == "Calcium 26.8", version
+        assert version.strip() == "Calcium 26.9", version
         license_name = subprocess.check_output(
             [
                 sys.executable,
@@ -108,6 +108,15 @@ def main():
             "print(hashlib.sha256(b'abc').hexdigest())\n"
             "print(db.execute('SELECT 42').fetchone())\n"
             "db.close()\n"
+            "import asyncio,argparse\n"
+            "from contextlib import suppress\n"
+            "from http.server import ThreadingHTTPServer\n"
+            "async def value():\n    await asyncio.sleep(0)\n    return 6\n"
+            "print(asyncio.run(value()))\n"
+            "parser=argparse.ArgumentParser(prog='tool')\n"
+            "parser.add_argument('--count',type=int)\n"
+            "print(parser.parse_args(['--count','7']).count)\n"
+            "with suppress(ValueError): raise ValueError('handled')\n"
         )
         library_binary = root / "native-libraries"
         run = subprocess.run(
@@ -131,7 +140,7 @@ def main():
         assert run.stdout == (
             '{"name": "native"}\n'
             "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\n"
-            "(42,)\n"
+            "(42,)\n6\n7\n"
         ), run.stdout
         library_source.unlink()
         assert (

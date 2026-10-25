@@ -548,8 +548,13 @@ CaValue ca_container_compare(CaRuntime *rt, CaValue a, CaValue b,
 static void repr(CaRuntime *rt, CaValue v) {
   if (v.tag == CA_STR_T)
     ca_repr_string((CaString *)v.as.obj);
-  else
-    ca_print_value(rt, v);
+  else {
+    CaValue repr = ca_stringify(rt, v, 1);
+    if (!rt->error) {
+      CaString *s = (CaString *)repr.as.obj;
+      fwrite(s->data, 1, s->length, stdout);
+    }
+  }
 }
 void ca_print_container(CaRuntime *rt, CaValue v) {
   CaContainer *c = (CaContainer *)v.as.obj;
@@ -615,8 +620,34 @@ CaValue ca_collection_builtin(CaRuntime *rt, int kind, int n, int nkw,
       }
       return n;
     }
-    if(v[0].tag==CA_INSTANCE_T){CaValue method=ca_try_special(rt,v[0],"__len__");if(method.tag==CA_UNBOUND_T){ca_error(rt,"TypeError","object has no len()");return CA_UNBOUND;}CaValue length=ca_call(rt,method,0,0,NULL,NULL);if(rt->error)return CA_UNBOUND;if(length.tag==CA_BIG_T){ca_error(rt,"OverflowError","length does not fit platform index");return CA_UNBOUND;}if(length.tag!=CA_INT_T && length.tag!=CA_BOOL_T){ca_error(rt,"TypeError","__len__ must return an integer");return CA_UNBOUND;}if(length.as.i<0){ca_error(rt,"ValueError","__len__ must be non-negative");return CA_UNBOUND;}return ca_int(length.as.i);}
-    if(v[0].tag==CA_FOREIGN_T && ((CaForeign *)v[0].as.obj)->kind==CA_F_DICT_VIEW)return ca_int(((CaContainer *)((CaForeign *)v[0].as.obj)->state.as.obj)->length/2);
+    if (v[0].tag == CA_INSTANCE_T) {
+      CaValue method = ca_try_special(rt, v[0], "__len__");
+      if (method.tag == CA_UNBOUND_T) {
+        ca_error(rt, "TypeError", "object has no len()");
+        return CA_UNBOUND;
+      }
+      CaValue length = ca_call(rt, method, 0, 0, NULL, NULL);
+      if (rt->error)
+        return CA_UNBOUND;
+      if (length.tag == CA_BIG_T) {
+        ca_error(rt, "OverflowError", "length does not fit platform index");
+        return CA_UNBOUND;
+      }
+      if (length.tag != CA_INT_T && length.tag != CA_BOOL_T) {
+        ca_error(rt, "TypeError", "__len__ must return an integer");
+        return CA_UNBOUND;
+      }
+      if (length.as.i < 0) {
+        ca_error(rt, "ValueError", "__len__ must be non-negative");
+        return CA_UNBOUND;
+      }
+      return ca_int(length.as.i);
+    }
+    if (v[0].tag == CA_FOREIGN_T &&
+        ((CaForeign *)v[0].as.obj)->kind == CA_F_DICT_VIEW)
+      return ca_int(
+          ((CaContainer *)((CaForeign *)v[0].as.obj)->state.as.obj)->length /
+          2);
     ca_error(rt, "TypeError", "object has no supported length");
     return CA_UNBOUND;
   }
@@ -757,7 +788,33 @@ CaValue ca_unpack(CaRuntime *rt, CaValue value, size_t n) {
   ca_pop(rt, &frame);
   return rt->error ? CA_UNBOUND : result;
 }
+CaValue ca_dict_pop(CaRuntime *rt, int n, int nkw, CaValue *args,
+                    const char **keys) {
+  (void)keys;
+  if (nkw || n < 2 || n > 3 || args[0].tag != CA_DICT_T) {
+    ca_error(rt, "TypeError", "dict.pop expects key and optional default");
+    return CA_UNBOUND;
+  }
+  CaContainer *c = (CaContainer *)args[0].as.obj;
+  size_t at = locate(rt, c, args[1], 2);
+  if (rt->error)
+    return CA_UNBOUND;
+  if (at == c->length) {
+    if (n == 3)
+      return args[2];
+    ca_error(rt, "KeyError", "dictionary key not found");
+    return CA_UNBOUND;
+  }
+  CaValue result = c->items[at + 1];
+  memmove(c->items + at, c->items + at + 2,
+          (c->length - at - 2) * sizeof(CaValue));
+  c->length -= 2;
+  c->items[c->length] = c->items[c->length + 1] = CA_UNBOUND;
+  return result;
+}
 CaValue ca_bound_method(CaRuntime *rt, CaValue v, const char *name) {
+  if (v.tag == CA_DICT_T && !strcmp(name, "pop"))
+    return ca_native_method(rt, v, N_DICT_POP);
   if (v.tag == CA_STR_T || v.tag == CA_BYTES_T) {
     const char *names[] = {"encode", "decode",     "join",     "replace",
                            "lower",  "upper",      "strip",    "lstrip",

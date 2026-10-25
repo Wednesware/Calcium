@@ -1,0 +1,59 @@
+{
+  "calcium_version": "26.9",
+  "scope": "Actual Discribe package compilation and source-free CLI smoke; not complete GUI/collaboration compatibility",
+  "source_sha256": {
+    "discribe/__init__.py": "2d83556bfed9e35603c405147f53a93a7be81a72426998b29d7e202619372486",
+    "discribe/__main__.py": "663b7246a2bc28ca829c31cf0de3a2343eb01776e9401604189404b4e8083873",
+    "discribe/collaboration.py": "d110cfb2fe0d6d73db27d78e4bd8ab8f50ca6ed0c559ac72e06932ed5ed15c01",
+    "discribe/core.py": "9fa9d6da2914a37c67d09926e0231a2cae22af495103d57797e38f7f1aeb1990",
+    "discribe/desktop.py": "24ac1e2eaef2b67c362d4aefed40c7f46fa445f7cbe70eacc1051240bc75ffea",
+    "discribe/shell.py": "f26cde3cd1bc1609124e90c8b07e9413ce402a228309836581025c473d986de5"
+  },
+  "analysis_success": true,
+  "diagnostics": [],
+  "unresolved_imports": [
+    "fastapi",
+    "fastapi.middleware.cors",
+    "fastapi.staticfiles",
+    "nitrogen",
+    "pycrdt",
+    "webview"
+  ],
+  "full_runtime_compatible": false,
+  "build_success": true,
+  "executable_bytes": 1120368,
+  "runtime_dependencies": [
+    "C11 platform C library",
+    "libm",
+    "openssl",
+    "sqlite3",
+    "POSIX threads"
+  ],
+  "help": {
+    "status": 0,
+    "stdout": "usage: discribe [-h] targets ... [--output output] [--port port] [--bind bind] [--data data]\n\nDiscribe \u2014 Two ways to write. One place to create.\n\noptions:\n  -h, --help  show this help message and exit\n  targets  Optional build/web/desktop/host command, or files to open in desktop mode\n  --output\n  --port\n  --bind\n  --data\n",
+    "stderr": ""
+  },
+  "application_build_mode": {
+    "status": 1,
+    "stdout": "",
+    "stderr": "ModuleNotFoundError: No native module named 'nitrogen'\n"
+  },
+  "ldd": "\tlinux-vdso.so.1 (0x00007fa8daac7000)\n\tlibm.so.6 => /usr/lib/libm.so.6 (0x00007fa8da847000)\n\tlibssl.so.3 => /usr/lib/libssl.so.3 (0x00007fa8da74e000)\n\tlibcrypto.so.3 => /usr/lib/libcrypto.so.3 (0x00007fa8da000000)\n\tlibsqlite3.so.0 => /usr/lib/libsqlite3.so.0 (0x00007fa8da5ae000)\n\tlibc.so.6 => /usr/lib/libc.so.6 (0x00007fa8d9c00000)\n\t/lib64/ld-linux-x86-64.so.2 => /usr/lib64/ld-linux-x86-64.so.2 (0x00007fa8daac9000)\n\tlibz.so.1 => /usr/lib/libz.so.1 (0x00007fa8d9fe5000)\n\tlibbrotlienc.so.1 => /usr/lib/libbrotlienc.so.1 (0x00007fa8d9f20000)\n\tlibbrotlidec.so.1 => /usr/lib/libbrotlidec.so.1 (0x00007fa8d9f10000)\n\tlibzstd.so.1 => /usr/lib/libzstd.so.1 (0x00007fa8d9e2a000)\n\tlibbrotlicommon.so.1 => /usr/lib/libbrotlicommon.so.1 (0x00007fa8d9bdd000)\n",
+  "core_workflow": {
+    "probe_sha256": "c2ead9bfe65cf534e1e8497dd40bbaef8dfd9916fcfe11862587bce164d4c90d",
+    "parity": true,
+    "results": {
+      "python": {
+        "status": 0,
+        "stdout": "1 1970-01-01T00:00:00+00:00 1970-01-01T00:00:00+00:00 print(\"h\u00e9\ud83d\ude00\")\ndoc\nconflict True\n{'theme': 'dark'} {'theme': 'dark'}\npython fca8485f5be1a556c52dfba174e5249a7be07316c4fb94b494e61ae8c40c0438 h\u00e9\ud83d\ude00\n\nhello.py h\u00e9\ud83d\ude00\n python 0\ndisk conflict\n[]\n",
+        "stderr": ""
+      },
+      "native": {
+        "status": 0,
+        "stdout": "1 1970-01-01T00:00:00+00:00 1970-01-01T00:00:00+00:00 print(\"h\u00e9\ud83d\ude00\")\ndoc\nconflict True\n{'theme': 'dark'} {'theme': 'dark'}\npython fca8485f5be1a556c52dfba174e5249a7be07316c4fb94b494e61ae8c40c0438 h\u00e9\ud83d\ude00\n\nhello.py h\u00e9\ud83d\ude00\n python 0\ndisk conflict\n[]\n",
+        "stderr": ""
+      }
+    }
+  }
+}

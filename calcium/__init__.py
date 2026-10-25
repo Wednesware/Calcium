@@ -1,6 +1,6 @@
 """Calcium: Python-to-C compiler."""
 
-__version__ = "26.8"
+__version__ = "26.9"
 
 from .api import Calcium
 from .models import Artifact, Diagnostic, Result

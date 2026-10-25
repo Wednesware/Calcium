@@ -358,7 +358,7 @@ def test_native_project_cache_recompiles_changed_module(tmp_path):
         "from worker import *",
         "class C(metaclass=type): pass",
         "try:\n    pass\nexcept* ValueError: pass",
-        "async def f(): return 1",
+        "async def f():\n    async for x in source: pass",
         "import ctypes",
         "x=[1,2]\nx[:]=[3]",
         "def f(*args: print('side')): pass",

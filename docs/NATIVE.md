@@ -1,7 +1,7 @@
-# Bonemarrow native backend — 26.8
+# Bonemarrow native backend — 26.9
 
 Calcium is the public CLI and API; **Bonemarrow (`bmrw`)** is the independent
-Python-to-C execution engine, using CaRT. Bonemarrow is the default in 26.8.
+Python-to-C execution engine, using CaRT. Bonemarrow is the default in 26.9.
 `--use bmrw`, `--bmrw`, and legacy `--backend native` select the same engine.
 `--cpython` / `--use cpython` / `--backend cpython` explicitly select the
 established compatibility backend. Conflicting selections are errors.
@@ -68,13 +68,13 @@ implemented. Adding files with `--include-all` does not implement dynamic import
 
 ## Language support
 
-| Feature | Bonemarrow 26.8 |
+| Feature | Bonemarrow 26.9 |
 | --- | --- |
 | Values | None, bool, arbitrary-precision int, double, UTF-8 str, bytes, functions/closures, ranges, modules, containers, classes/instances and native resources |
-| Arithmetic | Addition/subtraction/multiplication, true/floor division, modulo and powers; checked overflow promotes to big integers |
+| Arithmetic | Addition/subtraction/multiplication, true/floor division, modulo, powers and integer bitwise operations/shifts; checked overflow promotes to big integers |
 | Functions | Defaults, variadic/named calls, nested definitions, lexical cells/nonlocal, lambdas, decorators, native cross-module calls |
 | Classes | Single inheritance, methods, static/class methods, read-only properties, instance attributes and selected special methods |
-| Control flow | Branches, loops, comprehensions, lazy generator expressions, walrus, synchronous context managers and structured exceptions |
+| Control flow | Branches, loops, comprehensions, lazy generator expressions, walrus, sync/async context managers, native coroutines/await and structured exceptions |
 | Text | Bytes operations, Unicode indexing/case, selected codecs/methods and f-strings |
 | Libraries | Selected native APIs documented in [NATIVE_LIBRARIES.md](NATIVE_LIBRARIES.md) |
 | Identity/reflection | Explicit None/bool identity comparisons; general reflection and Python tracebacks remain unsupported |
@@ -96,9 +96,9 @@ frontend limits. Large CIR frames use checked heap allocations. Basic signatures
 may shadow builtin parameter names; some global builtin shadowing is conservatively
 rejected. Embedded-NUL keyword names in expanded calls are unsupported.
 
-Still rejected or unimplemented: general generator functions, async/await,
+Still rejected or unimplemented: general generator functions, async iteration/generators,
 metaclasses/multiple inheritance, slice assignment, starred assignment, deletion,
-bitwise operators, arbitrary future flags, surrogate string values and unrestricted
+arbitrary future flags, surrogate string values and unrestricted
 reflection. Standard-library APIs are bounded subsets. GUI/FastAPI/pycrdt bindings
 are not implemented. Unsupported syntax gets C160; unsupported dynamic operations
 produce native errors. No compatibility fallback occurs.
@@ -107,9 +107,9 @@ Exact error wording, object addresses, general numeric identity, GC scheduling,
 resource exhaustion, CPython-specific I/O/digit-limit environment configuration,
 thread/signals/finalizers/weakrefs are outside this milestone's contract.
 
-## CaRT ABI 3 and ownership
+## CaRT ABI 4 and ownership
 
-CaRT's internal ABI is version 3, not a stable public C ABI. `CaValue` directly
+CaRT's internal ABI is version 4, not a stable public C ABI. `CaValue` directly
 tags None/bool/int64/double. Big integers use signed base-2^30 limbs, checked
 promotion, and CaRT decimal conversion; printing retains the default 4300-digit
 limit. Checked O2/O3 scalar integer kernels and guarded same-module direct calls
@@ -152,7 +152,7 @@ adds the awakening message. JSON stdout stays machine-readable; generated
 executables print no compiler/startup identity messages.
 
 Projects, native module imports, richer language/runtime support and selected
-library bindings are shipped. See [26.8 notes](releases/26.8.md) for the Discribe
+library bindings are shipped. See [26.9 notes](releases/26.9.md) for the Discribe
 core integration evidence and remaining application blockers. Historical package
 benchmarks in [NATIVE_BENCHMARKS.md](NATIVE_BENCHMARKS.md) describe 26.7;
 they do not measure the new library workloads.

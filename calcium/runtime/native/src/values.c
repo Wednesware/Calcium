@@ -144,6 +144,8 @@ int ca_truth(CaRuntime *rt, CaValue v) {
   }
 }
 CaValue ca_unary(CaRuntime *rt, CaValue v, const char *op) {
+  if (!strcmp(op, "invert"))
+    return ca_integer_bitwise(rt, v, ca_int(-1), "xor");
   if (!strcmp(op, "not"))
     return ca_bool(!ca_truth(rt, v));
   if (!number(v)) {
@@ -246,6 +248,10 @@ CaValue ca_compare(CaRuntime *rt, CaValue a, CaValue b, const char *op) {
                                      : cmp >= 0);
 }
 CaValue ca_iter(CaRuntime *rt, CaValue v) {
+  if (v.tag == CA_GENERATOR_T && ((CaGenerator *)v.as.obj)->coroutine) {
+    ca_error(rt, "TypeError", "coroutine is not iterable");
+    return CA_UNBOUND;
+  }
   if (v.tag == CA_GENERATOR_T || v.tag == CA_ITER_T)
     return v;
   if (v.tag == CA_INSTANCE_T) {
@@ -275,6 +281,10 @@ CaValue ca_iter(CaRuntime *rt, CaValue v) {
   return (CaValue){.tag = CA_ITER_T, .as.obj = (CaObj *)it};
 }
 int ca_next(CaRuntime *rt, CaValue v, CaValue *out) {
+  if (v.tag == CA_GENERATOR_T && ((CaGenerator *)v.as.obj)->coroutine) {
+    ca_error(rt, "TypeError", "coroutine is not an iterator");
+    return -1;
+  }
   if (v.tag == CA_GENERATOR_T)
     return ca_generator_next(rt, v, out);
   if (v.tag == CA_INSTANCE_T) {

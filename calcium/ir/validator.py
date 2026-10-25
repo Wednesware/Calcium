@@ -6,6 +6,7 @@ from .nodes import Program
 
 OPS = {
     "native_yield",
+    "native_await",
     "native_class",
     "native_class_load",
     "native_raw_load",
@@ -104,7 +105,7 @@ def validate(program: Program):
                 raise CalciumInternalError("invalid native lexical metadata")
             if not set(fn.native["cellvars"]) <= set(fn.locals) or any(
                 key in fn.native and not isinstance(fn.native[key], bool)
-                for key in ("dynamic", "generator")
+                for key in ("dynamic", "generator", "coroutine")
             ):
                 raise CalciumInternalError("invalid native closure layout")
         expected_parameters = (
@@ -162,10 +163,15 @@ def validate(program: Program):
                     "native_class_load",
                 } and not isinstance(op.data, str):
                     raise CalciumInternalError("invalid native name")
-                if op.op == "native_yield" and not fn.native.get("generator", False):
+                if op.op == "native_await" and not fn.native.get("coroutine", False):
+                    raise CalciumInternalError("await requires a native coroutine frame")
+                if op.op in {"native_yield", "native_await"} and not fn.native.get(
+                    "generator", False
+                ):
                     raise CalciumInternalError("yield requires a native generator frame")
                 arities = {
                     "native_yield": 1,
+                    "native_await": 1,
                     "native_raw_load": 0,
                     "native_class_load": 2,
                     "constant": 0,

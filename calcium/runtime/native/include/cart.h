@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-/* CaRT ABI 3. Tagged primitives, module namespaces and traced heap objects,
+/* CaRT ABI 4. Tagged primitives, module namespaces and traced heap objects,
  * tracing roots. */
 typedef struct CaObj CaObj;
 typedef struct CaRuntime CaRuntime;
@@ -85,6 +85,8 @@ struct CaRuntime {
   CaModule **modules;
   size_t module_count;
   CaValue environment, pending, handled;
+  CaValue arguments;
+  void *event_loop;
   CaModule **standard_modules;
   size_t standard_count;
   const char *error;
@@ -188,7 +190,8 @@ struct CaGenerator {
   const CaFunction *definition;
   size_t count;
   int pc, closed, running, started;
-  CaValue result, sent;
+  int coroutine, claimed;
+  CaValue result, sent, injected, handled;
   CaValue values[];
 };
 CaValue ca_generator_new(CaRuntime *, CaResume, const CaFunction *, size_t);
@@ -284,7 +287,9 @@ enum {
   CA_T_SQL_DATAERROR,
   CA_T_UNICODEERROR,
   CA_T_UNICODEENCODEERROR,
-  CA_T_UNICODEDECODEERROR
+  CA_T_UNICODEDECODEERROR,
+  CA_T_CANCELLEDERROR,
+  CA_T_TIMEOUTERROR
 };
 static inline CaValue ca_type(long id) {
   return (CaValue){.tag = CA_TYPE_T, .as.i = id};
@@ -324,6 +329,7 @@ CaValue ca_with_exit(CaRuntime *, CaValue, CaValue);
 CaValue ca_stringify(CaRuntime *, CaValue, int);
 CaValue ca_join_strings(CaRuntime *, size_t, CaValue *);
 CaValue ca_format(CaRuntime *, CaValue, CaValue);
+CaValue ca_integer_bitwise(CaRuntime *, CaValue, CaValue, const char *);
 CaValue ca_binary_op(CaRuntime *, CaValue, CaValue, const char *);
 CaValue ca_extended_call(CaRuntime *, int, int, int, CaValue *, const char **);
 void ca_trace_object(CaObj *, void (*)(CaValue, void *), void *);
@@ -332,6 +338,7 @@ CaValue ca_foreign_attribute(CaRuntime *, CaValue, const char *);
 CaValue ca_standard_call(CaRuntime *, int, int, int, CaValue *, const char **);
 CaModule *ca_standard_find(CaRuntime *, const char *);
 void ca_standard_setup(CaRuntime *);
+void ca_standard_arguments(CaRuntime *, int, char **);
 void ca_standard_destroy(CaRuntime *);
 void ca_error(CaRuntime *, const char *, const char *);
 void *ca_allocate(CaRuntime *, size_t, CaTag);

@@ -197,6 +197,11 @@ CaValue ca_object_attribute(CaRuntime *rt, CaValue value, const char *name) {
   return CA_UNBOUND;
 }
 void ca_object_set(CaRuntime *rt, CaValue value, const char *name, CaValue v) {
+  if (value.tag == CA_FOREIGN_T &&
+      ((CaForeign *)value.as.obj)->kind == CA_F_HTTP_SERVER) {
+    ca_http_set(rt, value, name, v);
+    return;
+  }
   if (value.tag == CA_CLASS_T) {
     set(rt, ((CaClass *)value.as.obj)->namespace_, name, v);
     return;
@@ -239,6 +244,10 @@ static int parent(int kind) {
   case CA_T_RECURSIONERROR:
   case CA_T_NOTIMPLEMENTEDERROR:
     return CA_T_RUNTIMEERROR;
+  case CA_T_CANCELLEDERROR:
+    return CA_T_BASEEXCEPTION;
+  case CA_T_TIMEOUTERROR:
+    return CA_T_OSERROR;
   case CA_T_UNICODEENCODEERROR:
   case CA_T_UNICODEDECODEERROR:
     return CA_T_UNICODEERROR;

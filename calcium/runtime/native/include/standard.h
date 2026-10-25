@@ -21,7 +21,19 @@ enum {
   CA_F_ZIP,
   CA_F_DICT_VIEW,
   CA_F_STAT,
-  CA_F_DICT_ITER
+  CA_F_DICT_ITER,
+  CA_F_SUPPRESS,
+  CA_F_NULLCONTEXT,
+  CA_F_PARSER,
+  CA_F_ACTION,
+  CA_F_TASK,
+  CA_F_SLEEP,
+  CA_F_LOCK,
+  CA_F_LOCK_WAIT,
+  CA_F_READY,
+  CA_F_WAIT_FOR,
+  CA_F_GATHER,
+  CA_F_HTTP_SERVER
 };
 enum { CA_T_PATH = 300, CA_T_DATETIME, CA_T_TIMEZONE, CA_T_UUID };
 enum {
@@ -118,8 +130,58 @@ enum {
   N_GEN_SEND,
   N_GEN_CLOSE,
   N_GEN_THROW,
+  N_SYS_EXIT,
+  N_SUPPRESS,
+  N_SUPPRESS_ENTER,
+  N_SUPPRESS_EXIT,
+  N_NULLCONTEXT,
+  N_PARSER,
+  N_ADD_ARGUMENT,
+  N_PARSE_ARGS,
+  N_PARSE_INTERMIXED,
+  N_PARSER_ERROR,
+  N_PARSER_HELP,
+  N_AS_RUN,
+  N_AS_SLEEP,
+  N_AS_TASK,
+  N_AS_WAIT_FOR,
+  N_AS_GATHER,
+  N_AS_LOCK,
+  N_LOCK_ACQUIRE,
+  N_LOCK_RELEASE,
+  N_LOCK_LOCKED,
+  N_LOCK_ENTER,
+  N_LOCK_EXIT,
+  N_TASK_CANCEL,
+  N_TASK_DONE,
+  N_TASK_RESULT,
+  N_TASK_EXCEPTION,
+  N_HTTP_SERVER,
+  N_HTTP_THREAD_SERVER,
+  N_HTTP_SERVE,
+  N_HTTP_HANDLE,
+  N_HTTP_CLOSE,
+  N_HTTP_SHUTDOWN,
+  N_OS_OPEN,
+  N_COMPARE_DIGEST,
+  N_PATH_GLOB,
+  N_PATH_UNLINK,
+  N_PATH_SUFFIX,
+  N_DICT_POP,
   N_LAST
 };
+CaValue ca_extra_call(CaRuntime *, int, int, int, CaValue *, const char **);
+CaValue ca_dict_pop(CaRuntime *, int, int, CaValue *, const char **);
+void ca_extra_os(CaRuntime *, CaValue);
+CaValue ca_async_call(CaRuntime *, int, int, int, CaValue *, const char **);
+CaValue ca_async_attribute(CaRuntime *, CaValue, const char *);
+CaValue ca_cli_call(CaRuntime *, int, int, int, CaValue *, const char **);
+CaValue ca_cli_attribute(CaRuntime *, CaValue, const char *);
+CaValue ca_http_call(CaRuntime *, int, int, int, CaValue *, const char **);
+CaValue ca_http_attribute(CaRuntime *, CaValue, const char *);
+void ca_http_set(CaRuntime *, CaValue, const char *, CaValue);
+void ca_http_finalize(CaForeign *);
+void ca_standard_arguments(CaRuntime *, int, char **);
 CaValue ca_native_function(int);
 CaValue ca_native_method(CaRuntime *, CaValue, int);
 CaValue ca_native_object(CaRuntime *, int, CaValue, void *, long);
