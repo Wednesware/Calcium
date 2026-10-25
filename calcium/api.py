@@ -55,6 +55,7 @@ def _publish_directory(staged: Path, output: Path):
                 previous = json.loads(manifest.read_text())
                 if previous.get("backend") == "native":
                     allowed.add("cart.h")
+                    allowed.update(n for n in previous.get("native_files", []) if Path(n).name == n)
                 for record in previous.get("modules", []):
                     for key in ("c_file", "ir_file", "ast_file"):
                         name = record.get(key)

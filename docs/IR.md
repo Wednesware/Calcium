@@ -144,3 +144,11 @@ Each pass declares required analyses, changed effects, invalidated facts and a
 semantic justification. On invalid output compilation fails with an internal
 error and the last valid IR dump in debug mode; it does not emit unsafe C.
 Persist no target memory addresses or absolute checkout roots in CIR identities.
+
+## Native extensions in 26.8
+
+Bonemarrow functions carry validated lexical `native` metadata for captured cells,
+free variables, dynamic definitions and suspended generator-expression frames.
+Native-only operations create/load class namespaces, access raw bindings and yield
+from those frames. The shared CPython lowering leaves this metadata unset. This
+internal extension does not establish a stable interchange ABI.

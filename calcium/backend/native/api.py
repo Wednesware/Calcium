@@ -15,13 +15,14 @@ from time import perf_counter
 
 from ... import __version__
 from ...frontend.project import discover
-from ...ir.builder import build as build_ir
 from ...models import Diagnostic, Result
 from ...optimizer import optimize
 from ..cache import cached_object
 from ..project import module_id
+from .builder import build as build_ir
 from .frontend import prepare
 from .generator import generate
+from .standards import LIBRARIES, MODULES
 
 
 def analyze(compiler, source, module):
@@ -64,6 +65,8 @@ def analyze(compiler, source, module):
                 for imported in imports:
                     if (
                         imported
+                        and imported not in MODULES
+                        and imported != "__future__"
                         and imported in project.external
                         and imported.split(".")[0] in sys.stdlib_module_names
                     ):
@@ -167,7 +170,8 @@ def analyze(compiler, source, module):
         result.metadata["modules"] = [
             {"name": i["name"], "source": i["file"], "namespace": i["namespace"]} for i in infos
         ]
-        result.metadata["unresolved_imports"] = sorted(project.external)
+        result.metadata["unresolved_imports"] = sorted(project.external - MODULES - {"__future__"})
+        result.metadata["native_standard_modules"] = sorted(project.external & MODULES)
         if any(d.severity == "error" for d in result.diagnostics):
             return result, None
         lines = ['#include "cart.h"']
@@ -182,6 +186,7 @@ def analyze(compiler, source, module):
             "CaModule *modules[]={" + ",".join("&" + i["symbol"] for i in infos) + "};",
             f"CaFrame roots[{len(infos) * 2}];",
             f"rt->modules=modules;rt->module_count={len(infos)};",
+            "ca_standard_setup(rt);",
         ]
         for index, info in enumerate(infos):
             lines += [f"{info['symbol']}_roots(rt,&roots[{index * 2}],&roots[{index * 2 + 1}]);"]
@@ -193,11 +198,17 @@ def analyze(compiler, source, module):
         lines += [
             "ca_module_start(rt,&ca_m_" + module_id("__main__") + ");",
             "finish:;",
-            'int status=0;if(rt->error){fprintf(stderr,"%s: %s\\n",rt->error,rt->message);status=1;}',
+            "int status=ca_exit_status(rt);",
             "if(fflush(stdout)!=0)status=1;ca_destroy(rt);return status;}",
         ]
         units["program.c"] = "\n".join(lines) + "\n"
         result.runtime_dependencies = ["C11 platform C library", "libm"]
+        for name, (package, _) in LIBRARIES.items():
+            if name in result.metadata["native_standard_modules"]:
+                result.runtime_dependencies.append(package)
+        result.metadata["native_standard_library_scope"] = (
+            "Selected native APIs only; module presence does not imply full stdlib compatibility"
+        )
         result.success = True
         return result, (snapshot, units)
     except (SyntaxError, UnicodeError) as exc:
@@ -225,6 +236,9 @@ def emit(directory, result, plan):
         (directory / name).write_text(text)
     shutil.copyfile(runtime / "include" / "cart.h", directory / "calcium_runtime.h")
     # Use the established owned-output publication mechanism and flat artifacts.
+    for header in (runtime / "include").glob("*.h"):
+        if header.name != "cart.h":
+            shutil.copyfile(header, directory / header.name)
     (directory / "cart.h").write_text('#include "calcium_runtime.h"\n')
     for path in sorted((runtime / "src").glob("*.c")):
         shutil.copyfile(path, directory / ("cart_" + path.name))
@@ -232,12 +246,25 @@ def emit(directory, result, plan):
         "generator": "calcium",
         "version": __version__,
         "backend": "native",
-        "runtime_abi": 2,
+        "runtime_abi": 3,
+        "runtime_dependencies": result.runtime_dependencies,
+        "native_standard_modules": result.metadata["native_standard_modules"],
+        "compile_definitions": [f"CART_PY_MINOR={sys.version_info.minor}"]
+        + [
+            definition + "=1"
+            for name, (_, definition) in LIBRARIES.items()
+            if name in result.metadata["native_standard_modules"]
+        ],
+        "pkg_config_packages": [
+            package
+            for name, (package, _) in LIBRARIES.items()
+            if name in result.metadata["native_standard_modules"]
+        ],
         "source": str(snapshot.path),
         "source_sha256": snapshot.digest,
         "optimization_report": result.optimization_report,
         "modules": [{"c_file": p.name} for p in directory.glob("*.c") if p.name != "program.c"],
-        "native_files": ["cart.h"],
+        "native_files": ["cart.h", "standard.h"],
     }
     (directory / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
@@ -308,6 +335,7 @@ def build(compiler, source, module, output, *, transpile=False):
                 flags = [
                     cc,
                     "-std=c11",
+                    f"-DCART_PY_MINOR={sys.version_info.minor}",
                     f"-O{compiler.optimization}",
                     "-fno-fast-math",
                     "-ffp-contract=off",
@@ -318,12 +346,36 @@ def build(compiler, source, module, output, *, transpile=False):
                     flags += ["-g", "-Wall", "-Wextra"]
                 elif compiler.cache:
                     flags += [f"-ffile-prefix-map={staged}=/calcium/generated"]
+                link_flags = []
+                for module_name, (package, definition) in LIBRARIES.items():
+                    if module_name in result.metadata["native_standard_modules"]:
+                        probe = subprocess.run(
+                            ["pkg-config", "--cflags", "--libs", package],
+                            capture_output=True,
+                            text=True,
+                        )
+                        if probe.returncode:
+                            raise OSError(
+                                f"native {module_name} support requires {package} development files and pkg-config"
+                            )
+                        import shlex
+
+                        flags.append("-D" + definition + "=1")
+                        selected = shlex.split(probe.stdout)
+                        flags.extend(
+                            x
+                            for x in selected
+                            if x.startswith("-I") or x.startswith("-D") or x == "-pthread"
+                        )
+                        link_flags.extend(
+                            x for x in selected if not x.startswith("-I") and not x.startswith("-D")
+                        )
                 version = subprocess.check_output(
                     [cc, "--version"], text=True, timeout=15
                 ).splitlines()[0]
                 identity = {
                     "backend": "bmrw",
-                    "runtime_abi": 2,
+                    "runtime_abi": 3,
                     "compiler": version,
                     "compiler_sha256": sha256(Path(cc).read_bytes()).hexdigest(),
                 }
@@ -332,7 +384,7 @@ def build(compiler, source, module, output, *, transpile=False):
                     if compiler.cache_dir is not None
                     else Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
                     / "calcium"
-                    / "objects-native-v2"
+                    / "objects-native-v3"
                 )
                 objects, commands, reports, warnings = [], [], [], []
                 for path in sorted(staged.glob("*.c")):
@@ -374,7 +426,7 @@ def build(compiler, source, module, output, *, transpile=False):
                     objects.append(obj)
                 if compiler.progress:
                     compiler.progress("linking executable")
-                command = [cc, *(str(p) for p in objects), "-o", str(binary), "-lm"]
+                command = [cc, *(str(p) for p in objects), "-o", str(binary), "-lm", *link_flags]
                 run = subprocess.run(command, capture_output=True, text=True, timeout=120)
                 for obj in objects:
                     obj.unlink()

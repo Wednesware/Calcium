@@ -1,4 +1,4 @@
-#include "cart.h"
+#include "standard.h"
 int ca_is_container(CaValue v) {
   return v.tag >= CA_LIST_T && v.tag <= CA_SET_T;
 }
@@ -13,7 +13,13 @@ static int eq(CaRuntime *rt, CaValue a, CaValue b) {
       a.as.obj == b.as.obj)
     return 1;
   CaValue v = ca_compare(rt, a, b, "eq");
-  return !rt->error && v.as.i;
+  if (rt->error)
+    return 0;
+  CaFrame frame;
+  ca_push(rt, &frame, &v, 1);
+  int result = ca_truth(rt, v);
+  ca_pop(rt, &frame);
+  return result;
 }
 static int hashable(CaRuntime *rt, CaValue v) {
   if (v.tag == CA_LIST_T || v.tag == CA_DICT_T || v.tag == CA_SET_T) {
@@ -159,6 +165,51 @@ static int64_t clipped(CaRuntime *rt, CaValue value, int64_t n, int64_t step,
   return out;
 }
 CaValue ca_getitem(CaRuntime *rt, CaValue v, CaValue key) {
+  if (v.tag == CA_BYTES_T) {
+    CaString *s = (CaString *)v.as.obj;
+    int64_t n = (int64_t)s->length;
+    if (key.tag == CA_SLICE_T) {
+      CaSlice *slice = (CaSlice *)key.as.obj;
+      int64_t step = 1;
+      if (slice->step.tag != CA_NONE_T &&
+          !index_value(rt, slice->step, &step, 1))
+        return CA_UNBOUND;
+      if (!step) {
+        ca_error(rt, "ValueError", "slice step cannot be zero");
+        return CA_UNBOUND;
+      }
+      int64_t start = clipped(rt, slice->start, n, step, 0),
+              stop = clipped(rt, slice->stop, n, step, 1);
+      if (rt->error)
+        return CA_UNBOUND;
+      uint64_t distance = step > 0
+                              ? (start < stop ? (uint64_t)(stop - start) : 0)
+                              : (start > stop ? (uint64_t)(start - stop) : 0),
+               stride = step > 0 ? (uint64_t)step : 0ULL - (uint64_t)step;
+      size_t count = distance ? (size_t)((distance - 1) / stride + 1) : 0;
+      CaValue result = ca_bytes(rt, NULL, count);
+      if (rt->error)
+        return CA_UNBOUND;
+      CaString *out = (CaString *)result.as.obj;
+      int64_t index = start;
+      for (size_t i = 0; i < count; i++) {
+        out->data[i] = s->data[index];
+        if (i + 1 < count)
+          index += step;
+      }
+      return result;
+    }
+    int64_t i;
+    if (!index_value(rt, key, &i, 0))
+      return CA_UNBOUND;
+    if (i < 0)
+      i += n;
+    if (i < 0 || i >= n) {
+      ca_error(rt, "IndexError", "index out of range");
+      return CA_UNBOUND;
+    }
+    return ca_int((unsigned char)s->data[i]);
+  }
   if (v.tag == CA_DICT_T) {
     CaContainer *c = (CaContainer *)v.as.obj;
     size_t at = locate(rt, c, key, 2);
@@ -551,8 +602,10 @@ CaValue ca_collection_builtin(CaRuntime *rt, int kind, int n, int nkw,
       size_t n = ((CaContainer *)v[0].as.obj)->length;
       return ca_int((int64_t)(v[0].tag == CA_DICT_T ? n / 2 : n));
     }
-    if (v[0].tag == CA_STR_T)
-      return ca_int((int64_t)text_count((CaString *)v[0].as.obj));
+    if (v[0].tag == CA_STR_T || v[0].tag == CA_BYTES_T)
+      return ca_int((int64_t)(v[0].tag == CA_BYTES_T
+                                  ? ((CaString *)v[0].as.obj)->length
+                                  : text_count((CaString *)v[0].as.obj)));
     if (v[0].tag == CA_RANGE_T) {
       CaValue n = ca_range_length(rt, (CaRange *)v[0].as.obj);
       if (n.tag == CA_BIG_T) {
@@ -562,6 +615,8 @@ CaValue ca_collection_builtin(CaRuntime *rt, int kind, int n, int nkw,
       }
       return n;
     }
+    if(v[0].tag==CA_INSTANCE_T){CaValue method=ca_try_special(rt,v[0],"__len__");if(method.tag==CA_UNBOUND_T){ca_error(rt,"TypeError","object has no len()");return CA_UNBOUND;}CaValue length=ca_call(rt,method,0,0,NULL,NULL);if(rt->error)return CA_UNBOUND;if(length.tag==CA_BIG_T){ca_error(rt,"OverflowError","length does not fit platform index");return CA_UNBOUND;}if(length.tag!=CA_INT_T && length.tag!=CA_BOOL_T){ca_error(rt,"TypeError","__len__ must return an integer");return CA_UNBOUND;}if(length.as.i<0){ca_error(rt,"ValueError","__len__ must be non-negative");return CA_UNBOUND;}return ca_int(length.as.i);}
+    if(v[0].tag==CA_FOREIGN_T && ((CaForeign *)v[0].as.obj)->kind==CA_F_DICT_VIEW)return ca_int(((CaContainer *)((CaForeign *)v[0].as.obj)->state.as.obj)->length/2);
     ca_error(rt, "TypeError", "object has no supported length");
     return CA_UNBOUND;
   }
@@ -703,6 +758,28 @@ CaValue ca_unpack(CaRuntime *rt, CaValue value, size_t n) {
   return rt->error ? CA_UNBOUND : result;
 }
 CaValue ca_bound_method(CaRuntime *rt, CaValue v, const char *name) {
+  if (v.tag == CA_STR_T || v.tag == CA_BYTES_T) {
+    const char *names[] = {"encode", "decode",     "join",     "replace",
+                           "lower",  "upper",      "strip",    "lstrip",
+                           "rstrip", "startswith", "endswith", "split",
+                           "rsplit", "find",       "count"};
+    int ids[] = {N_TEXT_ENCODE,     N_TEXT_DECODE,   N_TEXT_JOIN,
+                 N_TEXT_REPLACE,    N_TEXT_LOWER,    N_TEXT_UPPER,
+                 N_TEXT_STRIP,      N_TEXT_LSTRIP,   N_TEXT_RSTRIP,
+                 N_TEXT_STARTSWITH, N_TEXT_ENDSWITH, N_TEXT_SPLIT,
+                 N_TEXT_RSplit,     N_TEXT_FIND,     N_TEXT_COUNT};
+    for (size_t i = 0; i < sizeof ids / sizeof ids[0]; i++)
+      if (!strcmp(name, names[i]) &&
+          !(v.tag == CA_BYTES_T && ids[i] == N_TEXT_ENCODE) &&
+          !(v.tag == CA_STR_T && ids[i] == N_TEXT_DECODE))
+        return ca_native_method(rt, v, ids[i]);
+  }
+  if (v.tag == CA_DICT_T && (!strcmp(name, "items") || !strcmp(name, "keys") ||
+                             !strcmp(name, "values")))
+    return ca_native_method(rt, v,
+                            !strcmp(name, "items")  ? N_DICT_ITEMS
+                            : !strcmp(name, "keys") ? N_DICT_KEYS
+                                                    : N_DICT_VALUES);
   int method = 0;
   if (v.tag == CA_LIST_T) {
     if (!strcmp(name, "append"))

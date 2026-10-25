@@ -48,6 +48,7 @@ class Function:
     kwarg: str | None = None
     exception_handlers: dict[str, list[str]] = field(default_factory=dict)
     kernel: dict | None = None
+    native: dict | None = None
 
 
 @dataclass

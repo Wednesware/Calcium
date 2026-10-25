@@ -442,7 +442,7 @@ def main(argv=None):
                     "calcium_version": __version__,
                     "backend": "bmrw",
                     "bonemarrow_version": __version__,
-                    "runtime": "CaRT ABI 2",
+                    "runtime": "CaRT ABI 3",
                     "targets": ["c", "executable"],
                     "backends": {
                         "bmrw": __version__,
@@ -455,7 +455,7 @@ def main(argv=None):
                 print(
                     json.dumps(data, indent=2)
                     if args.format == "json"
-                    else f"Calcium {__version__}\nBonemarrow {__version__} (bmrw), CaRT ABI 2\nAvailable backends: bmrw, cpython\nTargets: C11, executable\nNo Python SDK or runtime dependency"
+                    else f"Calcium {__version__}\nBonemarrow {__version__} (bmrw), CaRT ABI 3\nAvailable backends: bmrw, cpython\nTargets: C11, executable\nNo Python SDK or runtime dependency"
                 )
                 return 0
             data = {

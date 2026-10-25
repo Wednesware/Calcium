@@ -1,0 +1,5 @@
+print(b"abc" + b"\x00\xff", b"a" * 3, 2 * b"z", b"" * 10)
+print(b"abc" == b"abc", b"a" < b"z", b"a" != "a")
+print(sorted([("a", 2), ("b", 1), ("c", 2)], key=lambda x: x[1]))
+print(sorted([("a", 2), ("b", 1), ("c", 2)], key=lambda x: x[1], reverse=True))
+print(sorted(range(1000), reverse=True) == list(range(999, -1, -1)))

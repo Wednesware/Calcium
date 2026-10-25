@@ -3,6 +3,17 @@ void ca_error(CaRuntime *rt, const char *kind, const char *message) {
   if (!rt->error) {
     rt->error = kind;
     snprintf(rt->message, sizeof rt->message, "%s", message);
+    CaException *e = ca_allocate(rt, sizeof *e, CA_EXCEPTION_T);
+    if (e) {
+      e->type = ca_exception_type(kind);
+      if (e->type.tag == CA_UNBOUND_T)
+        e->type = ca_type(CA_T_EXCEPTION);
+      e->args = CA_UNBOUND;
+      e->message = ca_string(rt, message, strlen(message));
+      e->cause = CA_NONE;
+      e->context = rt->handled.tag == CA_EXCEPTION_T ? rt->handled : CA_NONE;
+      rt->pending = (CaValue){.tag = CA_EXCEPTION_T, .as.obj = (CaObj *)e};
+    }
   }
 }
 void *ca_allocate(CaRuntime *rt, size_t size, CaTag kind) {
@@ -36,7 +47,11 @@ static void mark(CaValue value, CaObj **pending) {
   if (value.tag != CA_BIG_T && value.tag != CA_STR_T &&
       value.tag != CA_RANGE_T && value.tag != CA_ITER_T &&
       !ca_is_container(value) && value.tag != CA_SLICE_T &&
-      value.tag != CA_METHOD_T)
+      value.tag != CA_METHOD_T && value.tag != CA_CELL_T &&
+      value.tag != CA_CLOSURE_T && value.tag != CA_CLASS_T &&
+      value.tag != CA_INSTANCE_T && value.tag != CA_BOUND_T &&
+      value.tag != CA_EXCEPTION_T && value.tag != CA_BYTES_T &&
+      value.tag != CA_FOREIGN_T && value.tag != CA_GENERATOR_T)
     return;
   CaObj *obj = value.as.obj;
   if (!obj || obj->marked)
@@ -49,18 +64,60 @@ void ca_safepoint(CaRuntime *rt) {
   if (rt->bytes < (rt->threshold ? rt->threshold : 65536))
     return;
   CaObj *pending = NULL;
+  mark(rt->pending, &pending);
+  mark(rt->handled, &pending);
+  mark(rt->environment, &pending);
   for (CaFrame *f = rt->roots; f; f = f->previous)
     for (size_t i = 0; i < f->count; i++)
       mark(f->values[i], &pending);
   for (size_t m = 0; m < rt->module_count; m++)
     for (CaBinding *b = rt->modules[m]->extra; b; b = b->next)
       mark(b->value, &pending);
+  for (size_t m = 0; m < rt->standard_count; m++)
+    for (CaBinding *b = rt->standard_modules[m]->extra; b; b = b->next)
+      mark(b->value, &pending);
   while (pending) {
     CaObj *obj = pending;
     pending = obj->mark_next;
     obj->mark_next = NULL;
     CaValue value = {.tag = obj->kind, .as.obj = obj};
-    if (ca_is_container(value)) {
+    if (obj->kind == CA_GENERATOR_T) {
+      CaGenerator *g = (CaGenerator *)obj;
+      mark(g->sent, &pending);
+      mark(g->result, &pending);
+      for (size_t i = 0; i < g->count; i++)
+        mark(g->values[i], &pending);
+    } else if (obj->kind == CA_CELL_T)
+      mark(((CaCell *)obj)->value, &pending);
+    else if (obj->kind == CA_CLOSURE_T) {
+      CaClosure *c = (CaClosure *)obj;
+      mark(c->environment, &pending);
+      for (int i = 0; i < c->fn.count; i++)
+        mark(c->defaults[i], &pending);
+    } else if (obj->kind == CA_CLASS_T) {
+      CaClass *c = (CaClass *)obj;
+      mark(c->name, &pending);
+      mark(c->namespace_, &pending);
+      mark(c->parent, &pending);
+      mark(c->fields, &pending);
+    } else if (obj->kind == CA_INSTANCE_T) {
+      CaInstance *i = (CaInstance *)obj;
+      mark(i->type, &pending);
+      mark(i->namespace_, &pending);
+    } else if (obj->kind == CA_BOUND_T) {
+      CaBound *b = (CaBound *)obj;
+      mark(b->receiver, &pending);
+      mark(b->function, &pending);
+    } else if (obj->kind == CA_EXCEPTION_T) {
+      CaException *e = (CaException *)obj;
+      mark(e->type, &pending);
+      mark(e->args, &pending);
+      mark(e->cause, &pending);
+      mark(e->context, &pending);
+      mark(e->message, &pending);
+    } else if (obj->kind == CA_FOREIGN_T)
+      mark(((CaForeign *)obj)->state, &pending);
+    else if (ca_is_container(value)) {
       CaContainer *c = (CaContainer *)obj;
       for (size_t i = 0; i < c->length; i++)
         mark(c->items[i], &pending);
@@ -93,6 +150,8 @@ void ca_safepoint(CaRuntime *rt) {
       rt->bytes -= o->bytes;
       if (o->kind >= CA_LIST_T && o->kind <= CA_SET_T)
         free(((CaContainer *)o)->items);
+      if (o->kind == CA_FOREIGN_T)
+        ca_foreign_finalize((CaForeign *)o);
       free(o);
     }
   }
@@ -100,12 +159,22 @@ void ca_safepoint(CaRuntime *rt) {
       rt->bytes > (SIZE_MAX - 65536) / 2 ? SIZE_MAX : rt->bytes * 2 + 65536;
   rt->collections++;
 }
+void ca_collect(CaRuntime *rt) {
+  size_t previous = rt->threshold;
+  rt->threshold = 1;
+  ca_safepoint(rt);
+  if (rt->threshold == 1)
+    rt->threshold = previous;
+}
 void ca_destroy(CaRuntime *rt) {
   ca_modules_destroy(rt);
+  ca_standard_destroy(rt);
   while (rt->heap) {
     CaObj *next = rt->heap->next;
     if (rt->heap->kind >= CA_LIST_T && rt->heap->kind <= CA_SET_T)
       free(((CaContainer *)rt->heap)->items);
+    if (rt->heap->kind == CA_FOREIGN_T)
+      ca_foreign_finalize((CaForeign *)rt->heap);
     free(rt->heap);
     rt->heap = next;
   }
