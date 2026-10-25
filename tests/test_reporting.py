@@ -36,7 +36,7 @@ def generator():
 """)
     # The module-level lambda blocks the entire module, including otherwise
     # eligible functions; it must never leave them reported as native.
-    result = Calcium(fallback=True, optimization=3).inspect(source)
+    result = Calcium(backend="cpython", fallback=True, optimization=3).inspect(source)
     report = result.optimization_report
     assert result.success and report["complete"]
     assert report["summary"]["functions_analyzed"] == 9
@@ -44,7 +44,7 @@ def generator():
     assert report["primary_fallback_reasons"] == {"lambdas": 9}
     assert report["modules"][0]["functions"][-1]["column"] == 5
     source.write_text(source.read_text().replace("π = lambda: 1", ""))
-    result = Calcium(fallback=True, optimization=3).inspect(source)
+    result = Calcium(backend="cpython", fallback=True, optimization=3).inspect(source)
     report = result.optimization_report
     assert result.success
     assert report["summary"]["functions_analyzed"] == 8
@@ -72,7 +72,7 @@ def test_future_flags_and_strict_rejection_still_report(tmp_path):
         "from __future__ import annotations\ndef good(x):\n    return x\nclass C:\n    def method(self): pass\n"
     )
     for fallback in [True, False]:
-        result = Calcium(fallback=fallback).inspect(source)
+        result = Calcium(backend="cpython", fallback=fallback).inspect(source)
         assert result.success == fallback
         report = result.optimization_report
         assert report["complete"]
@@ -90,7 +90,7 @@ def test_multiple_modules_duplicate_names_and_manifest(tmp_path):
         "def same():\n    return 1\nclass C:\n    def same(self):\n        pass\n"
     )
     output = tmp_path / "generated"
-    result = Calcium(fallback=True).transpile(root / "main.py", output=output)
+    result = Calcium(backend="cpython", fallback=True).transpile(root / "main.py", output=output)
     report = result.optimization_report
     assert result.success
     assert report["summary"]["functions_analyzed"] == 3
@@ -112,6 +112,7 @@ def test_report_never_executes_and_cli_json_remains_clean(tmp_path):
                 "-m",
                 "calcium",
                 "check",
+                "--cpython",
                 str(source),
                 "--optimization-report",
                 *flags,
@@ -134,7 +135,7 @@ def test_report_never_executes_and_cli_json_remains_clean(tmp_path):
 def test_partial_report_on_later_semantic_syntax_error(tmp_path):
     (tmp_path / "main.py").write_text("import zzz\ndef good():\n    return 1\n")
     (tmp_path / "zzz.py").write_text("return 1\n")
-    result = Calcium(fallback=True).inspect(tmp_path / "main.py")
+    result = Calcium(backend="cpython", fallback=True).inspect(tmp_path / "main.py")
     assert not result.success
     report = result.optimization_report
     assert not report["complete"]
@@ -148,7 +149,7 @@ def test_namespace_and_zero_function_module_are_not_fallback_functions(tmp_path)
     (tmp_path / "main.py").write_text("import ns.worker\n")
     (tmp_path / "ns").mkdir()
     (tmp_path / "ns" / "worker.py").write_text("class Empty: pass\n")
-    result = Calcium(fallback=True).inspect(tmp_path / "main.py")
+    result = Calcium(backend="cpython", fallback=True).inspect(tmp_path / "main.py")
     assert result.success
     report = result.optimization_report
     assert report["complete"] and report["summary"]["modules_analyzed"] == 3

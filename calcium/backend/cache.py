@@ -9,7 +9,7 @@ from hashlib import sha256
 from pathlib import Path
 
 
-def cached_object(command, source, output, *, directory, cache, identity):
+def cached_object(command, source, output, *, directory, cache, identity, on_compile=None):
     """Hash preprocessed C, including actual SDK/system header contents.
 
     Failed preprocessing/compilation never publishes an entry. Corrupt or absent
@@ -31,6 +31,8 @@ def cached_object(command, source, output, *, directory, cache, identity):
             return {"hit": True, "key": digest, "warnings": metadata["warnings"]}
     except (OSError, ValueError, KeyError, TypeError):
         pass
+    if on_compile:
+        on_compile()
     run = subprocess.run(
         [*command, "-c", str(source), "-o", str(output)],
         capture_output=True,

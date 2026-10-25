@@ -1,0 +1,496 @@
+{
+  "calcium_version": "26.7",
+  "probe": "analysis only; application was not executed",
+  "native_compatible": false,
+  "source_git_commit": "0ac52304b94fdab007a94b6a84092696b0c2c55a",
+  "diagnostics": [
+    {
+      "code": "C160",
+      "module": "discribe/shell.py",
+      "line": 2,
+      "reason": "Bonemarrow has no native standard-library implementation for 'pathlib'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/shell.py",
+      "line": 91,
+      "reason": "Bonemarrow has no native standard-library implementation for 'shutil'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/shell.py",
+      "line": 101,
+      "reason": "Bonemarrow has no native standard-library implementation for 'hashlib'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/shell.py",
+      "line": 104,
+      "reason": "Bonemarrow has no native standard-library implementation for 'json'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/desktop.py",
+      "line": 2,
+      "reason": "Bonemarrow has no native standard-library implementation for 'json'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/desktop.py",
+      "line": 3,
+      "reason": "Bonemarrow has no native standard-library implementation for 'dataclasses'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/desktop.py",
+      "line": 4,
+      "reason": "Bonemarrow has no native standard-library implementation for 'pathlib'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 5,
+      "reason": "Bonemarrow has no native standard-library implementation for '__future__'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 7,
+      "reason": "Bonemarrow has no native standard-library implementation for 'hashlib'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 8,
+      "reason": "Bonemarrow has no native standard-library implementation for 'json'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 9,
+      "reason": "Bonemarrow has no native standard-library implementation for 'os'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 10,
+      "reason": "Bonemarrow has no native standard-library implementation for 'sqlite3'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 11,
+      "reason": "Bonemarrow has no native standard-library implementation for 'tempfile'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 12,
+      "reason": "Bonemarrow has no native standard-library implementation for 'dataclasses'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 13,
+      "reason": "Bonemarrow has no native standard-library implementation for 'datetime'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 14,
+      "reason": "Bonemarrow has no native standard-library implementation for 'pathlib'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 15,
+      "reason": "Bonemarrow has no native standard-library implementation for 'uuid'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/collaboration.py",
+      "line": 7,
+      "reason": "Bonemarrow has no native standard-library implementation for 'asyncio'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/collaboration.py",
+      "line": 8,
+      "reason": "Bonemarrow has no native standard-library implementation for 'contextlib'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/collaboration.py",
+      "line": 9,
+      "reason": "Bonemarrow has no native standard-library implementation for 'json'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/collaboration.py",
+      "line": 10,
+      "reason": "Bonemarrow has no native standard-library implementation for 'os'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/collaboration.py",
+      "line": 11,
+      "reason": "Bonemarrow has no native standard-library implementation for 'secrets'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/collaboration.py",
+      "line": 12,
+      "reason": "Bonemarrow has no native standard-library implementation for 'time'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/collaboration.py",
+      "line": 13,
+      "reason": "Bonemarrow has no native standard-library implementation for 'dataclasses'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/collaboration.py",
+      "line": 14,
+      "reason": "Bonemarrow has no native standard-library implementation for 'pathlib'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/__main__.py",
+      "line": 1,
+      "reason": "Bonemarrow has no native standard-library implementation for 'argparse'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/__main__.py",
+      "line": 2,
+      "reason": "Bonemarrow has no native standard-library implementation for 'os'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/__main__.py",
+      "line": 3,
+      "reason": "Bonemarrow has no native standard-library implementation for 'functools'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/__main__.py",
+      "line": 4,
+      "reason": "Bonemarrow has no native standard-library implementation for 'http.server'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/__main__.py",
+      "line": 5,
+      "reason": "Bonemarrow has no native standard-library implementation for 'pathlib'; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/collaboration.py",
+      "line": 27,
+      "reason": "Bonemarrow: ClassDef is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/collaboration.py",
+      "line": 37,
+      "reason": "Bonemarrow: ClassDef is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/collaboration.py",
+      "line": 94,
+      "reason": "Bonemarrow: only unshadowed builtin primitive annotations are supported; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/collaboration.py",
+      "line": 96,
+      "reason": "Bonemarrow: AsyncFunctionDef is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/collaboration.py",
+      "line": 110,
+      "reason": "Bonemarrow: AsyncFunctionDef is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/collaboration.py",
+      "line": 122,
+      "reason": "Bonemarrow: AsyncFunctionDef is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/collaboration.py",
+      "line": 129,
+      "reason": "Bonemarrow: AsyncFunctionDef is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/collaboration.py",
+      "line": 199,
+      "reason": "Bonemarrow: only unshadowed builtin primitive annotations are supported; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/collaboration.py",
+      "line": 199,
+      "reason": "Bonemarrow: only unshadowed builtin primitive annotations are supported; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 5,
+      "reason": "Bonemarrow: future flags are not supported; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 33,
+      "reason": "Bonemarrow: ClassDef is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 68,
+      "reason": "Bonemarrow: ClassDef is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 72,
+      "reason": "Bonemarrow: ClassDef is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 117,
+      "reason": "Bonemarrow: only unshadowed builtin primitive annotations are supported; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 117,
+      "reason": "Bonemarrow: only unshadowed builtin primitive annotations are supported; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 119,
+      "reason": "Bonemarrow: Raise is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 122,
+      "reason": "Bonemarrow: Raise is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 125,
+      "reason": "Bonemarrow: builtin 'str' is not implemented; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 128,
+      "reason": "Bonemarrow: builtin 'str' is not implemented; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 132,
+      "reason": "Bonemarrow: only unshadowed builtin primitive annotations are supported; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 132,
+      "reason": "Bonemarrow: only unshadowed builtin primitive annotations are supported; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 136,
+      "reason": "Bonemarrow: only unshadowed builtin primitive annotations are supported; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 136,
+      "reason": "Bonemarrow: only unshadowed builtin primitive annotations are supported; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 138,
+      "reason": "Bonemarrow: Raise is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/core.py",
+      "line": 141,
+      "reason": "Bonemarrow: Try is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/desktop.py",
+      "line": 9,
+      "reason": "Bonemarrow: ClassDef is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/shell.py",
+      "line": 11,
+      "reason": "Bonemarrow: only undecorated module-level non-generic functions are supported; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/shell.py",
+      "line": 15,
+      "reason": "Bonemarrow: only undecorated module-level non-generic functions are supported; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/shell.py",
+      "line": 18,
+      "reason": "Bonemarrow: only undecorated module-level non-generic functions are supported; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/shell.py",
+      "line": 33,
+      "reason": "Bonemarrow: only undecorated module-level non-generic functions are supported; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/shell.py",
+      "line": 51,
+      "reason": "Bonemarrow: only undecorated module-level non-generic functions are supported; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/shell.py",
+      "line": 90,
+      "reason": "Bonemarrow: only unshadowed builtin primitive annotations are supported; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/shell.py",
+      "line": 1,
+      "reason": "Bonemarrow: Div is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/shell.py",
+      "line": 94,
+      "reason": "Bonemarrow: Raise is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/shell.py",
+      "line": 99,
+      "reason": "Bonemarrow: builtin 'str' is not implemented; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/shell.py",
+      "line": 102,
+      "reason": "Bonemarrow: builtin 'sorted' is not implemented; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/shell.py",
+      "line": 102,
+      "reason": "Bonemarrow: GeneratorExp is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/shell.py",
+      "line": 103,
+      "reason": "Bonemarrow: bytes values are not implemented; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/shell.py",
+      "line": 103,
+      "reason": "Bonemarrow: GeneratorExp is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/shell.py",
+      "line": 105,
+      "reason": "Bonemarrow: ListComp is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/__main__.py",
+      "line": 13,
+      "reason": "Bonemarrow: builtin 'int' is not implemented; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/__main__.py",
+      "line": 1,
+      "reason": "Bonemarrow: Div is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/__main__.py",
+      "line": 21,
+      "reason": "Bonemarrow: ListComp is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/__main__.py",
+      "line": 24,
+      "reason": "Bonemarrow: JoinedStr is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/__main__.py",
+      "line": 35,
+      "reason": "Bonemarrow: JoinedStr is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/__main__.py",
+      "line": 36,
+      "reason": "Bonemarrow: builtin 'str' is not implemented; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/__main__.py",
+      "line": 37,
+      "reason": "Bonemarrow: Try is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/__main__.py",
+      "line": 46,
+      "reason": "Bonemarrow: Try is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/__main__.py",
+      "line": 51,
+      "reason": "Bonemarrow: builtin 'str' is not implemented; use --cpython for compatibility (no automatic fallback)"
+    },
+    {
+      "code": "C160",
+      "module": "discribe/__main__.py",
+      "line": 56,
+      "reason": "Bonemarrow: JoinedStr is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)"
+    }
+  ],
+  "source_files_sha256": {
+    "discribe/__init__.py": "2d83556bfed9e35603c405147f53a93a7be81a72426998b29d7e202619372486",
+    "discribe/__main__.py": "66e9799deeb48004b5c8286a56de6647289c3dd613138b2e7f22efecd9bb9653",
+    "discribe/collaboration.py": "d110cfb2fe0d6d73db27d78e4bd8ab8f50ca6ed0c559ac72e06932ed5ed15c01",
+    "discribe/core.py": "9fa9d6da2914a37c67d09926e0231a2cae22af495103d57797e38f7f1aeb1990",
+    "discribe/desktop.py": "24ac1e2eaef2b67c362d4aefed40c7f46fa445f7cbe70eacc1051240bc75ffea",
+    "discribe/shell.py": "f26cde3cd1bc1609124e90c8b07e9413ce402a228309836581025c473d986de5"
+  }
+}

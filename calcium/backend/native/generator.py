@@ -8,7 +8,7 @@ from ..generator_strings import cstr
 from .kernels import emit_kernel
 
 
-def generate(program, optimization=0):
+def generate(program, optimization=0, *, module_info=None):
     validate(program)
     constants = {}
     names = set()
@@ -23,6 +23,10 @@ def generate(program, optimization=0):
     for fn in program.functions:
         if fn.kernel:
             names.update(fn.kernel["guards"])
+    if module_info:
+        names.update({"__name__", "__package__", "__file__"})
+        if module_info["is_package"]:
+            names.add("__path__")
     slots = {name: i for i, name in enumerate(sorted(names))}
     pool = {key: i for i, key in enumerate(constants)}
     code = [
@@ -38,8 +42,16 @@ def generate(program, optimization=0):
             keys = ", ".join(cstr(n) for n in fn.parameters) or "NULL"
             code += [
                 f"static const char *{fn.symbol}_keys[] = {{{keys}}};",
-                f"static const CaFunction {fn.symbol}_def = {{{cstr(fn.name)}, {len(fn.parameters)}, {fn.posonly}, {fn.symbol}_keys, {fn.symbol}, 0}};",
+                f"static CaValue {fn.symbol}_defaults[{max(1, len(fn.parameters))}];",
+                f"static const CaFunction {fn.symbol}_def = {{{cstr(fn.name)}, {len(fn.parameters)}, {fn.posonly}, {fn.symbol}_keys, {fn.symbol}, 0, {fn.positional}, {fn.symbol}_defaults, {fn.parameters.index(fn.vararg) if fn.vararg else -1}, {fn.parameters.index(fn.kwarg) if fn.kwarg else -1}}};",
             ]
+    if module_info:
+        code += [
+            "static const char *global_names[]={" + ",".join(cstr(n) for n in slots) + "};",
+            "static CaValue initialize(CaRuntime *rt);",
+            f"CaModule {module_info['symbol']} = {{.name={cstr(module_info['name'])}, .package={cstr(module_info['package'])}, .is_package={int(module_info['is_package'])}, .names=global_names, .values=globals, .count={len(slots)}, .initialize=initialize}};",
+        ]
+    code.append(f"static CaFrame default_roots[{max(1, len(program.functions))}];")
     scalar = []
     for fn in program.functions:
         if fn.kernel and fn.kernel.get("enabled"):
@@ -73,7 +85,12 @@ def generate(program, optimization=0):
         heap_frame = size > 64
         counts["large_frame_allocation_sites"] += int(heap_frame)
         max_call_args = max(
-            (len(op.args) - 1 for b in fn.blocks for op in b.instructions if op.op == "call"),
+            (
+                len(op.args)
+                for b in fn.blocks
+                for op in b.instructions
+                if op.op in {"call", "container"}
+            ),
             default=0,
         )
         code += [
@@ -143,7 +160,7 @@ def generate(program, optimization=0):
                     code.append(f"values[{local[op.data]}]=CA_UNBOUND;")
                 elif op.op in {"binary", "checked_binary", "inplace"}:
                     operator = {"add": "+", "subtract": "-", "multiply": "*"}[op.data]
-                    expr = f"ca_binary(rt,{v[0]},{v[1]},'{operator}')"
+                    expr = f"{'ca_inplace' if op.op == 'inplace' else 'ca_binary'}(rt,{v[0]},{v[1]},'{operator}')"
                     counts["generic_operations"] += 1
                     counts["potential_heap_operations"] += 1
                 elif op.op == "unary":
@@ -154,7 +171,55 @@ def generate(program, optimization=0):
                     expr = f"ca_compare(rt,{v[0]},{v[1]},{cstr(op.data)})"
                     counts["generic_operations"] += 1
                     counts["potential_heap_operations"] += 1
+                elif op.op == "container":
+                    for index, value in enumerate(v):
+                        code.append(f"call_values[{index}]={value};")
+                    expr = f"ca_container(rt,CA_{op.data.upper()}_T,{len(v)},call_values)"
+                elif op.op == "call_ex":
+                    expr = f"ca_call_ex(rt,{v[0]},{v[1]},{v[2]})"
+                elif op.op == "to_tuple":
+                    expr = f"ca_collection_builtin(rt,5,1,0,&{v[0]})"
+                elif op.op in {"args_extend", "set_update"}:
+                    code.append(f"ca_extend(rt,{v[0]},{v[1]});")
+                elif op.op in {"kwargs_merge", "dict_merge"}:
+                    code.append(
+                        f"ca_kwargs_merge(rt,{v[0]},{v[1]},{int(op.op == 'kwargs_merge')});"
+                    )
+                elif op.op == "kwargs_set":
+                    code.append(f"ca_kwargs_set(rt,{v[0]},{cstr(op.data)},{v[1]});")
+                elif op.op == "unpack":
+                    expr = f"ca_unpack(rt,{v[0]},{op.data})"
+                elif op.op == "tuple_item":
+                    expr = f"ca_getitem(rt,{v[0]},ca_int({op.data}))"
+                elif op.op == "getitem":
+                    expr = f"ca_getitem(rt,{v[0]},{v[1]})"
+                elif op.op == "setitem":
+                    code.append(f"ca_setitem(rt,{v[0]},{v[1]},{v[2]});")
+                elif op.op == "slice":
+                    expr = f"ca_slice(rt,{v[0]},{v[1]},{v[2]})"
+                elif op.op in {"args_append", "set_add"}:
+                    code.append(f"ca_append(rt,{v[0]},{v[1]});")
+                elif op.op == "attribute":
+                    expr = f"ca_attribute(rt,{v[0]},{cstr(op.data)},0)"
+                elif op.op == "setattr":
+                    code.append(f"ca_set_attribute(rt,{v[0]},{cstr(op.data)},{v[1]});")
+                elif op.op == "import":
+                    data = op.data
+                    keys = ",".join(cstr(n) for n in data["fromlist"]) or "NULL"
+                    code.append(f"static const char *imports_{op.result}[]={{{keys}}};")
+                    context = "&" + module_info["symbol"] if module_info else "NULL"
+                    expr = f"ca_import(rt,{context},{cstr(data['name'])},{data['level']},{len(data['fromlist'])},imports_{op.result})"
+                elif op.op == "import_from":
+                    expr = f"ca_attribute(rt,{v[0]},{cstr(op.data)},1)"
                 elif op.op == "function":
+                    target = next(f for f in program.functions if f.symbol == op.data["symbol"])
+                    for index, value in enumerate(v[: op.data["posdefaults"]]):
+                        slot = target.positional - op.data["posdefaults"] + index
+                        code.append(f"{target.symbol}_defaults[{slot}]={value};")
+                    for name, value in zip(op.data["kwdefaults"], v[op.data["posdefaults"] :]):
+                        code.append(
+                            f"{target.symbol}_defaults[{target.parameters.index(name)}]={value};"
+                        )
                     expr = f"ca_function(&{op.data['symbol']}_def)"
                 elif op.op == "call":
                     for index, value in enumerate(v[1:]):
@@ -171,6 +236,9 @@ def generate(program, optimization=0):
                         and candidate
                         and not op.data["keywords"]
                         and len(candidate.parameters) == op.data["positional"]
+                        and candidate.positional == len(candidate.parameters)
+                        and not candidate.vararg
+                        and not candidate.kwarg
                     ):
                         guard = (
                             f"{v[0]}.tag==CA_FUNCTION_T && {v[0]}.as.fn==&{candidate.symbol}_def"
@@ -216,41 +284,84 @@ def generate(program, optimization=0):
             + "return result;",
             "}",
         ]
-    code += [
-        "int main(void) { CaRuntime runtime={0}; CaRuntime *rt=&runtime; CaFrame global_roots,constant_roots;",
-        f"ca_push(rt,&global_roots,globals,{len(slots)});",
-        f"ca_push(rt,&constant_roots,constants,{len(pool)});",
-    ]
-    for key, data in constants.items():
+    if module_info:
+        code += [
+            f"void {module_info['symbol']}_roots(CaRuntime *rt, CaFrame *g, CaFrame *c) {{",
+            f"ca_push(rt,g,globals,{len(slots)}); ca_push(rt,c,constants,{len(pool)});",
+            *[
+                f"ca_push(rt,&default_roots[{index}],{fn.symbol}_defaults,{len(fn.parameters)});"
+                for index, fn in enumerate(program.functions)
+                if not fn.module
+            ],
+            "}",
+            "static CaValue initialize(CaRuntime *rt) {",
+        ]
+        for name, value in (
+            ("__name__", module_info["name"]),
+            ("__package__", module_info["package"]),
+            ("__file__", module_info["file"]),
+        ):
+            expression = (
+                "CA_NONE"
+                if name == "__package__" and module_info.get("script")
+                else f"ca_string(rt,{cstr(value)},{len(value.encode('utf-8'))})"
+            )
+            code += [f"globals[{slots[name]}]={expression};", "if(rt->error)return CA_UNBOUND;"]
+    else:
+        code += [
+            "int main(void) { CaRuntime runtime={0}; CaRuntime *rt=&runtime; CaFrame global_roots,constant_roots;",
+            f"ca_push(rt,&global_roots,globals,{len(slots)});",
+            f"ca_push(rt,&constant_roots,constants,{len(pool)});",
+        ]
+
+    if module_info and module_info["is_package"]:
+        paths = module_info["paths"]
+        items = ",".join(f"ca_string(rt,{cstr(p)},{len(p.encode('utf-8'))})" for p in paths)
+        code += [
+            f"globals[{slots['__path__']}]=ca_container(rt,CA_LIST_T,{len(paths)},(CaValue[]){{{items}}});",
+            "if(rt->error)return CA_UNBOUND;",
+        ]
+
+    def literal(data):
         kind, value = data["type"], data["value"]
         if kind == "NoneType":
-            expr = "CA_NONE"
-        elif kind == "bool":
-            expr = f"ca_bool({int(value)})"
-        elif kind == "int":
-            expr = f"ca_integer(rt,{cstr(value)})"
-        elif kind == "float":
+            return "CA_NONE"
+        if kind == "bool":
+            return f"ca_bool({int(value)})"
+        if kind == "int":
+            return f"ca_integer(rt,{cstr(value)})"
+        if kind == "float":
             f = float(value)
-            literal = (
+            text = (
                 "NAN"
                 if math.isnan(f)
                 else ("-INFINITY" if f < 0 else "INFINITY")
                 if math.isinf(f)
                 else f.hex()
             )
-            expr = f"ca_float({literal})"
-        elif kind == "str":
-            expr = f"ca_string(rt,{cstr(value)},{len(value.encode('utf-8'))})"
-        else:
-            raise ValueError(f"native constant {kind} is not implemented")
-        code += [f"constants[{pool[key]}]={expr};", "if(rt->error)goto finish;"]
-    code += [
-        "ca_module(rt,NULL);",
-        "finish:;",
-        'int status=0;if(rt->error){fprintf(stderr,"%s: %s\\n",rt->error,rt->message);status=1;}',
-        "if(fflush(stdout)!=0)status=1;ca_destroy(rt);return status;",
-        "}",
-    ]
+            return f"ca_float({text})"
+        if kind == "str":
+            return f"ca_string(rt,{cstr(value)},{len(value.encode('utf-8'))})"
+        if kind == "tuple":
+            items = ",".join(literal(v) for v in value) or "CA_NONE"
+            return f"ca_container(rt,CA_TUPLE_T,{len(value)},(CaValue[]){{{items}}})"
+        raise ValueError(f"native constant {kind} is not implemented")
+
+    for key, data in constants.items():
+        code += [
+            f"constants[{pool[key]}]={literal(data)};",
+            "if(rt->error)return CA_UNBOUND;" if module_info else "if(rt->error)goto finish;",
+        ]
+    if module_info:
+        code += ["return ca_module(rt,NULL);", "}"]
+    else:
+        code += [
+            "ca_module(rt,NULL);",
+            "finish:;",
+            'int status=0;if(rt->error){fprintf(stderr,"%s: %s\\n",rt->error,rt->message);status=1;}',
+            "if(fflush(stdout)!=0)status=1;ca_destroy(rt);return status;",
+            "}",
+        ]
     report = {
         "backend": "native",
         "specialized_functions": scalar,

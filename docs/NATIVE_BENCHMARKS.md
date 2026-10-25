@@ -1,69 +1,63 @@
-# 26.6 standalone benchmark measurements
+# Bonemarrow package benchmarks — 26.7
 
-Run the fixed three-runtime Linux suite:
+These are bounded synthetic **whole-process** measurements, not a claim that
+Discribe or arbitrary applications run natively. All fixtures compare stdout,
+stderr, exit status and private-directory file hashes before accepting samples.
+
+Reference: AMD Ryzen 5 7600X, Linux x86_64, system CPython 3.14.8, GCC 16.2.1,
+O3, 2 warmups and 9 measured samples per runtime, shuffled with seed 267.
+The runtime labels distinguish ordinary CPython, Calcium's explicit CPython
+backend, and Bonemarrow. Compilation is outside the timed executable runs.
+
+| Workload | Python ms | CPython backend ms | Bonemarrow ms |
+| --- | ---: | ---: | ---: |
+| Single-file pass | 9.879 | 10.399 | 0.583 |
+| Package startup | 10.602 | 9.324 | 0.576 |
+| One-module import | 10.017 | 9.147 | 0.582 |
+| Multi-module import | 10.386 | 9.551 | 0.601 |
+| 100,000 cross-module calls | 19.534 | 31.148 | 7.793 |
+| 10,000 repeated imports | 11.540 | 12.105 | 1.007 |
+| Circular imports | 10.452 | 9.632 | 0.588 |
+| Package initialization | 10.075 | 8.993 | 0.584 |
+| 50-module dependency chain | 13.386 | 9.753 | 0.555 |
+
+The native pass executable is 94504 bytes. Median measured peak child RSS is 2.02 MiB for Bonemarrow and 11.51 MiB for Python. These values include the small C measurement-parent inheritance floor. Shared libraries and Python installation size are excluded from executable image sizes.
+
+Native builds in this run took 1.068–2.518 seconds, with caching disabled for both
+compiler backends. Cached native builds and relinking are tested separately;
+they are not substituted for cold compilation measurements.
+
+[Raw samples, CPU/RSS, IQR, compilation time, source hashes, compiler/environment,
+image sizes and dependencies](benchmarks/packages-26.7-linux-python314.json)
+are committed. Reproduce in an installed compiler environment:
 
 ```sh
-PYTHONPATH=. python examples/native/benchmark.py --repeat 9 --warmups 2 --output native-results.json
+python examples/native/package_benchmark.py --output /tmp/packages.json
 ```
 
-Select the Python environment deliberately: the same interpreter runs the Python
-baseline and backs the CPython executable. Published results used `/usr/bin/python`
-3.14.8, rather than an editable-development virtual environment with extra startup
-hooks. The CaRT executable does not use that interpreter. No GUI application is
-launched. `--application PATH` optionally adds an analysis-only compatibility probe.
+The helper in `examples/native/measure.c` measures fork/exec/wait4 using a minimal
+C parent, avoiding inheritance of a large Python measurement-parent RSS watermark.
+RSS zero-accounting samples are null. Timings include loading, initialization,
+computation, output and shutdown. They exclude measurement-helper startup, fixture
+setup, compilation and validation. Program sources are hidden during each compiled
+run, and each process gets an empty private working directory. Python uses `-B`
+to avoid bytecode cache side effects. Package Python baselines use an explicit
+`sys.path`/`runpy.run_module` bootstrap from that private working directory, which
+adds interpreter-side bootstrap work; they are not pure import-only timings.
+The compiler checkout was on PYTHONPATH during the reference run. The exact
+baseline interpreter command is fixed in the benchmark source.
 
-Each supported fixture is compiled at O3, including consumed/printed results.
-Compile wall time is separate. Run order is shuffled deterministically per round
-(seed 266). Before accepting samples, every repetition must agree on stdout,
-stderr, exit status and private-working-directory file hashes. Fixture setup and
-validation are outside measured execution. Unsupported native categories retain
-located diagnostics and are not given native timing/speedup entries.
+No CPU affinity or background-load control was imposed. Distributions/IQR matter;
+these environment-specific medians are not universal startup/memory guarantees.
+The source fixtures deliberately avoid unsupported libraries/classes/GUI code.
+The 50-node workload is a dependency chain, not a test of every graph shape.
+Cross-module calls use native tagged dispatch, not scalar intermodule inlining.
+In this fixture Calcium's CPython backend is slower than ordinary Python; that
+regression in generic compatibility-call overhead remains visible in the table.
+Dictionary/set lookups are still linear and need their own scaling benchmarks.
+GUI editing responsiveness, filesystem-heavy application performance, and sustained
+large-application throughput were not measured.
 
-A small C helper measures high-resolution wall time, child CPU time and child peak
-RSS using clock_gettime/wait4. This avoids inheriting the large Python measurement
-process's RSS high-water mark. Helper startup is excluded; fork, output redirection,
-executable loading, program execution and shutdown are included. The small C
-helper's inheritance floor still affects absolute RSS; zero-accounting samples
-are null, not claims of zero memory. Linux KiB are converted to bytes. Wall-time
-samples include application stdout and process startup; they are not kernel-only
-or GUI interaction measurements. CPU affinity/background load are not controlled.
-
-Executable sizes cover only the main image: CPython binaries also need libpython
-and the standard library, while CaRT still needs compatible platform C/math
-libraries. These are not total deployment-footprint measurements.
-
-## Recorded reference run
-
-2026-10-25, AMD Ryzen 5 7600X, Linux x86-64, CPython 3.14.8, GCC 16.2.1,
-O3, strict floating-point flags, two warmups and nine samples per runtime.
-[Raw samples, CPU/RSS, IQR, source hashes, sizes and compile times](benchmarks/native-26.6-linux-python314.json).
-
-| Whole-process workload | Python median | CPython backend | Native backend |
-| --- | ---: | ---: | ---: |
-| Empty pass | 8.406 ms | 8.782 ms | 0.493 ms |
-| Sum of squares, n=1,000,000 | 50.815 ms | 10.441 ms | 2.134 ms |
-| Recursive Fibonacci, n=25 | 14.741 ms | 10.241 ms | 1.322 ms |
-| String concat/repeat fixture | 10.723 ms | 11.463 ms | 2.850 ms |
-| One million compiled calls | 58.642 ms | 119.809 ms | 25.672 ms |
-
-| Native workload | Median child peak RSS | Main executable bytes |
-| --- | ---: | ---: |
-| Empty pass | 1.992 MiB | 39,128 |
-| Sum of squares, n=1,000,000 | 2.293 MiB | 43,432 |
-| Recursive Fibonacci, n=25 | 2.262 MiB | 47,600 |
-| String concat/repeat fixture | 2.613 MiB | 43,288 |
-| One million compiled calls | 2.277 MiB | 43,584 |
-
-The pass startup target below 1 ms was met on this reference machine. It is not
-a portable guarantee. The arithmetic and recursion fixtures use checked scalar
-kernels. The call fixture uses guarded direct C calls and tagged primitive values.
-The CPython backend's call fixture is slower than Python; translating generic
-boxed calls to C does not guarantee acceleration. Faster whole-process string
-results do not establish faster sustained string processing after startup.
-
-Containers, classes/objects, imports and filesystem fixtures are timed for Python
-and the CPython backend, but **unsupported in native 26.6**. Real projects needing
-these features, including Discribe, still require the CPython backend. No GUI
-editing, broad application speedup or complete Python compatibility is claimed.
-These fixed workloads are an acceptance baseline, not a substitute for future
-allocation, object-model, import and real-application profiling campaigns.
+The [26.6 single-file measurements](benchmarks/native-26.6-linux-python314.json)
+remain historical results, from another run and backend version. Avoid treating
+their medians as a controlled before/after experiment for 26.7.

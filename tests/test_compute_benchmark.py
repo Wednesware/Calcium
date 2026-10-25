@@ -20,7 +20,7 @@ def files(n):
     print(text)
     return [True, n, {'data': text}]
 """)
-    compiler = Calcium(optimization=3, fallback=False)
+    compiler = Calcium(backend="cpython", optimization=3, fallback=False)
     result = benchmark_function(compiler, source, function="work", arguments=[1000], repeat=3)
     assert result.success, result.diagnostics
     report = result.metadata["benchmark"]
@@ -51,7 +51,13 @@ def file_effect():
     return 1
 """)
     for name in ["result_type", "file_effect"]:
-        result = benchmark_function(Calcium(), source, function=name, repeat=1, warmups=0)
+        result = benchmark_function(
+            Calcium(backend="cpython"),
+            source,
+            function=name,
+            repeat=1,
+            warmups=0,
+        )
         assert not result.success
         assert result.diagnostics[-1].code == "C104"
         assert "benchmark" not in result.metadata
@@ -68,6 +74,11 @@ def test_compute_benchmark_timeout_is_a_diagnostic(tmp_path, monkeypatch):
         return original(*args, **kwargs)
 
     monkeypatch.setattr(subprocess, "run", run)
-    result = benchmark_function(Calcium(), source, function="work", timeout=1)
+    result = benchmark_function(
+        Calcium(backend="cpython"),
+        source,
+        function="work",
+        timeout=1,
+    )
     assert not result.success
     assert "timed out" in result.diagnostics[-1].message

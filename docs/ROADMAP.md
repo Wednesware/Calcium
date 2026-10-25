@@ -1,6 +1,6 @@
-> 26.6 delivers the first standalone native milestone from
-> [26.6_PLAN.md](../26.6_PLAN.md). CPython stays default. See [Native](NATIVE.md)
-> for implemented support and future native phases; this is not full Python support.
+> 26.7 makes Bonemarrow the default independent native engine, adding native
+> projects/imports and partial container/signature expansion. The compatibility
+> architecture below applies to explicit `--cpython`. See [Native](NATIVE.md).
 
 # Roadmap and architecture review
 

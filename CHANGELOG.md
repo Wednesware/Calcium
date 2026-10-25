@@ -1,5 +1,14 @@
 # Changelog
 
+## 26.7
+
+- Make Bonemarrow the default engine; add `--use`, `--bmrw`, `--cpython`, conflict checks, quiet/verbose/fancy CLI behavior and versioned engine information.
+- Compile local multi-file projects into separate C translation units with CaRT module namespaces, initialization states, caching, relative/aliased/circular imports and cross-module calls, without CPython.
+- Add native collections, indexing/slicing/iteration, richer signatures and expanded calls, common container methods, rooted defaults and iterative tracing for mutable cycles.
+- Reuse validated object caching with a separate native ABI identity and no Python SDK query.
+- Add differential/source-free/sanitizer/wheel tests, three-runtime package benchmarks and an explicit Discribe blocker report. Classes, structured exceptions, closures and library/GUI bindings remain unfinished.
+
+
 ## 26.6 — 2026-10-25
 
 - Add explicit `--backend native` / `--backend cpython`, preserving CPython as default.

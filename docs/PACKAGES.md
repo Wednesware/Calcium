@@ -1,3 +1,7 @@
+> In 26.7 Bonemarrow is the default and supports native static project imports.
+> See [the native import contract](NATIVE.md). The historical importlib, fallback,
+> external-interpreter and CPython bundle details below require `--cpython`.
+
 > CLI update in 26.3: `ca package/` builds directly. Reported compatibility
 > execution is allowed by default in the CLI; use `--no-fallback` for native-only
 > enforcement. The API retains its strict project default unless `fallback=True`.

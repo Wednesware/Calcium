@@ -208,17 +208,12 @@ def test_native_runtime_errors(tmp_path, text, kind):
 @pytest.mark.parametrize(
     "text",
     [
-        "import os",
         "from __future__ import annotations",
-        "x=[1,2]",
         "class C: pass",
-        "def f(x=1): return x",
         "def f():\n    yield 1",
         'def f(x: print("side")): pass',
         "print(1/2)",
         "print(1 is 1)",
-        'print(len("a"))',
-        'print("s"[0])',
         "def f():\n    def inner(): pass\n    return inner",
         'print(b"data")',
     ],
@@ -230,7 +225,7 @@ def test_native_unsupported_never_falls_back(tmp_path, text):
     assert not result.success and not result.fallbacks and not result.artifacts
     assert all(d.code == "C160" for d in result.diagnostics if d.severity == "error")
     assert all(
-        "no CPython fallback" in d.message for d in result.diagnostics if d.severity == "error"
+        "no automatic fallback" in d.message for d in result.diagnostics if d.severity == "error"
     )
 
 
@@ -353,7 +348,7 @@ def test_backend_cli_selection_and_defaults(tmp_path):
         text=True,
     )
     assert default.returncode == 0, default.stderr
-    assert json.loads(default.stdout)["metadata"]["backend"] == "cpython"
+    assert json.loads(default.stdout)["metadata"]["backend"] == "native"
     info = subprocess.run(
         [
             sys.executable,

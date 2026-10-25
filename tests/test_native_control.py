@@ -161,9 +161,9 @@ def test_native_control(tmp_path, level, name):
         [sys.executable, "-Wignore::SyntaxWarning", str(source)], capture_output=True, timeout=10
     )
     assert baseline.returncode == 0, baseline.stderr
-    result = Calcium(target="executable", optimization=level, fallback=False, cache=False).build(
-        source, output=tmp_path / "program"
-    )
+    result = Calcium(
+        backend="cpython", target="executable", optimization=level, fallback=False, cache=False
+    ).build(source, output=tmp_path / "program")
     assert result.success, result.diagnostics
     assert result.metadata["mode"] == "native"
     actual = subprocess.run([str(result.executable)], capture_output=True, timeout=10)

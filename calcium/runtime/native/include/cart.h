@@ -7,10 +7,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-/* CaRT ABI 1. Tagged primitives, immutable heap objects, tracing roots. */
+/* CaRT ABI 2. Tagged primitives, module namespaces and traced heap objects,
+ * tracing roots. */
 typedef struct CaObj CaObj;
 typedef struct CaRuntime CaRuntime;
 typedef struct CaFunction CaFunction;
+typedef struct CaModule CaModule;
+typedef struct CaBinding CaBinding;
 typedef enum {
   CA_UNBOUND_T,
   CA_NONE_T,
@@ -21,15 +24,24 @@ typedef enum {
   CA_STR_T,
   CA_FUNCTION_T,
   CA_RANGE_T,
-  CA_ITER_T
+  CA_ITER_T,
+  CA_MODULE_T,
+  CA_LIST_T,
+  CA_TUPLE_T,
+  CA_DICT_T,
+  CA_SET_T,
+  CA_SLICE_T,
+  CA_METHOD_T
 } CaTag;
 typedef struct {
   CaTag tag;
+  uint64_t identity; /* preserves NaN identity across tagged-value copies */
   union {
     int64_t i;
     double f;
     CaObj *obj;
     const CaFunction *fn;
+    CaModule *module;
   } as;
 } CaValue;
 #define CA_UNBOUND ((CaValue){.tag = CA_UNBOUND_T})
@@ -40,9 +52,7 @@ static inline CaValue ca_int(int64_t i) {
 static inline CaValue ca_bool(int i) {
   return (CaValue){.tag = CA_BOOL_T, .as.i = !!i};
 }
-static inline CaValue ca_float(double f) {
-  return (CaValue){.tag = CA_FLOAT_T, .as.f = f};
-}
+CaValue ca_float(double);
 static inline CaValue ca_function(const CaFunction *f) {
   return (CaValue){.tag = CA_FUNCTION_T, .as.fn = f};
 }
@@ -52,7 +62,7 @@ typedef struct CaFrame {
   size_t count;
 } CaFrame;
 struct CaObj {
-  CaObj *next;
+  CaObj *next, *mark_next;
   size_t bytes;
   int marked;
   CaTag kind;
@@ -62,6 +72,8 @@ struct CaRuntime {
   CaFrame *roots;
   size_t bytes, threshold, collections, allocations, peak_bytes;
   unsigned depth;
+  CaModule **modules;
+  size_t module_count;
   const char *error;
   char message[256];
 };
@@ -72,6 +84,9 @@ struct CaFunction {
   const char **parameters;
   CaCode code;
   int builtin;
+  int positional;
+  CaValue *defaults;
+  int vararg, kwarg;
 };
 typedef struct {
   CaObj base;
@@ -93,6 +108,65 @@ typedef struct {
   CaValue iterable, current;
   size_t index;
 } CaIter;
+struct CaBinding {
+  CaBinding *next;
+  char *name;
+  CaValue value;
+};
+struct CaModule {
+  const char *name, *package;
+  int is_package, state; /* 0 absent, 1 initializing, 2 loaded */
+  const char **names;
+  CaValue *values;
+  size_t count;
+  CaValue (*initialize)(CaRuntime *);
+  CaBinding *extra;
+};
+static inline CaValue ca_module_value(CaModule *m) {
+  return (CaValue){.tag = CA_MODULE_T, .as.module = m};
+}
+CaValue ca_import(CaRuntime *, CaModule *, const char *, int, int,
+                  const char **);
+CaValue ca_attribute(CaRuntime *, CaValue, const char *, int);
+void ca_set_attribute(CaRuntime *, CaValue, const char *, CaValue);
+CaValue ca_module_start(CaRuntime *, CaModule *);
+void ca_modules_destroy(CaRuntime *);
+typedef struct {
+  CaObj base;
+  size_t length, capacity;
+  CaValue *items;
+  int printing;
+} CaContainer;
+typedef struct {
+  CaObj base;
+  CaValue start, stop, step;
+} CaSlice;
+typedef struct {
+  CaObj base;
+  CaValue receiver;
+  int method;
+} CaMethod;
+int ca_is_container(CaValue);
+CaValue ca_container(CaRuntime *, CaTag, size_t, CaValue *);
+void ca_append(CaRuntime *, CaValue, CaValue);
+CaValue ca_getitem(CaRuntime *, CaValue, CaValue);
+void ca_setitem(CaRuntime *, CaValue, CaValue, CaValue);
+CaValue ca_slice(CaRuntime *, CaValue, CaValue, CaValue);
+CaValue ca_container_compare(CaRuntime *, CaValue, CaValue, const char *);
+int ca_contains(CaRuntime *, CaValue, CaValue);
+void ca_print_value(CaRuntime *, CaValue);
+void ca_print_container(CaRuntime *, CaValue);
+void ca_repr_string(CaString *);
+CaValue ca_sequence_binary(CaRuntime *, CaValue, CaValue, char);
+CaValue ca_collection_builtin(CaRuntime *, int, int, int, CaValue *);
+void ca_extend(CaRuntime *, CaValue, CaValue);
+void ca_kwargs_merge(CaRuntime *, CaValue, CaValue, int);
+void ca_kwargs_set(CaRuntime *, CaValue, const char *, CaValue);
+CaValue ca_call_ex(CaRuntime *, CaValue, CaValue, CaValue);
+CaValue ca_bound_method(CaRuntime *, CaValue, const char *);
+CaValue ca_method_call(CaRuntime *, CaValue, int, int, CaValue *);
+CaValue ca_unpack(CaRuntime *, CaValue, size_t);
+CaValue ca_dict_constructor(CaRuntime *, int, int, CaValue *, const char **);
 void ca_error(CaRuntime *, const char *, const char *);
 void *ca_allocate(CaRuntime *, size_t, CaTag);
 void ca_push(CaRuntime *, CaFrame *, CaValue *, size_t);
@@ -111,6 +185,8 @@ double ca_as_double(CaRuntime *, CaValue);
 void ca_print_integer(CaRuntime *, CaValue);
 void ca_print_float(double);
 CaValue ca_string(CaRuntime *, const char *, size_t);
+CaValue ca_inplace(CaRuntime *, CaValue, CaValue, char);
+CaValue ca_range_length(CaRuntime *, CaRange *);
 CaValue ca_binary(CaRuntime *, CaValue, CaValue, char);
 CaValue ca_unary(CaRuntime *, CaValue, const char *);
 CaValue ca_compare(CaRuntime *, CaValue, CaValue, const char *);

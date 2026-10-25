@@ -25,7 +25,7 @@ print(Path(__file__).parent.joinpath('data.txt').read_text())
 print(sys.argv[1:], zlib.decompress(zlib.compress(b'ok')), sqlite3.sqlite_version is not None)
 print(Path(sys.prefix).name)
 """)
-    result = Calcium(optimization=3, fallback=False).bundle(
+    result = Calcium(backend="cpython", optimization=3, fallback=False).bundle(
         package, output=tmp_path / "bundle", dependencies=False
     )
     assert result.success, result.diagnostics
@@ -54,7 +54,7 @@ print(Path(sys.prefix).name)
     assert any("libpython" in p.name for p in (output / "lib").iterdir())
     assert not any(p.is_symlink() for p in output.rglob("*"))
     with pytest.raises(ValueError, match="new directory"):
-        Calcium().bundle(__file__, output=output)
+        Calcium(backend="cpython").bundle(__file__, output=output)
 
 
 def test_bundle_explicit_resources_and_dependencies(tmp_path):
@@ -80,7 +80,7 @@ def test_bundle_explicit_resources_and_dependencies(tmp_path):
         "from pathlib import Path\nimport external_dep\nprint(external_dep.value, Path(__file__).with_name('data.txt').read_text())"
     )
     (project / "data.txt").write_text("script data")
-    result = Calcium(python=str(python), fallback=False).bundle(
+    result = Calcium(backend="cpython", python=str(python), fallback=False).bundle(
         project / "main.py", output=tmp_path / "bundle", resources=[project / "data.txt"]
     )
     assert result.success, result.diagnostics

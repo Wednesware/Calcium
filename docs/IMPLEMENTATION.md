@@ -1,17 +1,18 @@
-# Calcium 26.6 implementation contract
+# Calcium 26.7 implementation contract
 
 This is the current delivery contract. [Package transpilation](PACKAGES.md)
 describes the project/compiler-import additions in 26.2. The other specification documents describe
 the broader architecture and future milestones. Implementation began on the user's
 explicit instruction, “Please generate Calcium itself now,” on 2026-10-23.
 
-## Backend selection in 26.6
+## Backend selection in 26.7
 
-The established behavior below describes `--backend cpython`, still the default.
-`--backend native` selects independent CaRT/C11 execution for an initial subset,
+The established behavior below describes explicit `--cpython` compatibility.
+Bonemarrow (`--use bmrw`, legacy `--backend native`) is the 26.7 default,
+with independent CaRT/C11 execution for packages and a growing language subset,
 with no CPython runtime/SDK dependency or fallback. It reuses the frontend/CIR and
 validated scalar kernel IR; its values, ownership, errors and limits are specified
-in the [native contract](NATIVE.md). See [26.6 benchmarks](NATIVE_BENCHMARKS.md).
+in the [native contract](NATIVE.md). See [native benchmarks](NATIVE_BENCHMARKS.md).
 
 ## What runs today
 

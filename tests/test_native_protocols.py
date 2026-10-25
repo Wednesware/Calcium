@@ -62,9 +62,9 @@ def test_native_protocol_ordering(tmp_path, level):
     source = tmp_path / "protocols.py"
     source.write_text(SOURCE)
     output = tmp_path / ("protocols" + sysconfig.get_config_var("EXT_SUFFIX"))
-    result = Calcium(target="extension", optimization=level, fallback=False).build(
-        source, output=output
-    )
+    result = Calcium(
+        backend="cpython", target="extension", optimization=level, fallback=False
+    ).build(source, output=output)
     assert result.success, result.diagnostics
     original = subprocess.run(
         [sys.executable, "-c", RUNNER, str(source)], capture_output=True, timeout=10

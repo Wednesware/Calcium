@@ -8,6 +8,10 @@ from calcium import Calcium, __version__
 
 
 def cli(*args):
+    args = list(args)
+    if args not in [["--version"], ["--help"]]:
+        index = args.index("--") if "--" in args else len(args)
+        args[index:index] = ["--cpython"]
     return subprocess.run(
         [sys.executable, "-m", "calcium", *map(str, args)],
         capture_output=True,
@@ -98,10 +102,10 @@ def test_preserve_existing_output_on_failure(tmp_path):
     source = tmp_path / "source.py"
     source.write_text("print(1)")
     output = tmp_path / "program"
-    assert Calcium(target="executable").build(source, output=output).success
+    assert Calcium(backend="cpython", target="executable").build(source, output=output).success
     previous = output.read_bytes()
     source.write_text("if :")
-    assert not Calcium(target="executable").build(source, output=output).success
+    assert not Calcium(backend="cpython", target="executable").build(source, output=output).success
     assert output.read_bytes() == previous
 
 
@@ -113,19 +117,19 @@ def test_reject_symlink_and_foreign_output(tmp_path):
     alias = tmp_path / "alias"
     alias.symlink_to(target, target_is_directory=True)
     with pytest.raises(ValueError, match="symlink"):
-        Calcium().transpile(source, output=alias)
+        Calcium(backend="cpython").transpile(source, output=alias)
     target_file = tmp_path / "mine"
     target_file.write_text("mine")
     alias_file = tmp_path / "alias-file"
     alias_file.symlink_to(target_file)
     with pytest.raises(ValueError, match="symlink"):
-        Calcium(target="executable").build(source, output=alias_file)
+        Calcium(backend="cpython", target="executable").build(source, output=alias_file)
     assert target_file.read_text() == "mine"
     emitted = tmp_path / "emitted"
-    assert Calcium().transpile(source, output=emitted).success
+    assert Calcium(backend="cpython").transpile(source, output=emitted).success
     (emitted / "user.txt").write_text("mine")
     with pytest.raises(ValueError, match="non-Calcium"):
-        Calcium().transpile(source, output=emitted)
+        Calcium(backend="cpython").transpile(source, output=emitted)
     assert (emitted / "user.txt").read_text() == "mine"
 
 

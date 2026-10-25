@@ -42,7 +42,12 @@ def exercise():
 exercise()
 """)
     result = Calcium(
-        target="executable", optimization=3, fallback=True, compiler=str(wrapper), cache=False
+        backend="cpython",
+        target="executable",
+        optimization=3,
+        fallback=True,
+        compiler=str(wrapper),
+        cache=False,
     ).build(source)
     assert result.success, result.diagnostics
     expected = subprocess.run([sys.executable, str(source)], capture_output=True, timeout=15)
