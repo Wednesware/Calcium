@@ -1,3 +1,7 @@
+> 26.6 delivers the first standalone native milestone from
+> [26.6_PLAN.md](../26.6_PLAN.md). CPython stays default. See [Native](NATIVE.md)
+> for implemented support and future native phases; this is not full Python support.
+
 # Roadmap and architecture review
 
 Status: implementation began following the user’s explicit authorization on

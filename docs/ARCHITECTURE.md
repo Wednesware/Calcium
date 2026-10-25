@@ -1,3 +1,7 @@
+> 26.6 adds an explicit independent CaRT backend while preserving this CPython
+> compatibility design as the default. See [Native backend](NATIVE.md) for the
+> implemented subset, representation, tracing ownership and remaining phases.
+
 # Architecture proposal
 
 Status: proposed, not approved. This document and its linked specifications

@@ -1,0 +1,398 @@
+#include "cart.h"
+#include <errno.h>
+#include <inttypes.h>
+#define BASE UINT64_C(1073741824)
+#define MASK UINT32_C(1073741823)
+typedef struct {
+  int sign;
+  size_t n;
+  const uint32_t *d;
+  uint32_t small[3];
+} Digits;
+static void digits(CaValue v, Digits *d) {
+  if (v.tag == CA_BIG_T) {
+    CaBig *b = (CaBig *)v.as.obj;
+    d->sign = b->sign;
+    d->n = b->count;
+    d->d = b->limbs;
+    return;
+  }
+  int64_t i = v.as.i;
+  uint64_t m = i < 0 ? 0 - (uint64_t)i : (uint64_t)i;
+  d->sign = i < 0 ? -1 : i > 0 ? 1 : 0;
+  d->n = 0;
+  while (m) {
+    d->small[d->n++] = (uint32_t)(m & MASK);
+    m >>= 30;
+  }
+  d->d = d->small;
+}
+static CaBig *allocate_big(CaRuntime *rt, size_t n) {
+  if (n > (SIZE_MAX - sizeof(CaBig)) / sizeof(uint32_t)) {
+    ca_error(rt, "MemoryError", "integer too large");
+    return NULL;
+  }
+  return ca_allocate(rt, sizeof(CaBig) + n * sizeof(uint32_t), CA_BIG_T);
+}
+static CaValue finish(CaBig *b) {
+  while (b->count && b->limbs[b->count - 1] == 0)
+    b->count--;
+  if (!b->count)
+    return ca_int(0);
+  if (b->count <= 3) {
+    uint64_t m = 0;
+    int fits = 1;
+    for (size_t i = b->count; i--;) {
+      if (m > (UINT64_MAX >> 30)) {
+        fits = 0;
+        break;
+      }
+      m = (m << 30) | b->limbs[i];
+    }
+    if (fits && m <= (b->sign < 0 ? UINT64_C(9223372036854775808) : INT64_MAX))
+      return ca_int(
+          b->sign < 0
+              ? (m == UINT64_C(9223372036854775808) ? INT64_MIN : -(int64_t)m)
+              : (int64_t)m);
+  }
+  return (CaValue){.tag = CA_BIG_T, .as.obj = (CaObj *)b};
+}
+CaValue ca_integer(CaRuntime *rt, const char *text) {
+  errno = 0;
+  char *end;
+  intmax_t small = strtoimax(text, &end, 10);
+  if (!errno && !*end && small >= INT64_MIN && small <= INT64_MAX)
+    return ca_int((int64_t)small);
+  int sign = 1;
+  if (*text == '-') {
+    sign = -1;
+    text++;
+  } else if (*text == '+')
+    text++;
+  size_t length = strlen(text);
+  CaBig *b = allocate_big(rt, length / 8 + 2);
+  if (!b)
+    return CA_UNBOUND;
+  b->sign = sign;
+  for (size_t i = 0; i < length; i++) {
+    uint64_t carry = (unsigned)(text[i] - '0');
+    for (size_t j = 0; j < b->count; j++) {
+      uint64_t v = (uint64_t)b->limbs[j] * 10 + carry;
+      b->limbs[j] = (uint32_t)(v & MASK);
+      carry = v >> 30;
+    }
+    if (carry)
+      b->limbs[b->count++] = (uint32_t)carry;
+  }
+  return finish(b);
+}
+static int magnitude(const Digits *a, const Digits *b) {
+  if (a->n != b->n)
+    return a->n > b->n ? 1 : -1;
+  for (size_t i = a->n; i--;)
+    if (a->d[i] != b->d[i])
+      return a->d[i] > b->d[i] ? 1 : -1;
+  return 0;
+}
+int ca_integer_compare(CaValue a, CaValue b) {
+  Digits x, y;
+  digits(a, &x);
+  digits(b, &y);
+  if (x.sign != y.sign)
+    return x.sign > y.sign ? 1 : -1;
+  return x.sign * magnitude(&x, &y);
+}
+static CaValue arithmetic(CaRuntime *rt, CaValue a, CaValue b, char op) {
+  Digits x, y;
+  digits(a, &x);
+  digits(b, &y);
+  if (op == '-')
+    y.sign = -y.sign;
+  if (op == '*') {
+    if (!x.sign || !y.sign)
+      return ca_int(0);
+    if (x.n > SIZE_MAX - y.n) {
+      ca_error(rt, "MemoryError", "integer too large");
+      return CA_UNBOUND;
+    }
+    CaBig *out = allocate_big(rt, x.n + y.n);
+    if (!out)
+      return CA_UNBOUND;
+    out->sign = x.sign * y.sign;
+    out->count = x.n + y.n;
+    for (size_t i = 0; i < x.n; i++) {
+      uint64_t carry = 0;
+      for (size_t j = 0; j < y.n; j++) {
+        uint64_t v = (uint64_t)x.d[i] * y.d[j] + out->limbs[i + j] + carry;
+        out->limbs[i + j] = (uint32_t)(v & MASK);
+        carry = v >> 30;
+      }
+      out->limbs[i + y.n] = (uint32_t)carry;
+    }
+    return finish(out);
+  }
+  if (x.sign == y.sign) {
+    size_t n = x.n > y.n ? x.n : y.n;
+    CaBig *out = allocate_big(rt, n + 1);
+    if (!out)
+      return CA_UNBOUND;
+    out->sign = x.sign;
+    out->count = n;
+    uint64_t carry = 0;
+    for (size_t i = 0; i < n; i++) {
+      uint64_t v = carry + (i < x.n ? x.d[i] : 0) + (i < y.n ? y.d[i] : 0);
+      out->limbs[i] = (uint32_t)(v & MASK);
+      carry = v >> 30;
+    }
+    if (carry)
+      out->limbs[out->count++] = (uint32_t)carry;
+    return finish(out);
+  }
+  int cmp = magnitude(&x, &y);
+  if (!cmp)
+    return ca_int(0);
+  Digits *large = cmp > 0 ? &x : &y, *small = cmp > 0 ? &y : &x;
+  CaBig *out = allocate_big(rt, large->n);
+  if (!out)
+    return CA_UNBOUND;
+  out->sign = large->sign;
+  out->count = large->n;
+  int64_t borrow = 0;
+  for (size_t i = 0; i < large->n; i++) {
+    int64_t v =
+        (int64_t)large->d[i] - (i < small->n ? small->d[i] : 0) - borrow;
+    borrow = v < 0;
+    out->limbs[i] = (uint32_t)(v + (borrow ? (int64_t)BASE : 0));
+  }
+  return finish(out);
+}
+static int numeric(CaValue a) {
+  return a.tag == CA_INT_T || a.tag == CA_BOOL_T || a.tag == CA_BIG_T ||
+         a.tag == CA_FLOAT_T;
+}
+static int bit(const Digits *d, size_t b) {
+  return b / 30 < d->n ? (d->d[b / 30] >> (b % 30)) & 1 : 0;
+}
+double ca_as_double(CaRuntime *rt, CaValue a) {
+  if (a.tag == CA_FLOAT_T)
+    return a.as.f;
+  if (a.tag != CA_BIG_T)
+    return (double)a.as.i;
+  Digits d;
+  digits(a, &d);
+  size_t bits = (d.n - 1) * 30;
+  uint32_t high = d.d[d.n - 1];
+  while (high) {
+    bits++;
+    high >>= 1;
+  }
+  if (bits > 1024) {
+    ca_error(rt, "OverflowError", "int too large to convert to float");
+    return 0;
+  }
+  size_t shift = bits > 53 ? bits - 53 : 0;
+  uint64_t top = 0;
+  for (size_t i = bits; i > shift;)
+    top = (top << 1) | (unsigned)bit(&d, --i);
+  if (shift && bit(&d, shift - 1)) {
+    int sticky = 0;
+    for (size_t i = 0; i + 1 < shift; i++)
+      if (bit(&d, i)) {
+        sticky = 1;
+        break;
+      }
+    if (sticky || (top & 1))
+      top++;
+  }
+  double value = ldexp((double)top, (int)shift);
+  if (!isfinite(value))
+    ca_error(rt, "OverflowError", "int too large to convert to float");
+  return d.sign < 0 ? -value : value;
+}
+CaValue ca_numeric(CaRuntime *rt, CaValue a, CaValue b, char op) {
+  if (!numeric(a) || !numeric(b)) {
+    ca_error(rt, "TypeError",
+             "unsupported operand types for native arithmetic");
+    return CA_UNBOUND;
+  }
+  if (a.tag == CA_FLOAT_T || b.tag == CA_FLOAT_T) {
+    double x = ca_as_double(rt, a), y = ca_as_double(rt, b);
+    if (rt->error)
+      return CA_UNBOUND;
+    return ca_float(op == '+' ? x + y : op == '-' ? x - y : x * y);
+  }
+  if (a.tag != CA_BIG_T && b.tag != CA_BIG_T) {
+    long out;
+    int ok = op == '+'   ? ca_long_add((long)a.as.i, (long)b.as.i, &out)
+             : op == '-' ? ca_long_subtract((long)a.as.i, (long)b.as.i, &out)
+                         : ca_long_multiply((long)a.as.i, (long)b.as.i, &out);
+    if (ok)
+      return ca_int((int64_t)out);
+  }
+  return arithmetic(rt, a, b, op);
+}
+CaValue ca_negate(CaRuntime *rt, CaValue a) {
+  return ca_numeric(rt, ca_int(0), a, '-');
+}
+/* Compare an integer with an IEEE binary64 exactly, without rounding the int.
+ */
+static int int_float(CaRuntime *rt, CaValue a, double f) {
+  if (isinf(f))
+    return f > 0 ? -1 : 1;
+  double integral = trunc(f);
+  int exponent = 0;
+  double fraction = frexp(fabs(integral), &exponent);
+  uint64_t mantissa = (uint64_t)ldexp(fraction, 53);
+  CaValue whole = ca_int(0);
+  if (integral != 0) {
+    int shift = exponent - 53;
+    if (shift < 0)
+      mantissa >>= -shift;
+    uint32_t limbs[36] = {0};
+    size_t count = 0;
+    if (shift <= 0) {
+      while (mantissa) {
+        limbs[count++] = (uint32_t)(mantissa & MASK);
+        mantissa >>= 30;
+      }
+    } else {
+      for (int i = 0; i < 53; i++)
+        if ((mantissa >> i) & 1) {
+          size_t pos = (size_t)(shift + i);
+          limbs[pos / 30] |= UINT32_C(1) << (pos % 30);
+        }
+      count = (size_t)(exponent + 29) / 30;
+    }
+    CaBig *big = allocate_big(rt, count);
+    if (!big)
+      return 0;
+    big->count = count;
+    big->sign = f < 0 ? -1 : 1;
+    memcpy(big->limbs, limbs, count * sizeof(uint32_t));
+    whole = finish(big);
+  }
+  int cmp = ca_integer_compare(a, whole);
+  if (!cmp && f != integral)
+    cmp = f > 0 ? -1 : 1;
+  return cmp;
+}
+int ca_numeric_compare(CaRuntime *rt, CaValue a, CaValue b, int *unordered) {
+  *unordered = 0;
+  if (!numeric(a) || !numeric(b)) {
+    ca_error(rt, "TypeError", "values are not ordered numbers");
+    return 0;
+  }
+  if (a.tag == CA_FLOAT_T && isnan(a.as.f)) {
+    *unordered = 1;
+    return 0;
+  }
+  if (b.tag == CA_FLOAT_T && isnan(b.as.f)) {
+    *unordered = 1;
+    return 0;
+  }
+  if (a.tag != CA_FLOAT_T && b.tag != CA_FLOAT_T)
+    return ca_integer_compare(a, b);
+  if (a.tag == CA_FLOAT_T && b.tag == CA_FLOAT_T)
+    return (a.as.f > b.as.f) - (a.as.f < b.as.f);
+  return a.tag == CA_FLOAT_T ? -int_float(rt, b, a.as.f)
+                             : int_float(rt, a, b.as.f);
+}
+void ca_print_integer(CaRuntime *rt, CaValue a) {
+  if (a.tag != CA_BIG_T) {
+    printf("%" PRId64, a.as.i);
+    return;
+  }
+  Digits d;
+  digits(a, &d);
+  uint32_t *copy = malloc(d.n * sizeof(uint32_t));
+  if (d.n > (SIZE_MAX / sizeof(uint32_t) - 1) / 2) {
+    ca_error(rt, "MemoryError", "integer display too large");
+    free(copy);
+    return;
+  }
+  uint32_t *groups = malloc((d.n * 2 + 1) * sizeof(uint32_t));
+  if (!copy || !groups) {
+    free(copy);
+    free(groups);
+    ca_error(rt, "MemoryError", "integer display allocation failed");
+    return;
+  }
+  memcpy(copy, d.d, d.n * sizeof(uint32_t));
+  size_t n = d.n, count = 0;
+  while (n) {
+    uint64_t rem = 0;
+    for (size_t i = n; i--;) {
+      uint64_t v = (rem << 30) | copy[i];
+      copy[i] = (uint32_t)(v / 1000000000);
+      rem = v % 1000000000;
+    }
+    groups[count++] = (uint32_t)rem;
+    while (n && !copy[n - 1])
+      n--;
+  }
+  size_t decimal_digits = (count - 1) * 9;
+  for (uint32_t top = groups[count - 1]; top; top /= 10)
+    decimal_digits++;
+  if (decimal_digits > 4300) {
+    free(copy);
+    free(groups);
+    ca_error(rt, "ValueError",
+             "integer string conversion exceeds the native 4300-digit limit");
+    return;
+  }
+  if (d.sign < 0)
+    putchar('-');
+  printf("%u", groups[count - 1]);
+  while (--count)
+    printf("%09u", groups[count - 1]);
+  free(copy);
+  free(groups);
+}
+
+/* Positive floor quotient for exact range sequence lengths. Public arithmetic
+   division remains gated off until the full signed/float contract is
+   implemented. */
+CaValue ca_positive_divide(CaRuntime *rt, CaValue a, CaValue b) {
+  Digits x, y;
+  digits(a, &x);
+  digits(b, &y);
+  if (x.sign < 0 || y.sign <= 0) {
+    ca_error(rt, "SystemError", "invalid positive integer quotient");
+    return CA_UNBOUND;
+  }
+  if (!x.sign || magnitude(&x, &y) < 0)
+    return ca_int(0);
+  if (a.tag != CA_BIG_T && b.tag != CA_BIG_T)
+    return ca_int(a.as.i / b.as.i);
+  CaBig *q = allocate_big(rt, x.n), *rem = allocate_big(rt, y.n + 1);
+  if (!q || !rem)
+    return CA_UNBOUND;
+  q->sign = 1;
+  q->count = x.n;
+  rem->sign = 1;
+  size_t bits = x.n * 30;
+  while (bits--) {
+    uint64_t carry = (unsigned)bit(&x, bits);
+    for (size_t i = 0; i < rem->count; i++) {
+      uint64_t value = ((uint64_t)rem->limbs[i] << 1) | carry;
+      rem->limbs[i] = (uint32_t)(value & MASK);
+      carry = value >> 30;
+    }
+    if (carry)
+      rem->limbs[rem->count++] = (uint32_t)carry;
+    Digits r = {.sign = 1, .n = rem->count, .d = rem->limbs};
+    if (magnitude(&r, &y) >= 0) {
+      int64_t borrow = 0;
+      for (size_t i = 0; i < rem->count; i++) {
+        int64_t value =
+            (int64_t)rem->limbs[i] - (i < y.n ? y.d[i] : 0) - borrow;
+        borrow = value < 0;
+        rem->limbs[i] = (uint32_t)(value + (borrow ? (int64_t)BASE : 0));
+      }
+      while (rem->count && !rem->limbs[rem->count - 1])
+        rem->count--;
+      q->limbs[bits / 30] |= UINT32_C(1) << (bits % 30);
+    }
+  }
+  return finish(q);
+}

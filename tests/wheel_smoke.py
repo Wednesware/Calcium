@@ -1,5 +1,6 @@
 """Run after installing the wheel; child imports are isolated from the checkout."""
 
+import os
 import subprocess
 import sys
 import tempfile
@@ -18,7 +19,7 @@ def main():
             cwd=root,
             text=True,
         )
-        assert version.strip() == "Calcium 26.5", version
+        assert version.strip() == "Calcium 26.6", version
         license_name = subprocess.check_output(
             [
                 sys.executable,
@@ -54,7 +55,44 @@ def main():
         # Ensure the installed runtime can execute without original project files.
         package.rename(root / "hidden")
         assert subprocess.check_output([str(root / "program")], cwd=root) == b"42\n"
-    print("Installed wheel: isolated CLI, native build, fallback, license, and source-free run OK")
+        native_source = root / "native.py"
+        native_source.write_text("def square(x: int) -> int:\n    return x*x\nprint(square(9))\n")
+        native = root / "standalone"
+        run = subprocess.run(
+            [
+                sys.executable,
+                "-I",
+                "-m",
+                "calcium",
+                str(native_source),
+                "--backend",
+                "native",
+                "--python",
+                "/missing/python",
+                "--run",
+                "-O3",
+                "-o",
+                str(native),
+            ],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        assert run.returncode == 0 and run.stdout == "81\n", run.stderr
+        native_source.unlink()
+        assert (
+            subprocess.check_output(
+                [str(native)],
+                cwd=root,
+                env=dict(os.environ, PATH="", PYTHONHOME="/missing", PYTHONPATH="/missing"),
+            )
+            == b"81\n"
+        )
+        assert "libpython" not in subprocess.check_output(["ldd", str(native)], text=True)
+    print(
+        "Installed wheel: isolated CLI, both backends, fallback, license, and standalone source-free run OK"
+    )
 
 
 if __name__ == "__main__":

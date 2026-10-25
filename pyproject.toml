@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wednesware-calcium"
-version = "26.5"
+version = "26.6"
 description = "Python-to-C compiler with explicit CPython interoperability"
 readme = "README.md"
 requires-python = ">=3.12,<3.15"
@@ -24,7 +24,7 @@ test = ["pytest>=8"]
 include = ["calcium*"]
 
 [tool.setuptools.package-data]
-calcium = [".nitropkg", "runtime/*.h", "runtime/*.c"]
+calcium = [".nitropkg", "runtime/*.h", "runtime/*.c", "runtime/native/include/*.h", "runtime/native/src/*.c"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

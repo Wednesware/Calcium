@@ -1,3 +1,6 @@
+> 26.6: the independent CaRT backend has its own [native contract](NATIVE.md).
+> The compatibility-backend design below remains supported and is still default.
+
 # Optimization framework
 
 The full framework below is a design proposal. Delivered in 26.3: O0 baseline,
