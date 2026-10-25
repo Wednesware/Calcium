@@ -208,14 +208,14 @@ def test_native_runtime_errors(tmp_path, text, kind):
 @pytest.mark.parametrize(
     "text",
     [
-        "from __future__ import annotations",
-        "class C: pass",
+        "from __future__ import division",
+        "class C(metaclass=type): pass",
         "def f():\n    yield 1",
         'def f(x: print("side")): pass',
-        "print(1/2)",
+        "print(1 << 2)",
         "print(1 is 1)",
-        "def f():\n    def inner(): pass\n    return inner",
-        'print(b"data")',
+        "async def f(): pass",
+        "def f():\n    yield 1",
     ],
 )
 def test_native_unsupported_never_falls_back(tmp_path, text):
@@ -388,7 +388,7 @@ def test_failed_native_build_preserves_binary_and_complex_frames(tmp_path):
     actual = subprocess.run([output], capture_output=True, text=True)
     assert actual.returncode == 0 and actual.stdout == "99\n", actual.stderr
     saved = output.read_bytes()
-    source.write_text("import os")
+    source.write_text("import ctypes")
     assert not Calcium(backend="native", target="executable").build(source, output=output).success
     assert output.read_bytes() == saved
 

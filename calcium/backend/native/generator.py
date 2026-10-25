@@ -17,7 +17,7 @@ def generate(program, optimization=0, *, module_info=None):
             for op in block.instructions:
                 if op.op == "constant":
                     constants.setdefault(json.dumps(op.data, sort_keys=True), op.data)
-                if op.op in {"load", "store"} and op.data not in fn.locals:
+                if op.op in {"load", "store", "native_raw_load"} and op.data not in fn.locals:
                     names.add(op.data)
     # Guards are real dynamic binding checks, never trusted annotations.
     for fn in program.functions:
@@ -38,6 +38,8 @@ def generate(program, optimization=0, *, module_info=None):
     ]
     for fn in program.functions:
         code.append(f"static CaValue {fn.symbol}(CaRuntime *rt, CaValue *args);")
+        if fn.native and fn.native.get("generator"):
+            code.append(f"static int {fn.symbol}_resume(CaRuntime *,CaGenerator *,CaValue *);")
         if not fn.module:
             keys = ", ".join(cstr(n) for n in fn.parameters) or "NULL"
             code += [
@@ -80,8 +82,14 @@ def generate(program, optimization=0, *, module_info=None):
             op.result: op for b in fn.blocks for op in b.instructions if op.result is not None
         }
         functions = {f.name: f for f in program.functions if not f.module}
+        native = fn.native or {}
+        generator = native.get("generator", False)
+        freevars = native.get("freevars", [])
+        cellvars = set(native.get("cellvars", []))
         local = {n: fn.registers + i for i, n in enumerate(fn.locals)}
-        size = max(1, fn.registers + len(local))
+        envslot = fn.registers + len(local)
+        frame_count = envslot + bool(freevars)
+        size = max(1, frame_count)
         heap_frame = size > 64
         counts["large_frame_allocation_sites"] += int(heap_frame)
         max_call_args = max(
@@ -89,31 +97,84 @@ def generate(program, optimization=0, *, module_info=None):
                 len(op.args)
                 for b in fn.blocks
                 for op in b.instructions
-                if op.op in {"call", "container"}
+                if op.op in {"call", "container", "native_class", "join_string", "function"}
             ),
             default=0,
         )
+        if generator:
+            code += [
+                f"static CaValue {fn.symbol}(CaRuntime *rt,CaValue *args){{",
+                f"CaValue value=ca_generator_new(rt,{fn.symbol}_resume,&{fn.symbol}_def,{frame_count});",
+                "if(rt->error)return CA_UNBOUND;",
+                "CaGenerator *g=(CaGenerator *)value.as.obj;CaValue *values=g->values;",
+            ]
+            for i, name in enumerate(fn.parameters):
+                code.append(f"values[{local[name]}]=args[{i}];")
+            if freevars:
+                code.append(f"values[{envslot}]=rt->environment;")
+            for name in sorted(cellvars):
+                code.append(f"values[{local[name]}]=ca_cell(rt,values[{local[name]}]);")
+            code += [
+                "return rt->error?CA_UNBOUND:value;}",
+                f"static int {fn.symbol}_resume(CaRuntime *rt,CaGenerator *g,CaValue *out){{",
+                "CaValue *values=g->values;",
+            ]
+        else:
+            code += [
+                f"static CaValue {fn.symbol}(CaRuntime *rt,CaValue *args){{",
+                f"CaValue *values=calloc({size},sizeof(CaValue));"
+                if heap_frame
+                else f"CaValue values[{size}]={{0}};",
+            ]
         code += [
-            f"static CaValue {fn.symbol}(CaRuntime *rt, CaValue *args) {{",
-            f"CaValue *values=calloc({size},sizeof(CaValue));"
+            "CaValue result=CA_UNBOUND;CaFrame frame;",
+            'if(!values){ca_error(rt,"MemoryError","native frame allocation failed");return -1;}'
+            if generator
+            else 'if(!values){ca_error(rt,"MemoryError","native frame allocation failed");return CA_UNBOUND;}'
             if heap_frame
-            else f"CaValue values[{size}] = {{0}};",
-            "CaValue result=CA_UNBOUND; CaFrame frame;",
-            (
-                'if(!values){ca_error(rt,"MemoryError","native frame allocation failed");return CA_UNBOUND;}'
-                if heap_frame
-                else ""
-            ),
-            (
-                "if(!ca_enter(rt)){free(values);return CA_UNBOUND;}"
-                if heap_frame
-                else "if(!ca_enter(rt))return CA_UNBOUND;"
-            ),
-            f"CaValue call_values[{max(1, max_call_args)}];",
-            f"ca_push(rt, &frame, values, {fn.registers + len(local)});",
+            else "",
         ]
-        for i, name in enumerate(fn.parameters):
-            code.append(f"values[{local[name]}]=args[{i}];")
+        code.append(
+            "if(!ca_enter(rt))return -1;"
+            if generator
+            else "if(!ca_enter(rt)){free(values);return CA_UNBOUND;}"
+            if heap_frame
+            else "if(!ca_enter(rt))return CA_UNBOUND;"
+        )
+        code += [
+            f"CaValue call_values[{max(1, max_call_args)}];",
+            f"ca_push(rt,&frame,values,{frame_count});",
+        ]
+        if not generator:
+            for i, name in enumerate(fn.parameters):
+                code.append(f"values[{local[name]}]=args[{i}];")
+            if freevars:
+                code.append(f"values[{envslot}]=rt->environment;")
+            for name in sorted(cellvars):
+                code += [
+                    f"values[{local[name]}]=ca_cell(rt,values[{local[name]}]);",
+                    "if(rt->error)goto error;",
+                ]
+
+        def cell(name):
+            if name in cellvars:
+                return f"values[{local[name]}]"
+            if name in freevars:
+                return f"ca_capture(values[{envslot}],{freevars.index(name)})"
+            raise ValueError("unresolved native closure cell " + name)
+
+        yield_ids = {
+            op.result: i + 1
+            for i, op in enumerate(
+                op for block in fn.blocks for op in block.instructions if op.op == "native_yield"
+            )
+        }
+        if generator:
+            code.append("switch(g->pc){case 0:break;")
+            code += [f"case {index}:goto resume_{index};" for index in yield_ids.values()]
+            code.append(
+                'default:ca_error(rt,"RuntimeError","invalid generator resume state");goto error;}'
+            )
         if fn.kernel and fn.kernel.get("enabled"):
             guards = []
             for name in fn.kernel["guards"]:
@@ -140,27 +201,40 @@ def generate(program, optimization=0, *, module_info=None):
                 expr = None
                 if op.op == "constant":
                     expr = f"constants[{pool[json.dumps(op.data, sort_keys=True)]}]"
-                elif op.op == "load":
+                elif op.op in {"load", "native_raw_load"}:
                     source = (
-                        f"values[{local[op.data]}]"
+                        f"ca_cell_get({cell(op.data)})"
+                        if op.data in cellvars or op.data in freevars
+                        else f"values[{local[op.data]}]"
                         if op.data in local
                         else f"globals[{slots[op.data]}]"
                     )
-                    expr = f"ca_load(rt,{source},{cstr(op.data)},{int(op.data in local)})"
+                    expr = (
+                        source
+                        if op.op == "native_raw_load"
+                        else f"ca_load(rt,{source},{cstr(op.data)},{int(op.data in local)})"
+                    )
                 elif op.op == "store":
-                    source = (
-                        f"values[{local[op.data]}]"
-                        if op.data in local
-                        else f"globals[{slots[op.data]}]"
-                    )
-                    code.append(f"{source}={v[0]};")
+                    if op.data in cellvars or op.data in freevars:
+                        code.append(f"ca_cell_set({cell(op.data)},{v[0]});")
+                    else:
+                        source = (
+                            f"values[{local[op.data]}]"
+                            if op.data in local
+                            else f"globals[{slots[op.data]}]"
+                        )
+                        code.append(f"{source}={v[0]};")
                 elif op.op == "drop":
                     code.append(f"{v[0]}=CA_UNBOUND;")
                 elif op.op == "clear":
                     code.append(f"values[{local[op.data]}]=CA_UNBOUND;")
                 elif op.op in {"binary", "checked_binary", "inplace"}:
-                    operator = {"add": "+", "subtract": "-", "multiply": "*"}[op.data]
-                    expr = f"{'ca_inplace' if op.op == 'inplace' else 'ca_binary'}(rt,{v[0]},{v[1]},'{operator}')"
+                    operator = {"add": "+", "subtract": "-", "multiply": "*"}.get(op.data)
+                    expr = (
+                        f"ca_binary_op(rt,{v[0]},{v[1]},{cstr(op.data)})"
+                        if operator is None
+                        else f"{'ca_inplace' if op.op == 'inplace' else 'ca_binary'}(rt,{v[0]},{v[1]},'{operator}')"
+                    )
                     counts["generic_operations"] += 1
                     counts["potential_heap_operations"] += 1
                 elif op.op == "unary":
@@ -171,6 +245,62 @@ def generate(program, optimization=0, *, module_info=None):
                     expr = f"ca_compare(rt,{v[0]},{v[1]},{cstr(op.data)})"
                     counts["generic_operations"] += 1
                     counts["potential_heap_operations"] += 1
+                elif op.op == "native_yield":
+                    index = yield_ids[op.result]
+                    code += [
+                        f"g->pc={index};*out={v[0]};ca_pop(rt,&frame);ca_leave(rt);return 1;",
+                        f"resume_{index}:;",
+                    ]
+                    expr = "g->sent"
+                elif op.op == "native_class":
+                    for index, value in enumerate(v):
+                        code.append(f"call_values[{index}]={value};")
+                    expr = f"ca_class(rt,{cstr(op.data)},{len(v)},call_values)"
+                elif op.op == "native_class_load":
+                    expr = f"ca_class_load(rt,{v[0]},{v[1]},{cstr(op.data)})"
+                elif op.op == "error_get":
+                    expr = "ca_error_get(rt)"
+                elif op.op == "error_set":
+                    code.append(f"ca_error_set(rt,{v[0]});")
+                elif op.op == "exception_take":
+                    expr = "ca_exception_take(rt)"
+                elif op.op == "handled_get":
+                    expr = "rt->handled.tag==CA_UNBOUND_T?CA_NONE:rt->handled"
+                elif op.op == "handled_set":
+                    code.append(f"rt->handled={v[0]};")
+                elif op.op == "exception_raise":
+                    code.append(f"ca_raise(rt,{v[0]},CA_NONE,0);")
+                elif op.op == "exception_match":
+                    expr = f"ca_bool(ca_exception_match(rt,{v[0]},{v[1]}))"
+                elif op.op == "raise":
+                    code.append(
+                        f"ca_raise(rt,{v[0] if v else 'CA_UNBOUND'},{v[1] if len(v) > 1 else 'CA_NONE'},{int(len(v) > 1)});"
+                    )
+                elif op.op == "assert_fail":
+                    code.append(
+                        f"ca_raise(rt,ca_exception_new(rt,ca_type(CA_T_ASSERTIONERROR),{len(v)},{'&' + v[0] if v else 'NULL'}),CA_NONE,0);"
+                    )
+                elif op.op == "clear_binding":
+                    if op.data in cellvars or op.data in freevars:
+                        code.append(f"ca_cell_set({cell(op.data)},CA_UNBOUND);")
+                    else:
+                        code.append(
+                            f"values[{local[op.data]}]=CA_UNBOUND;"
+                            if op.data in local
+                            else f"globals[{slots[op.data]}]=CA_UNBOUND;"
+                        )
+                elif op.op == "special":
+                    expr = f"ca_special(rt,{v[0]},{cstr(op.data)})"
+                elif op.op == "with_exit":
+                    expr = f"ca_with_exit(rt,{v[0]},{v[1]})"
+                elif op.op == "convert_string":
+                    expr = f"ca_stringify(rt,{v[0]},{ {115: 0, 114: 1, 97: 2}[op.data] })"
+                elif op.op == "format":
+                    expr = f"ca_format(rt,{v[0]},{v[1]})"
+                elif op.op == "join_string":
+                    for index, value in enumerate(v):
+                        code.append(f"call_values[{index}]={value};")
+                    expr = f"ca_join_strings(rt,{len(v)},call_values)"
                 elif op.op == "container":
                     for index, value in enumerate(v):
                         code.append(f"call_values[{index}]={value};")
@@ -213,14 +343,26 @@ def generate(program, optimization=0, *, module_info=None):
                     expr = f"ca_attribute(rt,{v[0]},{cstr(op.data)},1)"
                 elif op.op == "function":
                     target = next(f for f in program.functions if f.symbol == op.data["symbol"])
+                    defaults = ["CA_UNBOUND"] * len(target.parameters)
                     for index, value in enumerate(v[: op.data["posdefaults"]]):
-                        slot = target.positional - op.data["posdefaults"] + index
-                        code.append(f"{target.symbol}_defaults[{slot}]={value};")
+                        defaults[target.positional - op.data["posdefaults"] + index] = value
                     for name, value in zip(op.data["kwdefaults"], v[op.data["posdefaults"] :]):
-                        code.append(
-                            f"{target.symbol}_defaults[{target.parameters.index(name)}]={value};"
-                        )
-                    expr = f"ca_function(&{op.data['symbol']}_def)"
+                        defaults[target.parameters.index(name)] = value
+                    if target.native and target.native.get("dynamic"):
+                        captures = [
+                            cell(n)
+                            for n in op.data.get("captures", target.native.get("freevars", []))
+                        ]
+                        code += [
+                            "{CaValue defaults[]={" + (",".join(defaults) or "CA_NONE") + "};",
+                            "CaValue captures[]={" + (",".join(captures) or "CA_NONE") + "};",
+                            f"{dest}=ca_closure(rt,&{target.symbol}_def,defaults,{len(captures)},captures);",
+                            "}",
+                        ]
+                    else:
+                        for index, value in enumerate(defaults):
+                            code.append(f"{target.symbol}_defaults[{index}]={value};")
+                        expr = f"ca_function(&{target.symbol}_def)"
                 elif op.op == "call":
                     for index, value in enumerate(v[1:]):
                         code.append(f"call_values[{index}]={value};")
@@ -255,7 +397,9 @@ def generate(program, optimization=0, *, module_info=None):
                 if expr is not None:
                     code.append(f"{dest}={expr};")
                 if op.error:
-                    code.append("if(rt->error)goto error;")
+                    code.append(
+                        f"if(rt->error)goto {'error' if op.error == 'error' else 'err_' + op.error};"
+                    )
             t = block.terminator
             if t.op == "return":
                 code += [f"result=values[{t.args[0]}];", "goto done;"]
@@ -265,25 +409,39 @@ def generate(program, optimization=0, *, module_info=None):
                 code += [
                     f"int truth_{block.name}=ca_truth(rt,values[{t.args[0]}]);",
                     f"values[{t.args[0]}]=CA_UNBOUND;",
-                    "if(rt->error)goto error;",
+                    f"if(rt->error)goto {'error' if t.error == 'error' else 'err_' + t.error};",
                     f"if(truth_{block.name})goto {t.targets[0]};else goto {t.targets[1]};",
                 ]
             elif t.op == "next":
                 code += [
                     f"int next_{block.name}=ca_next(rt,values[{t.args[0]}],&values[{t.result}]);",
                     f"values[{t.args[0]}]=CA_UNBOUND;",
-                    "if(rt->error)goto error;",
+                    f"if(rt->error)goto {'error' if t.error == 'error' else 'err_' + t.error};",
                     f"if(next_{block.name})goto {t.targets[0]};else goto {t.targets[1]};",
                 ]
+            elif t.op == "error":
+                code.append(f"goto {'error' if t.error == 'error' else 'err_' + t.error};")
             else:
                 raise ValueError(f"native backend does not implement terminator {t.op}")
-        code += [
-            "error: result=CA_UNBOUND;",
-            "done: ca_pop(rt,&frame);ca_leave(rt);"
-            + ("free(values);" if heap_frame else "")
-            + "return result;",
-            "}",
-        ]
+        for label, hidden in fn.exception_handlers.items():
+            code.append(f"err_{label}:;")
+            code.append(f"memset(values,0,{fn.registers}*sizeof(CaValue));")
+            code += [f"values[{local[n]}]=CA_UNBOUND;" for n in hidden]
+            code.append(f"goto {label};")
+        if generator:
+            code += [
+                "error:result=CA_UNBOUND;",
+                "done:g->result=result;g->closed=1;ca_pop(rt,&frame);ca_leave(rt);return rt->error?-1:0;",
+                "}",
+            ]
+        else:
+            code += [
+                "error:result=CA_UNBOUND;",
+                "done:ca_pop(rt,&frame);ca_leave(rt);"
+                + ("free(values);" if heap_frame else "")
+                + "return result;",
+                "}",
+            ]
     if module_info:
         code += [
             f"void {module_info['symbol']}_roots(CaRuntime *rt, CaFrame *g, CaFrame *c) {{",
@@ -342,6 +500,10 @@ def generate(program, optimization=0, *, module_info=None):
             return f"ca_float({text})"
         if kind == "str":
             return f"ca_string(rt,{cstr(value)},{len(value.encode('utf-8'))})"
+        if kind == "bytes":
+            data = bytes.fromhex(value)
+            text = '"' + "".join("\\%03o" % b for b in data) + '"'
+            return f"ca_bytes(rt,{text},{len(data)})"
         if kind == "tuple":
             items = ",".join(literal(v) for v in value) or "CA_NONE"
             return f"ca_container(rt,CA_TUPLE_T,{len(value)},(CaValue[]){{{items}}})"

@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-/* CaRT ABI 2. Tagged primitives, module namespaces and traced heap objects,
+/* CaRT ABI 3. Tagged primitives, module namespaces and traced heap objects,
  * tracing roots. */
 typedef struct CaObj CaObj;
 typedef struct CaRuntime CaRuntime;
@@ -31,7 +31,17 @@ typedef enum {
   CA_DICT_T,
   CA_SET_T,
   CA_SLICE_T,
-  CA_METHOD_T
+  CA_METHOD_T,
+  CA_CELL_T,
+  CA_CLOSURE_T,
+  CA_CLASS_T,
+  CA_INSTANCE_T,
+  CA_BOUND_T,
+  CA_TYPE_T,
+  CA_EXCEPTION_T,
+  CA_BYTES_T,
+  CA_FOREIGN_T,
+  CA_GENERATOR_T
 } CaTag;
 typedef struct {
   CaTag tag;
@@ -74,6 +84,9 @@ struct CaRuntime {
   unsigned depth;
   CaModule **modules;
   size_t module_count;
+  CaValue environment, pending, handled;
+  CaModule **standard_modules;
+  size_t standard_count;
   const char *error;
   char message[256];
 };
@@ -167,18 +180,181 @@ CaValue ca_bound_method(CaRuntime *, CaValue, const char *);
 CaValue ca_method_call(CaRuntime *, CaValue, int, int, CaValue *);
 CaValue ca_unpack(CaRuntime *, CaValue, size_t);
 CaValue ca_dict_constructor(CaRuntime *, int, int, CaValue *, const char **);
+typedef struct CaGenerator CaGenerator;
+typedef int (*CaResume)(CaRuntime *, CaGenerator *, CaValue *);
+struct CaGenerator {
+  CaObj base;
+  CaResume resume;
+  const CaFunction *definition;
+  size_t count;
+  int pc, closed, running, started;
+  CaValue result, sent;
+  CaValue values[];
+};
+CaValue ca_generator_new(CaRuntime *, CaResume, const CaFunction *, size_t);
+int ca_generator_next(CaRuntime *, CaValue, CaValue *);
+CaValue ca_generator_call(CaRuntime *, int, int, int, CaValue *, const char **);
+int ca_exit_status(CaRuntime *);
+/* Internal object/closure ABI. */
+typedef struct {
+  CaObj base;
+  CaValue value;
+} CaCell;
+typedef struct {
+  CaObj base;
+  CaFunction fn;
+  CaValue environment;
+  CaValue defaults[];
+} CaClosure;
+typedef struct {
+  CaObj base;
+  CaValue name, namespace_, parent, fields;
+  int dataclass;
+} CaClass;
+typedef struct {
+  CaObj base;
+  CaValue type, namespace_;
+  int printing;
+} CaInstance;
+typedef struct {
+  CaObj base;
+  CaValue receiver, function;
+} CaBound;
+typedef struct {
+  CaObj base;
+  CaValue type, args, cause, context, message;
+} CaException;
+typedef struct {
+  CaObj base;
+  int kind;
+  void *handle;
+  CaValue state;
+  long auxiliary;
+} CaForeign;
+enum {
+  CA_T_OBJECT = 100,
+  CA_T_STR,
+  CA_T_INT,
+  CA_T_FLOAT,
+  CA_T_BOOL,
+  CA_T_BYTES,
+  CA_T_NONE,
+  CA_T_FUNCTION,
+  CA_T_BUILTIN_FUNCTION,
+  CA_T_METHOD,
+  CA_T_TYPE,
+  CA_T_LIST,
+  CA_T_TUPLE,
+  CA_T_DICT,
+  CA_T_SET,
+  CA_T_RANGE,
+  CA_T_BASEEXCEPTION = 200,
+  CA_T_EXCEPTION,
+  CA_T_TYPEERROR,
+  CA_T_VALUEERROR,
+  CA_T_RUNTIMEERROR,
+  CA_T_NAMEERROR,
+  CA_T_UNBOUNDLOCALERROR,
+  CA_T_ATTRIBUTEERROR,
+  CA_T_LOOKUPERROR,
+  CA_T_KEYERROR,
+  CA_T_INDEXERROR,
+  CA_T_OSERROR,
+  CA_T_FILENOTFOUNDERROR,
+  CA_T_FILEEXISTSERROR,
+  CA_T_PERMISSIONERROR,
+  CA_T_IMPORTERROR,
+  CA_T_MODULENOTFOUNDERROR,
+  CA_T_ZERODIVISIONERROR,
+  CA_T_OVERFLOWERROR,
+  CA_T_MEMORYERROR,
+  CA_T_RECURSIONERROR,
+  CA_T_STOPITERATION,
+  CA_T_ASSERTIONERROR,
+  CA_T_NOTIMPLEMENTEDERROR,
+  CA_T_SYSTEMEXIT,
+  CA_T_KEYBOARDINTERRUPT,
+  CA_T_JSONDECODEERROR,
+  CA_T_SQL_ERROR,
+  CA_T_SQL_DATABASEERROR,
+  CA_T_SQL_OPERATIONALERROR,
+  CA_T_SQL_INTEGRITYERROR,
+  CA_T_SQL_PROGRAMMINGERROR,
+  CA_T_SQL_INTERFACEERROR,
+  CA_T_SQL_DATAERROR,
+  CA_T_UNICODEERROR,
+  CA_T_UNICODEENCODEERROR,
+  CA_T_UNICODEDECODEERROR
+};
+static inline CaValue ca_type(long id) {
+  return (CaValue){.tag = CA_TYPE_T, .as.i = id};
+}
+CaValue ca_cell(CaRuntime *, CaValue);
+CaValue ca_cell_get(CaValue);
+void ca_cell_set(CaValue, CaValue);
+CaValue ca_capture(CaValue, size_t);
+CaValue ca_closure(CaRuntime *, const CaFunction *, CaValue *, size_t,
+                   CaValue *);
+CaValue ca_class(CaRuntime *, const char *, size_t, CaValue *);
+CaValue ca_class_load(CaRuntime *, CaValue, CaValue, const char *);
+CaValue ca_object_attribute(CaRuntime *, CaValue, const char *);
+void ca_object_set(CaRuntime *, CaValue, const char *, CaValue);
+CaValue ca_bound(CaRuntime *, CaValue, CaValue);
+CaValue ca_object_compare(CaRuntime *, CaValue, CaValue, const char *, int *);
+CaValue ca_type_of(CaValue);
+CaValue ca_object_call(CaRuntime *, CaValue, int, int, CaValue *,
+                       const char **);
+int ca_subclass(CaRuntime *, CaValue, CaValue);
+int ca_isinstance(CaRuntime *, CaValue, CaValue);
+CaValue ca_builtin_lookup(const char *);
+const char *ca_type_name(CaValue);
+CaValue ca_exception_type(const char *);
+CaValue ca_exception_new(CaRuntime *, CaValue, int, CaValue *);
+CaValue ca_exception_take(CaRuntime *);
+CaValue ca_error_get(CaRuntime *);
+void ca_error_set(CaRuntime *, CaValue);
+void ca_raise(CaRuntime *, CaValue, CaValue, int);
+int ca_exception_match(CaRuntime *, CaValue, CaValue);
+CaValue ca_foreign_iter(CaRuntime *, CaValue);
+int ca_foreign_next(CaRuntime *, CaValue, CaValue *);
+void ca_foreign_render(CaRuntime *, FILE *, CaValue, int);
+CaValue ca_try_special(CaRuntime *, CaValue, const char *);
+CaValue ca_special(CaRuntime *, CaValue, const char *);
+CaValue ca_with_exit(CaRuntime *, CaValue, CaValue);
+CaValue ca_stringify(CaRuntime *, CaValue, int);
+CaValue ca_join_strings(CaRuntime *, size_t, CaValue *);
+CaValue ca_format(CaRuntime *, CaValue, CaValue);
+CaValue ca_binary_op(CaRuntime *, CaValue, CaValue, const char *);
+CaValue ca_extended_call(CaRuntime *, int, int, int, CaValue *, const char **);
+void ca_trace_object(CaObj *, void (*)(CaValue, void *), void *);
+void ca_foreign_finalize(CaForeign *);
+CaValue ca_foreign_attribute(CaRuntime *, CaValue, const char *);
+CaValue ca_standard_call(CaRuntime *, int, int, int, CaValue *, const char **);
+CaModule *ca_standard_find(CaRuntime *, const char *);
+void ca_standard_setup(CaRuntime *);
+void ca_standard_destroy(CaRuntime *);
 void ca_error(CaRuntime *, const char *, const char *);
 void *ca_allocate(CaRuntime *, size_t, CaTag);
 void ca_push(CaRuntime *, CaFrame *, CaValue *, size_t);
 void ca_pop(CaRuntime *, CaFrame *);
+void ca_collect(CaRuntime *);
 void ca_safepoint(CaRuntime *);
 void ca_destroy(CaRuntime *);
 int ca_enter(CaRuntime *);
 void ca_leave(CaRuntime *);
+void ca_write_integer(CaRuntime *, CaValue, FILE *);
+void ca_write_float(double, FILE *);
+int ca_unicode_space(uint32_t);
+int ca_unicode_cased(uint32_t);
+int ca_unicode_ignorable(uint32_t);
+const char *ca_unicode_case(uint32_t, int, size_t *);
+int ca_unicode_printable(uint32_t);
+CaValue ca_bytes(CaRuntime *, const char *, size_t);
 CaValue ca_integer(CaRuntime *, const char *);
 CaValue ca_numeric(CaRuntime *, CaValue, CaValue, char);
 CaValue ca_negate(CaRuntime *, CaValue);
 int ca_integer_compare(CaValue, CaValue);
+CaValue ca_integer_true_divide(CaRuntime *, CaValue, CaValue);
 CaValue ca_positive_divide(CaRuntime *, CaValue, CaValue);
 int ca_numeric_compare(CaRuntime *, CaValue, CaValue, int *);
 double ca_as_double(CaRuntime *, CaValue);

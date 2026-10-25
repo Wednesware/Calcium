@@ -1,5 +1,11 @@
 # Changelog
 
+## 26.8
+
+Native classes, closures, structured exceptions, lazy generator expressions and
+selected application library APIs. See [release notes](docs/releases/26.8.md) for
+scope, dependencies and remaining Discribe blockers.
+
 ## 26.7
 
 - Make Bonemarrow the default engine; add `--use`, `--bmrw`, `--cpython`, conflict checks, quiet/verbose/fancy CLI behavior and versioned engine information.

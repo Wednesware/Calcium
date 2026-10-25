@@ -1,10 +1,10 @@
-#include "cart.h"
+#include "standard.h"
 /* Registry lookup never executes Python or searches the host filesystem. */
 static CaModule *find(CaRuntime *rt, const char *name) {
   for (size_t i = 0; i < rt->module_count; i++)
     if (!strcmp(rt->modules[i]->name, name))
       return rt->modules[i];
-  return NULL;
+  return ca_standard_find(rt, name);
 }
 static CaValue *binding(CaModule *m, const char *name) {
   for (size_t i = 0; i < m->count; i++)
@@ -18,8 +18,7 @@ static CaValue *binding(CaModule *m, const char *name) {
 void ca_set_attribute(CaRuntime *rt, CaValue v, const char *name,
                       CaValue value) {
   if (v.tag != CA_MODULE_T) {
-    ca_error(rt, "AttributeError",
-             "only native module attributes can be assigned");
+    ca_object_set(rt, v, name, value);
     return;
   }
   CaModule *m = v.as.module;
@@ -100,6 +99,26 @@ static CaModule *load(CaRuntime *rt, const char *name) {
 }
 CaValue ca_attribute(CaRuntime *rt, CaValue value, const char *name,
                      int importing) {
+  if (value.tag == CA_GENERATOR_T) {
+    CaGenerator *g = (CaGenerator *)value.as.obj;
+    if (!strcmp(name, "__name__"))
+      return ca_string(rt, g->definition->name, strlen(g->definition->name));
+    int method = !strcmp(name, "send")    ? N_GEN_SEND
+                 : !strcmp(name, "close") ? N_GEN_CLOSE
+                 : !strcmp(name, "throw") ? N_GEN_THROW
+                                          : 0;
+    if (method)
+      return ca_native_method(rt, value, method);
+    ca_error(rt, "AttributeError", name);
+    return CA_UNBOUND;
+  }
+  if (value.tag == CA_FUNCTION_T && value.as.fn->builtin == 6 &&
+      !strcmp(name, "fromkeys"))
+    return ca_native_function(N_DICT_FROMKEYS);
+  if (value.tag == CA_CLASS_T || value.tag == CA_INSTANCE_T ||
+      value.tag == CA_EXCEPTION_T || value.tag == CA_FOREIGN_T ||
+      value.tag == CA_TYPE_T)
+    return ca_object_attribute(rt, value, name);
   if (value.tag != CA_MODULE_T)
     return ca_bound_method(rt, value, name);
   CaModule *m = value.as.module;

@@ -248,7 +248,7 @@ static const uint32_t nonprint[][2] = {
     {0x2fa1e, 0x2ffff},  {0x3134b, 0x3134f}, {0x323b0, 0xe00ff},
     {0xe01f0, 0x10ffff},
 };
-static int printable(uint32_t c) {
+int ca_unicode_printable(uint32_t c) {
   size_t lo = 0, hi = sizeof(nonprint) / sizeof(nonprint[0]);
   while (lo < hi) {
     size_t mid = lo + (hi - lo) / 2;
@@ -288,7 +288,7 @@ void ca_repr_string(CaString *s) {
       fputs("\\r", stdout);
     else if (cp == '\t')
       fputs("\\t", stdout);
-    else if (cp < 32 || cp == 127 || !printable(cp)) {
+    else if (cp < 32 || cp == 127 || !ca_unicode_printable(cp)) {
       if (cp <= 255)
         printf("\\x%02x", cp);
       else if (cp <= 65535)

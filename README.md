@@ -3,7 +3,7 @@
 Calcium is Wednesware's Python-to-C compiler. It lowers supported Python through
 control-flow IR into C11 and builds executables or CPython extension modules.
 
-**Version 26.7.** Bonemarrow (`bmrw`) is now the default independent native backend.
+**Version 26.8.** Bonemarrow (`bmrw`) is the default independent native backend.
 It compiles supported multi-file Python projects without CPython. Select
 `--cpython` explicitly for broad compatibility, CPython extensions or bundles.
 
@@ -54,20 +54,20 @@ engine. `--bmrw`, `--use bmrw`, and legacy `--backend native` are equivalent.
 Conflicting selections fail clearly. Normal compilation stays quiet; verbose
 and optional fancy messages go to stderr, never into generated executables.
 
-Bonemarrow supports project packages, relative/aliased/circular imports, isolated
-module globals and native cross-module calls. It also adds lists, tuples, dictionaries,
-sets, indexing/slicing, common container methods, defaults, keyword-only parameters
-and variadic/expanded calls to the primitive/function/loop subset from 26.6.
-Unsupported features never fall back to CPython. Classes, structured exceptions,
-closures, GUI libraries and the standard library remain blockers for ordinary
-applications such as Discribe. Read the [exact native contract](docs/NATIVE.md)
-and [measured package benchmarks](docs/NATIVE_BENCHMARKS.md).
+Bonemarrow supports multi-file projects, classes, closures, exceptions/context
+managers, comprehensions, lazy generator expressions, bytes and selected native
+standard-library APIs. SHA-256 and SQLite use their established C libraries.
+Unsupported features never fall back to CPython. Discribe's document storage core
+has been exercised natively; the complete GUI/async application still needs more
+support. Read the [native contract](docs/NATIVE.md),
+[library API scope](docs/NATIVE_LIBRARIES.md), and [26.8 notes](docs/releases/26.8.md).
 
 ## Installation and deployment
 
 The compiler runs on CPython 3.12–3.14 on Linux. Native builds need GCC or Clang
 and the platform C/math libraries, with no Python SDK/runtime dependency in the
-output. CPython-backend builds additionally need matching
+output. Native hashlib/sqlite3 builds also require pkg-config and OpenSSL/SQLite
+development files and link their C libraries. CPython-backend builds additionally need matching
 Python development headers and shared libpython for executables. A relocated
 Python installation is supported when its matching library is under its current
 prefix. CPython-backend executables require compatible CPython, its standard

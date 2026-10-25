@@ -3,3 +3,5 @@ recursive-include docs *.md *.json
 recursive-include examples *.py *.c
 recursive-include tests *.py
 include 26.7_PLAN.md
+
+recursive-include tools *.py

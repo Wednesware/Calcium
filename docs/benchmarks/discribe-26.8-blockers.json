@@ -1,0 +1,108 @@
+{
+  "calcium_version": "26.8",
+  "probe": "Full-package analysis only; application not executed",
+  "native_compatible": false,
+  "source_sha256": {
+    "discribe/__init__.py": "2d83556bfed9e35603c405147f53a93a7be81a72426998b29d7e202619372486",
+    "discribe/__main__.py": "663b7246a2bc28ca829c31cf0de3a2343eb01776e9401604189404b4e8083873",
+    "discribe/collaboration.py": "d110cfb2fe0d6d73db27d78e4bd8ab8f50ca6ed0c559ac72e06932ed5ed15c01",
+    "discribe/core.py": "9fa9d6da2914a37c67d09926e0231a2cae22af495103d57797e38f7f1aeb1990",
+    "discribe/desktop.py": "24ac1e2eaef2b67c362d4aefed40c7f46fa445f7cbe70eacc1051240bc75ffea",
+    "discribe/shell.py": "f26cde3cd1bc1609124e90c8b07e9413ce402a228309836581025c473d986de5"
+  },
+  "diagnostics": [
+    {
+      "code": "C160",
+      "message": "Bonemarrow has no native standard-library implementation for 'asyncio'; use --cpython for compatibility (no automatic fallback)",
+      "path": "/home/danny/tests/discribe/discribe/collaboration.py",
+      "line": 7,
+      "column": 1,
+      "severity": "error",
+      "stage": "frontend"
+    },
+    {
+      "code": "C160",
+      "message": "Bonemarrow has no native standard-library implementation for 'contextlib'; use --cpython for compatibility (no automatic fallback)",
+      "path": "/home/danny/tests/discribe/discribe/collaboration.py",
+      "line": 8,
+      "column": 1,
+      "severity": "error",
+      "stage": "frontend"
+    },
+    {
+      "code": "C160",
+      "message": "Bonemarrow has no native standard-library implementation for 'argparse'; use --cpython for compatibility (no automatic fallback)",
+      "path": "/home/danny/tests/discribe/discribe/__main__.py",
+      "line": 1,
+      "column": 1,
+      "severity": "error",
+      "stage": "frontend"
+    },
+    {
+      "code": "C160",
+      "message": "Bonemarrow has no native standard-library implementation for 'http.server'; use --cpython for compatibility (no automatic fallback)",
+      "path": "/home/danny/tests/discribe/discribe/__main__.py",
+      "line": 6,
+      "column": 1,
+      "severity": "error",
+      "stage": "frontend"
+    },
+    {
+      "code": "C160",
+      "message": "Bonemarrow: BitOr is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)",
+      "path": "/home/danny/tests/discribe/discribe/collaboration.py",
+      "line": 1,
+      "column": 1,
+      "severity": "error",
+      "stage": "frontend"
+    },
+    {
+      "code": "C160",
+      "message": "Bonemarrow: AsyncFunctionDef is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)",
+      "path": "/home/danny/tests/discribe/discribe/collaboration.py",
+      "line": 96,
+      "column": 5,
+      "severity": "error",
+      "stage": "frontend"
+    },
+    {
+      "code": "C160",
+      "message": "Bonemarrow: AsyncFunctionDef is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)",
+      "path": "/home/danny/tests/discribe/discribe/collaboration.py",
+      "line": 110,
+      "column": 5,
+      "severity": "error",
+      "stage": "frontend"
+    },
+    {
+      "code": "C160",
+      "message": "Bonemarrow: AsyncFunctionDef is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)",
+      "path": "/home/danny/tests/discribe/discribe/collaboration.py",
+      "line": 122,
+      "column": 5,
+      "severity": "error",
+      "stage": "frontend"
+    },
+    {
+      "code": "C160",
+      "message": "Bonemarrow: AsyncFunctionDef is not supported in the standalone milestone; use --cpython for compatibility (no automatic fallback)",
+      "path": "/home/danny/tests/discribe/discribe/collaboration.py",
+      "line": 129,
+      "column": 5,
+      "severity": "error",
+      "stage": "frontend"
+    }
+  ],
+  "unresolved_imports": [
+    "argparse",
+    "asyncio",
+    "contextlib",
+    "fastapi",
+    "fastapi.middleware.cors",
+    "fastapi.staticfiles",
+    "http.server",
+    "nitrogen",
+    "pycrdt",
+    "webview"
+  ]
+}

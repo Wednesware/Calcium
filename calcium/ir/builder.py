@@ -20,6 +20,7 @@ class Builder:
         *,
         definition_fallbacks=frozenset(),
         source=None,
+        scope_code=None,
     ):
         module = isinstance(node, ast.Module)
         params = (
@@ -36,10 +37,21 @@ class Builder:
             # compiling creates a code object but never executes the function.
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", SyntaxWarning)
-                scope = compile(
-                    ast.Module(body=[node], type_ignores=[]), "<scope>", "exec", dont_inherit=True
+                scope = (
+                    None
+                    if scope_code is not None
+                    else compile(
+                        ast.Module(body=[node], type_ignores=[]),
+                        "<scope>",
+                        "exec",
+                        dont_inherit=True,
+                    )
                 )
-            code = next(value for value in scope.co_consts if isinstance(value, CodeType))
+            code = (
+                scope_code
+                if scope_code is not None
+                else next(value for value in scope.co_consts if isinstance(value, CodeType))
+            )
             locals_ = list(code.co_varnames)
 
             class Bindings(ast.NodeVisitor):

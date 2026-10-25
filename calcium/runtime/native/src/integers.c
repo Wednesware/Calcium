@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "cart.h"
 #include <errno.h>
 #include <inttypes.h>
@@ -174,6 +175,10 @@ static int bit(const Digits *d, size_t b) {
   return b / 30 < d->n ? (d->d[b / 30] >> (b % 30)) & 1 : 0;
 }
 double ca_as_double(CaRuntime *rt, CaValue a) {
+  if (!numeric(a)) {
+    ca_error(rt, "TypeError", "a real number is required");
+    return 0;
+  }
   if (a.tag == CA_FLOAT_T)
     return a.as.f;
   if (a.tag != CA_BIG_T)
@@ -297,9 +302,9 @@ int ca_numeric_compare(CaRuntime *rt, CaValue a, CaValue b, int *unordered) {
   return a.tag == CA_FLOAT_T ? -int_float(rt, b, a.as.f)
                              : int_float(rt, a, b.as.f);
 }
-void ca_print_integer(CaRuntime *rt, CaValue a) {
+void ca_write_integer(CaRuntime *rt, CaValue a, FILE *stream) {
   if (a.tag != CA_BIG_T) {
-    printf("%" PRId64, a.as.i);
+    fprintf(stream, "%" PRId64, a.as.i);
     return;
   }
   Digits d;
@@ -341,17 +346,61 @@ void ca_print_integer(CaRuntime *rt, CaValue a) {
     return;
   }
   if (d.sign < 0)
-    putchar('-');
-  printf("%u", groups[count - 1]);
+    fputc('-', stream);
+  fprintf(stream, "%u", groups[count - 1]);
   while (--count)
-    printf("%09u", groups[count - 1]);
+    fprintf(stream, "%09u", groups[count - 1]);
   free(copy);
   free(groups);
 }
 
-/* Positive floor quotient for exact range sequence lengths. Public arithmetic
-   division remains gated off until the full signed/float contract is
-   implemented. */
+void ca_print_integer(CaRuntime *rt, CaValue a) {
+  ca_write_integer(rt, a, stdout);
+}
+
+/* Unsigned long division, with a single-limb fast path and quotient-sized
+   shift/subtract work for large ratios of similar bit length. */
+static size_t integer_bits(const Digits *x) {
+  if (!x->n)
+    return 0;
+  size_t bits = (x->n - 1) * 30;
+  uint32_t top = x->d[x->n - 1];
+  while (top) {
+    bits++;
+    top >>= 1;
+  }
+  return bits;
+}
+static CaBig *shift_digits(CaRuntime *rt, const Digits *x, size_t bits) {
+  size_t words = bits / 30;
+  unsigned small = (unsigned)(bits % 30);
+  if (words > SIZE_MAX - x->n - 1) {
+    ca_error(rt, "MemoryError", "integer shift too large");
+    return NULL;
+  }
+  CaBig *out = allocate_big(rt, x->n + words + 1);
+  if (!out)
+    return NULL;
+  out->sign = x->sign;
+  out->count = x->n + words;
+  uint64_t carry = 0;
+  for (size_t i = 0; i < x->n; i++) {
+    uint64_t value = ((uint64_t)x->d[i] << small) | carry;
+    out->limbs[i + words] = (uint32_t)(value & MASK);
+    carry = value >> 30;
+  }
+  if (carry)
+    out->limbs[out->count++] = (uint32_t)carry;
+  return out;
+}
+static CaValue positive_shift(CaRuntime *rt, CaValue value, size_t bits) {
+  Digits x;
+  digits(value, &x);
+  if (!x.n)
+    return ca_int(0);
+  CaBig *out = shift_digits(rt, &x, bits);
+  return out ? finish(out) : CA_UNBOUND;
+}
 CaValue ca_positive_divide(CaRuntime *rt, CaValue a, CaValue b) {
   Digits x, y;
   digits(a, &x);
@@ -364,35 +413,127 @@ CaValue ca_positive_divide(CaRuntime *rt, CaValue a, CaValue b) {
     return ca_int(0);
   if (a.tag != CA_BIG_T && b.tag != CA_BIG_T)
     return ca_int(a.as.i / b.as.i);
-  CaBig *q = allocate_big(rt, x.n), *rem = allocate_big(rt, y.n + 1);
-  if (!q || !rem)
+  if (y.n == 1) {
+    CaBig *q = allocate_big(rt, x.n);
+    if (!q)
+      return CA_UNBOUND;
+    q->sign = 1;
+    q->count = x.n;
+    uint64_t remainder = 0;
+    for (size_t i = x.n; i--;) {
+      uint64_t value = (remainder << 30) | x.d[i];
+      q->limbs[i] = (uint32_t)(value / y.d[0]);
+      remainder = value % y.d[0];
+    }
+    return finish(q);
+  }
+  size_t difference = integer_bits(&x) - integer_bits(&y);
+  CaBig *q = allocate_big(rt, difference / 30 + 1),
+        *rem = allocate_big(rt, x.n), *den = shift_digits(rt, &y, difference);
+  if (!q || !rem || !den)
     return CA_UNBOUND;
   q->sign = 1;
-  q->count = x.n;
+  q->count = difference / 30 + 1;
   rem->sign = 1;
-  size_t bits = x.n * 30;
-  while (bits--) {
-    uint64_t carry = (unsigned)bit(&x, bits);
-    for (size_t i = 0; i < rem->count; i++) {
-      uint64_t value = ((uint64_t)rem->limbs[i] << 1) | carry;
-      rem->limbs[i] = (uint32_t)(value & MASK);
-      carry = value >> 30;
-    }
-    if (carry)
-      rem->limbs[rem->count++] = (uint32_t)carry;
-    Digits r = {.sign = 1, .n = rem->count, .d = rem->limbs};
-    if (magnitude(&r, &y) >= 0) {
+  rem->count = x.n;
+  memcpy(rem->limbs, x.d, x.n * sizeof(uint32_t));
+  for (size_t bit = difference;; bit--) {
+    Digits r = {.sign = 1, .n = rem->count, .d = rem->limbs},
+           d = {.sign = 1, .n = den->count, .d = den->limbs};
+    if (magnitude(&r, &d) >= 0) {
       int64_t borrow = 0;
       for (size_t i = 0; i < rem->count; i++) {
-        int64_t value =
-            (int64_t)rem->limbs[i] - (i < y.n ? y.d[i] : 0) - borrow;
-        borrow = value < 0;
-        rem->limbs[i] = (uint32_t)(value + (borrow ? (int64_t)BASE : 0));
+        int64_t v = (int64_t)rem->limbs[i] -
+                    (i < den->count ? den->limbs[i] : 0) - borrow;
+        borrow = v < 0;
+        rem->limbs[i] = (uint32_t)(v + (borrow ? (int64_t)BASE : 0));
       }
       while (rem->count && !rem->limbs[rem->count - 1])
         rem->count--;
-      q->limbs[bits / 30] |= UINT32_C(1) << (bits % 30);
+      q->limbs[bit / 30] |= UINT32_C(1) << (bit % 30);
     }
+    if (!bit)
+      break;
+    uint32_t carry = 0;
+    for (size_t i = den->count; i--;) {
+      uint32_t v = den->limbs[i];
+      den->limbs[i] = (v >> 1) | (carry << 29);
+      carry = v & 1;
+    }
+    while (den->count && !den->limbs[den->count - 1])
+      den->count--;
   }
   return finish(q);
+}
+CaValue ca_integer_true_divide(CaRuntime *rt, CaValue a, CaValue b) {
+  Digits x, y;
+  digits(a, &x);
+  digits(b, &y);
+  if (!y.sign) {
+    ca_error(rt, "ZeroDivisionError", "division by zero");
+    return CA_UNBOUND;
+  }
+  if(a.tag!=CA_BIG_T && b.tag!=CA_BIG_T && a.as.i>=-INT64_C(9007199254740992) && a.as.i<=INT64_C(9007199254740992) && b.as.i>=-INT64_C(9007199254740992) && b.as.i<=INT64_C(9007199254740992))return ca_float((double)a.as.i/(double)b.as.i);
+  int negative = (x.sign < 0) != (y.sign < 0);
+  if (!x.sign)
+    return ca_float(negative ? -0.0 : 0.0);
+  size_t xb = integer_bits(&x), yb = integer_bits(&y);
+  if (xb > yb && xb - yb > 1024) {
+    ca_error(rt, "OverflowError",
+             "integer division result too large for float");
+    return CA_UNBOUND;
+  }
+  if (yb > xb && yb - xb > 1076)
+    return ca_float(negative ? -0.0 : 0.0);
+  int exponent = xb >= yb ? (int)(xb - yb) : -(int)(yb - xb);
+  CaValue numerator = x.sign < 0 ? ca_negate(rt, a) : a,
+          denominator = y.sign < 0 ? ca_negate(rt, b) : b;
+  if (rt->error)
+    return CA_UNBOUND;
+  CaValue shifted =
+      positive_shift(rt, exponent >= 0 ? denominator : numerator,
+                     (size_t)(exponent >= 0 ? exponent : -exponent));
+  if (rt->error)
+    return CA_UNBOUND;
+  int cmp = exponent >= 0 ? ca_integer_compare(numerator, shifted)
+                          : ca_integer_compare(shifted, denominator);
+  if (cmp < 0)
+    exponent--;
+  if (exponent > 1023) {
+    ca_error(rt, "OverflowError",
+             "integer division result too large for float");
+    return CA_UNBOUND;
+  }
+  if (exponent < -1075)
+    return ca_float(negative ? -0.0 : 0.0);
+  int scale = exponent < -1022 ? 1074 : 52 - exponent;
+  if (scale >= 0)
+    numerator = positive_shift(rt, numerator, (size_t)scale);
+  else
+    denominator = positive_shift(rt, denominator, (size_t)-scale);
+  if (rt->error)
+    return CA_UNBOUND;
+  CaValue quotient = ca_positive_divide(rt, numerator, denominator);
+  if (rt->error)
+    return CA_UNBOUND;
+  if (quotient.tag != CA_INT_T) {
+    ca_error(rt, "SystemError", "invalid native division significand");
+    return CA_UNBOUND;
+  }
+  CaValue product = ca_numeric(rt, quotient, denominator, '*'),
+          remainder = ca_numeric(rt, numerator, product, '-'),
+          twice = ca_numeric(rt, remainder, ca_int(2), '*');
+  if (rt->error)
+    return CA_UNBOUND;
+  uint64_t significand = (uint64_t)quotient.as.i;
+  cmp = ca_integer_compare(twice, denominator);
+  if (cmp > 0 || (cmp == 0 && (significand & 1)))
+    significand++;
+  double value = ldexp((double)significand, -scale);
+  if (isinf(value)) {
+    ca_error(rt, "OverflowError",
+             "integer division result too large for float");
+    return CA_UNBOUND;
+  }
+  return ca_float(negative ? -value : value);
 }

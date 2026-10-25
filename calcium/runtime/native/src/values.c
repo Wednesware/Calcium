@@ -36,23 +36,26 @@ CaValue ca_binary(CaRuntime *rt, CaValue a, CaValue b, char op) {
       (op == '*' && (a.tag == CA_LIST_T || a.tag == CA_TUPLE_T ||
                      b.tag == CA_LIST_T || b.tag == CA_TUPLE_T)))
     return ca_sequence_binary(rt, a, b, op);
-  if (op == '+' && a.tag == CA_STR_T && b.tag == CA_STR_T) {
+  if (op == '+' && a.tag == b.tag &&
+      (a.tag == CA_STR_T || a.tag == CA_BYTES_T)) {
     CaString *x = (CaString *)a.as.obj, *y = (CaString *)b.as.obj;
     if (y->length > SIZE_MAX - sizeof(CaString) - 1 - x->length) {
       ca_error(rt, "MemoryError", "string too large");
       return CA_UNBOUND;
     }
     size_t n = x->length + y->length;
-    CaString *s = ca_allocate(rt, sizeof(CaString) + n + 1, CA_STR_T);
+    CaString *s = ca_allocate(rt, sizeof(CaString) + n + 1, a.tag);
     if (!s)
       return CA_UNBOUND;
     s->length = n;
     memcpy(s->data, x->data, x->length);
     memcpy(s->data + x->length, y->data, y->length);
-    return (CaValue){.tag = CA_STR_T, .as.obj = (CaObj *)s};
+    return (CaValue){.tag = a.tag, .as.obj = (CaObj *)s};
   }
-  if (op == '*' && (a.tag == CA_STR_T || b.tag == CA_STR_T)) {
-    CaValue text = a.tag == CA_STR_T ? a : b, count = a.tag == CA_STR_T ? b : a;
+  if (op == '*' && (a.tag == CA_STR_T || b.tag == CA_STR_T ||
+                    a.tag == CA_BYTES_T || b.tag == CA_BYTES_T)) {
+    CaValue text = (a.tag == CA_STR_T || a.tag == CA_BYTES_T) ? a : b,
+            count = (a.tag == CA_STR_T || a.tag == CA_BYTES_T) ? b : a;
     if (!integer(count)) {
       ca_error(rt, "TypeError", "string repeat count must be an integer");
       return CA_UNBOUND;
@@ -70,13 +73,13 @@ CaValue ca_binary(CaRuntime *rt, CaValue a, CaValue b, char op) {
       return CA_UNBOUND;
     }
     size_t length = original->length * (size_t)n;
-    CaString *out = ca_allocate(rt, sizeof(CaString) + length + 1, CA_STR_T);
+    CaString *out = ca_allocate(rt, sizeof(CaString) + length + 1, text.tag);
     if (!out)
       return CA_UNBOUND;
     out->length = length;
     for (size_t i = 0; i < length; i += original->length)
       memcpy(out->data + i, original->data, original->length);
-    return (CaValue){.tag = CA_STR_T, .as.obj = (CaObj *)out};
+    return (CaValue){.tag = text.tag, .as.obj = (CaObj *)out};
   }
   return ca_numeric(rt, a, b, op);
 }
@@ -97,12 +100,41 @@ int ca_truth(CaRuntime *rt, CaValue v) {
   case CA_FLOAT_T:
     return v.as.f != 0;
   case CA_STR_T:
+  case CA_BYTES_T:
     return ((CaString *)v.as.obj)->length != 0;
   case CA_RANGE_T: {
     CaRange *r = (CaRange *)v.as.obj;
     int s = ca_integer_compare(r->step, ca_int(0));
     return s > 0 ? ca_integer_compare(r->start, r->stop) < 0
                  : ca_integer_compare(r->start, r->stop) > 0;
+  }
+  case CA_INSTANCE_T: {
+    CaValue method = ca_try_special(rt, v, "__bool__");
+    if (method.tag != CA_UNBOUND_T) {
+      CaValue result = ca_call(rt, method, 0, 0, NULL, NULL);
+      if (!rt->error && result.tag != CA_BOOL_T)
+        ca_error(rt, "TypeError", "__bool__ must return bool");
+      return !rt->error && result.as.i;
+    }
+    method = ca_try_special(rt, v, "__len__");
+    if (method.tag == CA_UNBOUND_T)
+      return 1;
+    CaValue length = ca_call(rt, method, 0, 0, NULL, NULL);
+    if (rt->error)
+      return 0;
+    if (length.tag == CA_BIG_T) {
+      ca_error(rt, "OverflowError", "length does not fit platform index");
+      return 0;
+    }
+    if (length.tag == CA_INT_T && length.as.i < 0) {
+      ca_error(rt, "ValueError", "__len__ must be non-negative");
+      return 0;
+    }
+    if (length.tag != CA_INT_T && length.tag != CA_BOOL_T) {
+      ca_error(rt, "TypeError", "__len__ must return nonnegative integer");
+      return 0;
+    }
+    return length.as.i != 0;
   }
   case CA_UNBOUND_T:
     ca_error(rt, "UnboundLocalError", "local variable used before assignment");
@@ -140,6 +172,13 @@ CaValue ca_range_length(CaRuntime *rt, CaRange *range) {
   return rt->error ? CA_UNBOUND : ca_numeric(rt, quotient, ca_int(1), '+');
 }
 CaValue ca_compare(CaRuntime *rt, CaValue a, CaValue b, const char *op) {
+  if (strcmp(op, "is") && strcmp(op, "is_not") && strcmp(op, "in") &&
+      strcmp(op, "not_in")) {
+    int handled = 0;
+    CaValue result = ca_object_compare(rt, a, b, op, &handled);
+    if (handled || rt->error)
+      return result;
+  }
   if (!strcmp(op, "is") || !strcmp(op, "is_not")) {
     int same =
         a.tag == b.tag &&
@@ -181,7 +220,7 @@ CaValue ca_compare(CaRuntime *rt, CaValue a, CaValue b, const char *op) {
   }
   if (number(a) && number(b))
     cmp = ca_numeric_compare(rt, a, b, &unordered);
-  else if (a.tag == CA_STR_T && b.tag == CA_STR_T) {
+  else if (a.tag == b.tag && (a.tag == CA_STR_T || a.tag == CA_BYTES_T)) {
     CaString *x = (CaString *)a.as.obj, *y = (CaString *)b.as.obj;
     size_t n = x->length < y->length ? x->length : y->length;
     cmp = memcmp(x->data, y->data, n);
@@ -207,7 +246,22 @@ CaValue ca_compare(CaRuntime *rt, CaValue a, CaValue b, const char *op) {
                                      : cmp >= 0);
 }
 CaValue ca_iter(CaRuntime *rt, CaValue v) {
-  if (v.tag != CA_RANGE_T && v.tag != CA_STR_T && !ca_is_container(v)) {
+  if (v.tag == CA_GENERATOR_T || v.tag == CA_ITER_T)
+    return v;
+  if (v.tag == CA_INSTANCE_T) {
+    CaValue method = ca_special(rt, v, "__iter__");
+    if (rt->error)
+      return CA_UNBOUND;
+    CaValue result = ca_call(rt, method, 0, 0, NULL, NULL);
+    if (!rt->error && result.tag != CA_ITER_T && result.tag != CA_INSTANCE_T &&
+        result.tag != CA_FOREIGN_T)
+      ca_error(rt, "TypeError", "iter() returned a non-iterator");
+    return rt->error ? CA_UNBOUND : result;
+  }
+  if (v.tag == CA_FOREIGN_T)
+    return ca_foreign_iter(rt, v);
+  if (v.tag != CA_RANGE_T && v.tag != CA_STR_T && v.tag != CA_BYTES_T &&
+      !ca_is_container(v)) {
     ca_error(rt, "TypeError", "object is not iterable");
     return CA_UNBOUND;
   }
@@ -221,6 +275,26 @@ CaValue ca_iter(CaRuntime *rt, CaValue v) {
   return (CaValue){.tag = CA_ITER_T, .as.obj = (CaObj *)it};
 }
 int ca_next(CaRuntime *rt, CaValue v, CaValue *out) {
+  if (v.tag == CA_GENERATOR_T)
+    return ca_generator_next(rt, v, out);
+  if (v.tag == CA_INSTANCE_T) {
+    CaValue method = ca_special(rt, v, "__next__");
+    if (!rt->error)
+      *out = ca_call(rt, method, 0, 0, NULL, NULL);
+    if (rt->error &&
+        ca_exception_match(rt, rt->pending, ca_type(CA_T_STOPITERATION))) {
+      ca_exception_take(rt);
+      *out = CA_UNBOUND;
+      return 0;
+    }
+    return rt->error ? -1 : 1;
+  }
+  if (v.tag == CA_FOREIGN_T)
+    return ca_foreign_next(rt, v, out);
+  if (v.tag != CA_ITER_T) {
+    ca_error(rt, "TypeError", "object is not an iterator");
+    return -1;
+  }
   CaIter *it = (CaIter *)v.as.obj;
   if (it->iterable.tag == CA_RANGE_T) {
     CaRange *r = (CaRange *)it->iterable.as.obj;
@@ -254,6 +328,10 @@ int ca_next(CaRuntime *rt, CaValue v, CaValue *out) {
   if (it->index >= s->length) {
     *out = CA_UNBOUND;
     return 0;
+  }
+  if (it->iterable.tag == CA_BYTES_T) {
+    *out = ca_int((unsigned char)s->data[it->index++]);
+    return 1;
   }
   size_t start = it->index++;
   while (it->index < s->length &&
@@ -309,12 +387,22 @@ void ca_print_value(CaRuntime *rt, CaValue v) {
     else
       printf("<function %s at %p>", v.as.fn->name, (const void *)v.as.fn);
     break;
-  default:
-    ca_error(rt, "TypeError", "printing this native value is not supported");
+  default: {
+    CaValue text = ca_stringify(rt, v, 0);
+    if (!rt->error) {
+      CaString *s = (CaString *)text.as.obj;
+      fwrite(s->data, 1, s->length, stdout);
+    }
+    break;
+  }
   }
 }
 static CaValue builtin(CaRuntime *rt, const CaFunction *fn, int n, int nkw,
                        CaValue *v, const char **keys) {
+  if (fn->builtin >= 1000)
+    return ca_standard_call(rt, fn->builtin, n, nkw, v, keys);
+  if (fn->builtin >= 10)
+    return ca_extended_call(rt, fn->builtin, n, nkw, v, keys);
   if (fn->builtin == 6)
     return ca_dict_constructor(rt, n, nkw, v, keys);
   if (fn->builtin >= 3)
@@ -403,11 +491,11 @@ CaValue ca_call(CaRuntime *rt, CaValue callable, int n, int nkw,
                 CaValue *values, const char **keys) {
   if (callable.tag == CA_METHOD_T)
     return ca_method_call(rt, callable, n, nkw, values);
-  if (callable.tag != CA_FUNCTION_T) {
-    ca_error(rt, "TypeError", "object is not callable");
-    return CA_UNBOUND;
-  }
-  const CaFunction *fn = callable.as.fn;
+  if (callable.tag != CA_FUNCTION_T && callable.tag != CA_CLOSURE_T)
+    return ca_object_call(rt, callable, n, nkw, values, keys);
+  const CaFunction *fn = callable.tag == CA_CLOSURE_T
+                             ? &((CaClosure *)callable.as.obj)->fn
+                             : callable.as.fn;
   if (fn->builtin)
     return builtin(rt, fn, n, nkw, values, keys);
   if (n > fn->positional && fn->vararg < 0) {
@@ -459,12 +547,24 @@ CaValue ca_call(CaRuntime *rt, CaValue callable, int n, int nkw,
   }
   if (rt->error)
     return CA_UNBOUND;
-  return fn->code(rt, bound);
+  CaValue saved[] = {callable, rt->environment};
+  CaFrame call_roots;
+  ca_push(rt, &call_roots, saved, 2);
+  rt->environment = callable.tag == CA_CLOSURE_T
+                        ? ((CaClosure *)callable.as.obj)->environment
+                        : CA_NONE;
+  CaValue result = fn->code(rt, bound);
+  rt->environment = saved[1];
+  ca_pop(rt, &call_roots);
+  return result;
 }
 CaValue ca_load(CaRuntime *rt, CaValue v, const char *name, int local) {
   if (v.tag != CA_UNBOUND_T)
     return v;
   if (!local) {
+    CaValue builtin = ca_builtin_lookup(name);
+    if (builtin.tag != CA_UNBOUND_T)
+      return builtin;
     for (size_t i = 0; i < 5; i++)
       if (!strcmp(name, ca_builtin_collections[i].name))
         return ca_function(&ca_builtin_collections[i]);

@@ -1,7 +1,7 @@
-# Bonemarrow native backend — 26.7
+# Bonemarrow native backend — 26.8
 
 Calcium is the public CLI and API; **Bonemarrow (`bmrw`)** is the independent
-Python-to-C execution engine, using CaRT. Bonemarrow is the default in 26.7.
+Python-to-C execution engine, using CaRT. Bonemarrow is the default in 26.8.
 `--use bmrw`, `--bmrw`, and legacy `--backend native` select the same engine.
 `--cpython` / `--use cpython` / `--backend cpython` explicitly select the
 established compatibility backend. Conflicting selections are errors.
@@ -68,19 +68,16 @@ implemented. Adding files with `--include-all` does not implement dynamic import
 
 ## Language support
 
-| Feature | Bonemarrow 26.7 |
+| Feature | Bonemarrow 26.8 |
 | --- | --- |
-| Values | None, bool, arbitrary-precision int, IEEE double, UTF-8 str, functions, ranges, modules, lists, tuples, dictionaries, sets |
-| Arithmetic | `+`, `-`, `*`, unary `+`/`-`; checked integer overflow promotes to big integers, mixed int/float comparison is exact |
-| Strings | Concatenation, repetition, truth/comparison, code-point indexing/slicing/iteration; UTF-8 stdout; collection repr uses Unicode 16 printability tables |
-| Collections | Literals/expansion, constructors, iteration, length, indexing, sequence slicing, list/dictionary item assignment, membership, comparisons, list concatenation/repetition/in-place mutation |
-| Methods | list append/extend/pop/clear/copy, dict get/update (dictionary source)/clear/copy, set add/clear/copy; saved bound methods keep their receivers alive |
-| Functions | Undecorated top-level definitions, aliases, recursion, positional-only/keyword-only/default/variadic parameters, named/expanded calls; mutable defaults evaluate at definition time |
-| Annotations | Unshadowed builtin int/float/bool/str or None on signatures; never trusted as unchecked optimization proof; reflection unsupported |
-| Control flow | if/else, conditional expressions, boolean/chained comparisons, while/for with else/break/continue, global declarations, ordinary nested unpacking assignment |
-| Builtins | print (sep/end/flush/file=None), range, len, list, tuple, dict, set |
-| Identity | Only explicit comparisons with None or bool are accepted; arbitrary identity is rejected |
-| Errors | Native error class/message and nonzero exit; deterministic frame unwinding, no Python tracebacks or catchable structured exceptions yet |
+| Values | None, bool, arbitrary-precision int, double, UTF-8 str, bytes, functions/closures, ranges, modules, containers, classes/instances and native resources |
+| Arithmetic | Addition/subtraction/multiplication, true/floor division, modulo and powers; checked overflow promotes to big integers |
+| Functions | Defaults, variadic/named calls, nested definitions, lexical cells/nonlocal, lambdas, decorators, native cross-module calls |
+| Classes | Single inheritance, methods, static/class methods, read-only properties, instance attributes and selected special methods |
+| Control flow | Branches, loops, comprehensions, lazy generator expressions, walrus, synchronous context managers and structured exceptions |
+| Text | Bytes operations, Unicode indexing/case, selected codecs/methods and f-strings |
+| Libraries | Selected native APIs documented in [NATIVE_LIBRARIES.md](NATIVE_LIBRARIES.md) |
+| Identity/reflection | Explicit None/bool identity comparisons; general reflection and Python tracebacks remain unsupported |
 
 Dictionary/set storage is currently a contiguous, insertion-preserving value
 array with **linear lookup**, not a native hash-table optimization. Dictionary
@@ -90,7 +87,7 @@ order can differ from a particular CPython build/hash seed. Container/string
 operations are generic CaRT operations, not unboxed container specializations.
 `dict()` accepts a dictionary, iterable pairs and named values; `dict.update`
 currently accepts a dictionary positional source, without keyword expansion.
-Dictionary views and other unlisted methods are not implemented.
+Dictionary views are supported; unlisted methods remain unsupported.
 
 The runtime is single-threaded, with 256 active calls and 128 parameters/call
 arguments (including expanded calls). Source list/tuple/set literals have at most
@@ -99,22 +96,20 @@ frontend limits. Large CIR frames use checked heap allocations. Basic signatures
 may shadow builtin parameter names; some global builtin shadowing is conservatively
 rejected. Embedded-NUL keyword names in expanded calls are unsupported.
 
-Still rejected or unimplemented: classes/instances/custom attributes/descriptors,
-closures/nested or conditional definitions/decorators, comprehensions, generators/
-async, structured exceptions/raise/assert/with, bytes, slice assignment, starred
-unpacking assignment, deletion, f-strings, walrus, division/floor division/modulo/
-powers/bitwise operators, arbitrary annotations/future flags, surrogate string
-code points, standard-library/native-library bindings, and arbitrary reflection.
-Unsupported syntax gets C160; unsupported dynamic operations/methods produce
-native errors. No compatibility fallback occurs in either case.
+Still rejected or unimplemented: general generator functions, async/await,
+metaclasses/multiple inheritance, slice assignment, starred assignment, deletion,
+bitwise operators, arbitrary future flags, surrogate string values and unrestricted
+reflection. Standard-library APIs are bounded subsets. GUI/FastAPI/pycrdt bindings
+are not implemented. Unsupported syntax gets C160; unsupported dynamic operations
+produce native errors. No compatibility fallback occurs.
 
 Exact error wording, object addresses, general numeric identity, GC scheduling,
 resource exhaustion, CPython-specific I/O/digit-limit environment configuration,
 thread/signals/finalizers/weakrefs are outside this milestone's contract.
 
-## CaRT ABI 2 and ownership
+## CaRT ABI 3 and ownership
 
-CaRT's internal ABI is version 2, not a stable public C ABI. `CaValue` directly
+CaRT's internal ABI is version 3, not a stable public C ABI. `CaValue` directly
 tags None/bool/int64/double. Big integers use signed base-2^30 limbs, checked
 promotion, and CaRT decimal conversion; printing retains the default 4300-digit
 limit. Checked O2/O3 scalar integer kernels and guarded same-module direct calls
@@ -128,7 +123,8 @@ equality agrees with Python without heap-boxing numeric values. Primitive `nan =
 remains false. This does not expose general `id()` or numeric `is` semantics.
 
 A non-moving mark/sweep heap owns strings, big integers, ranges, iterators,
-containers, slices and bound methods. Register/local frames, module globals,
+containers, slices, bound methods, classes, closure cells, exceptions, generator
+frames and native resource wrappers. Register/local frames, module globals,
 constant/default pools and extra module attributes are roots. Container edges,
 method receivers and iterators are traced. **Iterative marking** terminates on
 cycles without recursing through the C stack. Resizable container buffers are
@@ -155,12 +151,8 @@ actual O-level, compilation/cache reuse and linking to stderr. `--fancy` explici
 adds the awakening message. JSON stdout stays machine-readable; generated
 executables print no compiler/startup identity messages.
 
-Stages A–C (projects, module runtime, static import semantics) and E are shipped.
-Stage D is partial: collections, indexing/slicing, richer signatures/calls and
-common methods are implemented; classes, structured exceptions, closures and
-library bindings remain open. Stage F includes differential, source-free,
-ASan/UBSan, wheel and three-runtime package benchmark checks. See
-[NATIVE_BENCHMARKS.md](NATIVE_BENCHMARKS.md) and
-[the Discribe blocker report](benchmarks/discribe-26.7-blockers.json).
-**Discribe is not natively compatible in 26.7.** Its local checkout was analyzed,
-not executed, and requires further language/library/GUI support.
+Projects, native module imports, richer language/runtime support and selected
+library bindings are shipped. See [26.8 notes](releases/26.8.md) for the Discribe
+core integration evidence and remaining application blockers. Historical package
+benchmarks in [NATIVE_BENCHMARKS.md](NATIVE_BENCHMARKS.md) describe 26.7;
+they do not measure the new library workloads.

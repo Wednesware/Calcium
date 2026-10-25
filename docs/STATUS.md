@@ -1,19 +1,20 @@
-# Remaining-work ledger — 26.7
+# Remaining-work ledger — 26.8
 
 This ledger distinguishes shipped work from architecture projects. A passing
 regression suite establishes tested behavior; it does not establish complete
 Python compatibility or every possible lifetime/finalizer behavior.
 
-Bonemarrow is now the default. Native packages/imports, containers, indexing/slicing,
-richer function signatures and common methods ship in 26.7. Classes, structured
-exceptions, closures and library bindings remain open; Discribe is not natively compatible.
+Bonemarrow is the default. 26.8 adds native classes, closures, structured exceptions,
+comprehensions/lazy generator expressions and selected native library APIs. The
+Discribe persistence core has passed a local differential probe; its full GUI and
+async collaboration remain unsupported. See [26.8 notes](releases/26.8.md).
 
 The existing rows describe the CPython backend unless stated otherwise. The native
 backend is an initial standalone subset; see [its exact contract](NATIVE.md).
 
 | Review item | Current status |
 | --- | --- |
-| Independent native backend | Delivered first CaRT/C11 milestone: primitives, big integers, strings, basic functions/loops, checked scalar kernels and guarded direct calls; no Python runtime fallback. 26.7 adds native containers/imports and richer calls; classes/exceptions and ecosystem support remain open |
+| Independent native backend | Delivered first CaRT/C11 milestone: primitives, big integers, strings, basic functions/loops, checked scalar kernels and guarded direct calls; no Python runtime fallback. 26.8 adds classes/closures/exceptions and bounded native library APIs; full ecosystem support remains open |
 | Simpler CLI | Delivered: `ca main.py`, `ca my_package/`, action options, legacy commands |
 | Fixed-only native signatures | Delivered: defaults, positional-only/keyword-only, variadic args/kwargs |
 | Missing native expressions | Delivered: chained comparisons, f-strings, walrus, call expansion |

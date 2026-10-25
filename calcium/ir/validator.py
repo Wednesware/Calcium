@@ -5,6 +5,10 @@ from .kernels import validate_kernel
 from .nodes import Program
 
 OPS = {
+    "native_yield",
+    "native_class",
+    "native_class_load",
+    "native_raw_load",
     "constant",
     "load",
     "store",
@@ -90,6 +94,19 @@ def validate(program: Program):
             raise CalciumInternalError("malformed typed native kernel") from exc
         if not isinstance(fn.registers, int) or fn.registers < 0:
             raise CalciumInternalError("invalid register count")
+        if fn.native is not None:
+            if not isinstance(fn.native, dict) or any(
+                not isinstance(fn.native.get(key), list)
+                or any(not isinstance(name, str) for name in fn.native[key])
+                or len(fn.native[key]) != len(set(fn.native[key]))
+                for key in ("freevars", "cellvars")
+            ):
+                raise CalciumInternalError("invalid native lexical metadata")
+            if not set(fn.native["cellvars"]) <= set(fn.locals) or any(
+                key in fn.native and not isinstance(fn.native[key], bool)
+                for key in ("dynamic", "generator")
+            ):
+                raise CalciumInternalError("invalid native closure layout")
         expected_parameters = (
             fn.positional + len(fn.kwonly) + int(fn.vararg is not None) + int(fn.kwarg is not None)
         )
@@ -137,7 +154,20 @@ def validate(program: Program):
             for op in block.instructions:
                 if op.op not in OPS or (op.op not in PURE_CLEANUP and op.error not in errors):
                     raise CalciumInternalError("unknown operation or missing exception edge")
+                if op.op.startswith("native_") and fn.native is None:
+                    raise CalciumInternalError("native operation requires native metadata")
+                if op.op in {
+                    "native_class",
+                    "native_raw_load",
+                    "native_class_load",
+                } and not isinstance(op.data, str):
+                    raise CalciumInternalError("invalid native name")
+                if op.op == "native_yield" and not fn.native.get("generator", False):
+                    raise CalciumInternalError("yield requires a native generator frame")
                 arities = {
+                    "native_yield": 1,
+                    "native_raw_load": 0,
+                    "native_class_load": 2,
                     "constant": 0,
                     "load": 0,
                     "store": 1,

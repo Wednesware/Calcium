@@ -19,7 +19,7 @@ def main():
             cwd=root,
             text=True,
         )
-        assert version.strip() == "Calcium 26.7", version
+        assert version.strip() == "Calcium 26.8", version
         license_name = subprocess.check_output(
             [
                 sys.executable,
@@ -98,6 +98,52 @@ def main():
             == b"81\n"
         )
         assert "libpython" not in subprocess.check_output(["ldd", str(native)], text=True)
+        library_source = root / "libraries.py"
+        library_source.write_text(
+            "import json,hashlib,sqlite3\n"
+            "from dataclasses import dataclass,asdict\n"
+            "@dataclass\nclass Item:\n    name:str\n"
+            "db=sqlite3.connect(':memory:')\n"
+            "print(json.dumps(asdict(Item('native'))))\n"
+            "print(hashlib.sha256(b'abc').hexdigest())\n"
+            "print(db.execute('SELECT 42').fetchone())\n"
+            "db.close()\n"
+        )
+        library_binary = root / "native-libraries"
+        run = subprocess.run(
+            [
+                sys.executable,
+                "-I",
+                "-m",
+                "calcium",
+                str(library_source),
+                "--run",
+                "-O3",
+                "-o",
+                str(library_binary),
+            ],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        assert run.returncode == 0, run.stderr
+        assert run.stdout == (
+            '{"name": "native"}\n'
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\n"
+            "(42,)\n"
+        ), run.stdout
+        library_source.unlink()
+        assert (
+            subprocess.check_output(
+                [str(library_binary)],
+                cwd=root,
+                env=dict(os.environ, PATH="", PYTHONHOME="/missing", PYTHONPATH="/missing"),
+            ).decode()
+            == run.stdout
+        )
+        assert "libpython" not in subprocess.check_output(["ldd", str(library_binary)], text=True)
+
     print(
         "Installed wheel: isolated CLI, both backends, fallback, license, and standalone source-free run OK"
     )

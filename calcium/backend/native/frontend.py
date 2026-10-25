@@ -3,13 +3,34 @@
 import ast
 import builtins
 import copy
-import symtable
 import warnings
 
 from ...models import Diagnostic
 
 ALLOWED = (
     ast.Module,
+    ast.ClassDef,
+    ast.AnnAssign,
+    ast.Lambda,
+    ast.Nonlocal,
+    ast.Try,
+    ast.ExceptHandler,
+    ast.Raise,
+    ast.Assert,
+    ast.With,
+    ast.withitem,
+    ast.ListComp,
+    ast.SetComp,
+    ast.DictComp,
+    ast.GeneratorExp,
+    ast.comprehension,
+    ast.JoinedStr,
+    ast.FormattedValue,
+    ast.NamedExpr,
+    ast.Div,
+    ast.FloorDiv,
+    ast.Mod,
+    ast.Pow,
     ast.Import,
     ast.ImportFrom,
     ast.alias,
@@ -69,8 +90,12 @@ def prepare(source):
         warnings.simplefilter("always", SyntaxWarning)
         tree = ast.parse(source.text, filename=str(source.path))
         compile(tree, str(source.path), "exec", dont_inherit=True, optimize=0)
-        symbols = symtable.symtable(source.text, str(source.path), "exec")
-    scopes = {(s.get_name(), s.get_lineno()): s for s in symbols.get_children()}
+    future_annotations = any(
+        isinstance(n, ast.ImportFrom)
+        and n.module == "__future__"
+        and any(a.name == "annotations" for a in n.names)
+        for n in tree.body
+    )
     errors = [
         Diagnostic("C105", message, str(source.path), line, severity="warning")
         for line, message in sorted({(w.lineno, str(w.message)) for w in caught})
@@ -87,6 +112,7 @@ def prepare(source):
             globals_.update(a.asname or a.name for a in node.names)
 
     class Check(ast.NodeVisitor):
+        class_depth = 0
         depth = 0
         control = 0
         locals_ = set()
@@ -134,10 +160,106 @@ def prepare(source):
                     "tuple",
                     "dict",
                     "set",
+                    "str",
+                    "int",
+                    "float",
+                    "bool",
+                    "bytes",
+                    "object",
+                    "isinstance",
+                    "issubclass",
+                    "type",
+                    "getattr",
+                    "setattr",
+                    "hasattr",
+                    "staticmethod",
+                    "classmethod",
+                    "property",
+                    "sorted",
+                    "sum",
+                    "min",
+                    "max",
+                    "abs",
+                    "enumerate",
+                    "zip",
+                    "iter",
+                    "next",
+                    "repr",
+                    "ascii",
+                    "callable",
+                    "BaseException",
+                    "Exception",
+                    "ValueError",
+                    "TypeError",
+                    "RuntimeError",
+                    "NameError",
+                    "UnboundLocalError",
+                    "AttributeError",
+                    "KeyError",
+                    "IndexError",
+                    "LookupError",
+                    "OSError",
+                    "FileNotFoundError",
+                    "FileExistsError",
+                    "PermissionError",
+                    "ImportError",
+                    "ModuleNotFoundError",
+                    "ZeroDivisionError",
+                    "OverflowError",
+                    "MemoryError",
+                    "RecursionError",
+                    "StopIteration",
+                    "AssertionError",
+                    "NotImplementedError",
+                    "SystemExit",
+                    "KeyboardInterrupt",
+                    "UnicodeError",
+                    "UnicodeEncodeError",
+                    "UnicodeDecodeError",
                 }
                 and node.id not in self.locals_
             ):
                 self.reject(node, f"builtin {node.id!r} is not implemented")
+
+        def visit_comprehension(self, node):
+            if node.is_async:
+                self.reject(node, "asynchronous comprehensions are not implemented")
+            else:
+                self.generic_visit(node)
+
+        def visit_AnnAssign(self, node):
+            self.visit(node.target)
+            if node.value is not None:
+                self.visit(node.value)
+            if not future_annotations and any(
+                isinstance(n, (ast.Call, ast.NamedExpr, ast.Lambda))
+                for n in ast.walk(node.annotation)
+            ):
+                self.reject(node, "effectful annotation evaluation is not implemented")
+
+        def visit_ClassDef(self, node):
+            if len(node.bases) > 1 or node.keywords or node.type_params:
+                self.reject(
+                    node,
+                    "multiple inheritance, metaclasses and generic classes are not implemented",
+                )
+                return
+            for value in [*node.bases, *node.decorator_list]:
+                self.visit(value)
+            self.control += 1
+            self.class_depth += 1
+            for statement in node.body:
+                self.visit(statement)
+            self.control -= 1
+            self.class_depth -= 1
+
+        def visit_Lambda(self, node):
+            for default in [
+                *node.args.defaults,
+                *(v for v in node.args.kw_defaults if v is not None),
+            ]:
+                self.visit(default)
+            self.visit(node.body)
 
         def visit_Compare(self, node):
             operands = [node.left, *node.comparators]
@@ -172,7 +294,8 @@ def prepare(source):
 
         def visit_ImportFrom(self, node):
             if node.module == "__future__":
-                self.reject(node, "future flags are not supported")
+                if any(a.name != "annotations" for a in node.names):
+                    self.reject(node, "only the annotations future feature is implemented")
                 return
             if any(a.name == "*" for a in node.names):
                 self.reject(node, "star imports are not supported")
@@ -187,7 +310,7 @@ def prepare(source):
                     self.reject(
                         node, "integer literal exceeds the frontend decimal conversion limit"
                     )
-            if type(node.value) not in (type(None), bool, int, float, str):
+            if type(node.value) not in (type(None), bool, int, float, str, bytes):
                 self.reject(node, f"{type(node.value).__name__} values are not implemented")
             if isinstance(node.value, str) and any(0xD800 <= ord(c) <= 0xDFFF for c in node.value):
                 self.reject(node, "surrogate string code points are not supported")
@@ -226,14 +349,24 @@ def prepare(source):
             self.generic_visit(node)
 
         def visit_FunctionDef(self, node):
-            if node.name == "__getattr__":
+            if node.name in {
+                "__getattribute__",
+                "__setattr__",
+                "__delattr__",
+                "__new__",
+                "__init_subclass__",
+                "__set_name__",
+            }:
+                self.reject(node, "custom object construction/attribute hooks are not implemented")
+                return
+            if node.name == "__getattr__" and not self.class_depth and not self.depth:
                 self.reject(node, "dynamic module __getattr__ is not implemented")
                 return
-            if self.depth or self.control or node.decorator_list or node.type_params:
-                self.reject(
-                    node, "only undecorated module-level non-generic functions are supported"
-                )
+            if node.type_params:
+                self.reject(node, "generic type parameter definitions are not yet supported")
                 return
+            for decorator in node.decorator_list:
+                self.visit(decorator)
             args = node.args
             parameters = args.posonlyargs + args.args + args.kwonlyargs
             annotated_parameters = parameters + [a for a in (args.vararg, args.kwarg) if a]
@@ -246,21 +379,17 @@ def prepare(source):
             for annotation in [node.returns, *(a.annotation for a in annotated_parameters)]:
                 if (
                     annotation is not None
-                    and not (isinstance(annotation, ast.Constant) and annotation.value is None)
-                    and not (
-                        isinstance(annotation, ast.Name)
-                        and annotation.id in {"int", "float", "bool", "str"}
-                        and annotation.id not in globals_
+                    and any(
+                        isinstance(n, (ast.Call, ast.Lambda, ast.NamedExpr))
+                        for n in ast.walk(annotation)
                     )
+                    and not future_annotations
                 ):
-                    self.reject(
-                        annotation, "only unshadowed builtin primitive annotations are supported"
-                    )
+                    self.reject(annotation, "effectful annotation evaluation is not implemented")
             for default in [*args.defaults, *(d for d in args.kw_defaults if d is not None)]:
                 self.visit(default)
             previous = self.locals_
-            scope = scopes[(node.name, node.lineno)]
-            self.locals_ = {s.get_name() for s in scope.get_symbols() if s.is_local()}
+            self.locals_ = {a.arg for a in annotated_parameters}
             self.depth += 1
             for statement in node.body:
                 self.visit(statement)
@@ -277,6 +406,11 @@ def prepare(source):
 
     Check().visit(tree)
     normalized = copy.deepcopy(tree)
+    normalized.body = [
+        n
+        for n in normalized.body
+        if not (isinstance(n, ast.ImportFrom) and n.module == "__future__")
+    ]
     for node in ast.walk(normalized):
         if isinstance(node, ast.FunctionDef):
             node.returns = None
