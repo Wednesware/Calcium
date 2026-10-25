@@ -341,7 +341,8 @@ def test_native_project_cache_recompiles_changed_module(tmp_path):
     rows = third.metadata["toolchain"]["cache"]
     assert sum(not row["hit"] for row in rows) == 1
     # Corruption is a validated miss, never a loaded untrusted object file.
-    entry = next((tmp_path / "cache").rglob("object.o"))
+    key = rows[0]["key"]
+    entry = tmp_path / "cache" / key[:2] / key / "object.o"
     entry.write_bytes(b"corrupt")
     fourth = compiler.build(root / "main.py", output=tmp_path / "program")
     assert fourth.success and any(not row["hit"] for row in fourth.metadata["toolchain"]["cache"])
