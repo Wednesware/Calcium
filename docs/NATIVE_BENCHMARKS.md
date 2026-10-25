@@ -40,19 +40,19 @@ O3, strict floating-point flags, two warmups and nine samples per runtime.
 
 | Whole-process workload | Python median | CPython backend | Native backend |
 | --- | ---: | ---: | ---: |
-| Empty pass | 8.295 ms | 8.803 ms | 0.501 ms |
-| Sum of squares, n=1,000,000 | 49.314 ms | 10.604 ms | 2.165 ms |
-| Recursive Fibonacci, n=25 | 14.377 ms | 10.418 ms | 1.354 ms |
-| String concat/repeat fixture | 10.637 ms | 10.877 ms | 2.693 ms |
-| One million compiled calls | 58.947 ms | 118.980 ms | 25.389 ms |
+| Empty pass | 8.406 ms | 8.782 ms | 0.493 ms |
+| Sum of squares, n=1,000,000 | 50.815 ms | 10.441 ms | 2.134 ms |
+| Recursive Fibonacci, n=25 | 14.741 ms | 10.241 ms | 1.322 ms |
+| String concat/repeat fixture | 10.723 ms | 11.463 ms | 2.850 ms |
+| One million compiled calls | 58.642 ms | 119.809 ms | 25.672 ms |
 
 | Native workload | Median child peak RSS | Main executable bytes |
 | --- | ---: | ---: |
-| Empty pass | 2.016 MiB | 39,128 |
-| Sum of squares, n=1,000,000 | 2.273 MiB | 43,432 |
-| Recursive Fibonacci, n=25 | 2.281 MiB | 43,504 |
-| String concat/repeat fixture | 2.637 MiB | 43,288 |
-| One million compiled calls | 2.293 MiB | 43,584 |
+| Empty pass | 1.992 MiB | 39,128 |
+| Sum of squares, n=1,000,000 | 2.293 MiB | 43,432 |
+| Recursive Fibonacci, n=25 | 2.262 MiB | 47,600 |
+| String concat/repeat fixture | 2.613 MiB | 43,288 |
+| One million compiled calls | 2.277 MiB | 43,584 |
 
 The pass startup target below 1 ms was met on this reference machine. It is not
 a portable guarantee. The arithmetic and recursion fixtures use checked scalar

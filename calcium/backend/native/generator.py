@@ -54,7 +54,7 @@ def generate(program, optimization=0):
         "guarded_direct_calls": 0,
         "large_frame_allocation_sites": 0,
         "scalar_argument_unpack_sites": sum(
-            len(f.parameters) for f in program.functions if f.name in scalar
+            len(f.parameters) for f in program.functions if f.kernel and f.kernel.get("enabled")
         ),
         "scalar_return_pack_sites": len(scalar),
         "constant_heap_objects": sum(
@@ -254,7 +254,18 @@ def generate(program, optimization=0):
     report = {
         "backend": "native",
         "specialized_functions": scalar,
-        "generic_functions": [f.name for f in program.functions if f.name not in scalar],
+        "generic_functions": [
+            f.name for f in program.functions if not (f.kernel and f.kernel.get("enabled"))
+        ],
+        "function_details": [
+            {
+                "name": f.name,
+                "symbol": f.symbol,
+                "specialized": bool(f.kernel and f.kernel.get("enabled")),
+                "generic_slow_path": True,
+            }
+            for f in program.functions
+        ],
         "counts": counts,
         "scalar_materialization": "tagged integer at public return; no heap boxing for machine integers",
         "measurement": "static CIR operation sites, not measured runtime counts; generic arithmetic may promote integers or allocate strings",

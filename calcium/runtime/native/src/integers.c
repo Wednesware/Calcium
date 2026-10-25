@@ -330,6 +330,16 @@ void ca_print_integer(CaRuntime *rt, CaValue a) {
     while (n && !copy[n - 1])
       n--;
   }
+  size_t decimal_digits = (count - 1) * 9;
+  for (uint32_t top = groups[count - 1]; top; top /= 10)
+    decimal_digits++;
+  if (decimal_digits > 4300) {
+    free(copy);
+    free(groups);
+    ca_error(rt, "ValueError",
+             "integer string conversion exceeds the native 4300-digit limit");
+    return;
+  }
   if (d.sign < 0)
     putchar('-');
   printf("%u", groups[count - 1]);

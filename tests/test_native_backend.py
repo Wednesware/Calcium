@@ -467,3 +467,16 @@ def test_range_equality_exact_large_lengths(tmp_path):
     expected = subprocess.check_output([sys.executable, source])
     actual = subprocess.check_output([result.executable])
     assert actual == expected
+
+
+def test_integer_display_digit_limit(tmp_path):
+    source = tmp_path / "large.py"
+    source.write_text("x=10\nfor i in range(13): x*=x\nprint(x)\n")
+    result = Calcium(backend="native", target="executable", optimization=3).build(
+        source, output=tmp_path / "large"
+    )
+    assert result.success, result.diagnostics
+    for command in [[sys.executable, str(source)], [str(result.executable)]]:
+        run = subprocess.run(command, capture_output=True, text=True, timeout=15)
+        assert run.returncode == 1 and "ValueError:" in run.stderr
+        assert not run.stdout

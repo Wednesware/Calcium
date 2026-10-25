@@ -108,6 +108,13 @@ def prepare(source):
                 self.reject(node, f"builtin {node.id!r} is not implemented")
 
         def visit_Constant(self, node):
+            if type(node.value) is int and node.value.bit_length() > 14000:
+                try:
+                    str(node.value)
+                except ValueError:
+                    self.reject(
+                        node, "integer literal exceeds the frontend decimal conversion limit"
+                    )
             if type(node.value) not in (type(None), bool, int, float, str):
                 self.reject(node, f"{type(node.value).__name__} values are not implemented")
             if isinstance(node.value, str) and any(0xD800 <= ord(c) <= 0xDFFF for c in node.value):

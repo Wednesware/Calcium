@@ -36,7 +36,7 @@ use it. Native executables already contain CaRT and reject `--bundle` and
 | Values | None, bool, arbitrary-precision int, IEEE float, UTF-8 str, compiled functions, ranges |
 | Arithmetic | `+`, `-`, `*`, unary `+`/`-`, with checked machine integers and big-integer promotion; mixed int/float conversions round to even and report overflow |
 | Strings | Literals, concatenation, integer repetition, truth, lexicographic/equality comparisons, Unicode-code-point iteration and printing |
-| Comparison/conditions | Numeric comparisons, exact mixed int/float comparison, chained comparisons, `and`/`or`/`not`, conditional expressions and if/else |
+| Comparison/conditions | Numeric comparisons, exact mixed int/float comparison, range sequence equality, chained comparisons, `and`/`or`/`not`, conditional expressions and if/else |
 | Variables | Local/global bindings, augmented name assignment and global declarations |
 | Loops | while/else, for/else over ranges and strings, break/continue; arbitrary-precision range bounds/steps |
 | Functions | Undecorated module-level definitions, positional/positional-only and named arguments, aliases, recursion and return |
@@ -79,7 +79,9 @@ integers, float formatting and memory management in `runtime/native/src`.
 A `CaValue` tags None/bool/int64/double directly; these operations need no numeric
 heap object. Integers beyond int64 use signed base-2^30 limbs. Add/subtract/multiply
 check overflow before C signed arithmetic and promote to arbitrary precision.
-Decimal conversion is implemented in CaRT. Float formatting finds a shortest
+Decimal conversion is implemented in CaRT; printing has a 4300-digit limit
+matching CPython defaults. Python-specific digit-limit configuration is not
+emulated, and literal acceptance is also bounded by the frontend conversion limit. Float formatting finds a shortest
 round-trip decimal using libc correctly rounded formatting, then applies Python's
 fixed/scientific thresholds; IEEE-pattern tests compare against CPython.
 
@@ -153,3 +155,9 @@ Next work: general values/containers, defaults/conversions, structured exception
 object identity/classes/closures, native modules/import caching and standard-library
 bindings, plus wider fuzzing and ownership/finalizer campaigns. CPython remains the
 default until native compatibility/reliability warrant a separate decision.
+
+The GitHub release also includes a CI-built `calcium-26.6-native-linux-x86_64.tar.gz`
+demonstration archive with pass/hello/sum_squares/values binaries, generated C for
+sum_squares, build/ABI metadata and the license. These require compatible Linux
+C/math libraries, but no Python installation. The archive is verified against
+Python output and checked for libpython dependencies before upload.
