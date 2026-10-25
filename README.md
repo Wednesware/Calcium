@@ -3,7 +3,10 @@
 Calcium is Wednesware's Python-to-C compiler. It lowers supported Python through
 control-flow IR into C11 and builds executables or CPython extension modules.
 
-**Version 26.5.** Build a script or package directly:
+**Version 26.6.** CPython remains the default compatibility backend. An experimental
+standalone native backend now runs a documented subset without libpython.
+
+Build a script or package directly:
 
 ```sh
 python -m pip install -e .
@@ -33,10 +36,26 @@ same interface. Use `ca --help` for actions and `ca --build --help` for build
 options. Runtime arguments follow `--`; only `--run` and `--benchmark` execute
 the program. Run propagates its exit status.
 
+## Standalone native backend
+
+```sh
+ca examples/native/hello.py --backend native --run
+ca examples/native/sum_squares.py --backend native -O3 --run --keep-c
+ca check program.py --backend native --optimization-report
+```
+
+Native mode uses CaRT, emits C11 without Python headers, and never falls back to
+CPython. It supports primitives, big integers, strings, range loops and basic
+functions in this first milestone. Classes, containers and imports still require
+the default `--backend cpython`. Read the [native support/ownership contract](docs/NATIVE.md)
+and [measured benchmarks](docs/NATIVE_BENCHMARKS.md).
+
 ## Installation and deployment
 
-Use GIL-enabled CPython 3.12–3.14 on Linux. Builds need GCC or Clang, matching
-Python development headers, and shared libpython for executables. A relocated
+The compiler runs on CPython 3.12–3.14 on Linux. Native builds need GCC or Clang
+and the platform C/math libraries, with no Python SDK/runtime dependency in the
+output. CPython-backend builds additionally need matching
+Python development headers and shared libpython for executables. A relocated
 Python installation is supported when its matching library is under its current
 prefix. Generated executables still require compatible CPython, its standard
 library, and external runtime dependencies. Use `--bundle` to include that runtime
@@ -88,8 +107,9 @@ arbitrary-precision arithmetic. No general speedup is promised.
 Native functions remain C builtins: normal Python frames, code objects, exact
 function introspection, some argument-error wording, and traceback formatting
 differ. Pattern matching, native class/closure/generator machinery, other platforms,
-free-threading, subinterpreters, a CPython-free runtime, and a general C ABI remain
-future work. Read the [implementation
+free-threading, subinterpreters, full native-runtime compatibility and a general C ABI
+remain future work. The independent runtime currently supports only the native
+milestone documented above. Read the [implementation
 contract](docs/IMPLEMENTATION.md) and [remaining-work ledger](docs/STATUS.md)
 before relying on support.
 

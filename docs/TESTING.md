@@ -1,6 +1,12 @@
-# Validation status for 26.5
+# Validation status for 26.6
 
-The suite now runs generated C at O0–O3, including checked-integer boundaries,
+Native 26.6 adds standalone differential tests at O0–O3, integer promotion, IEEE
+float formatting, Unicode/range iteration, binding/overflow/error paths, SDK-free
+emission, source deletion, Python-free dynamic dependencies, complex-frame
+unwinding, traced cycles and GCC/Clang ASan+UBSan runs. The existing CPython suite
+remains in place. See [Native](NATIVE.md) and [benchmarks](NATIVE_BENCHMARKS.md).
+
+The compatibility suite runs generated C at O0–O3, including checked-integer boundaries,
 subclasses, expanded arguments, signatures/defaults, chained comparisons with
 custom truth objects, native syntax additions, mixed definition fallback, and
 object-cache reuse/invalidation/corruption. The Python matrix is 3.12–3.14.

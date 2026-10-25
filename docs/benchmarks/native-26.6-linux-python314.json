@@ -1,0 +1,1773 @@
+{
+  "schema_version": 1,
+  "measured_at_utc": "2026-10-25T10:37:57.558182+00:00",
+  "cart_sha256": "c00aa34727987b6edb41328717934382bd841459ffd01dc882fa31c35a61788c",
+  "calcium_version": "26.6",
+  "python": "3.14.8 (main, Oct  2 2026, 10:23:31) [GCC 16.2.1 20260810]",
+  "python_executable": "/usr/bin/python",
+  "python_prefix": "/usr",
+  "cpu": "AMD Ryzen 5 7600X 6-Core Processor",
+  "platform": "Linux-7.2.11-zen1-1-zen-x86_64-with-glibc2.44",
+  "machine": "x86_64",
+  "compiler": "gcc (GCC) 16.2.1 20260810",
+  "optimization": 3,
+  "c_flags": [
+    "-std=c11",
+    "-O3",
+    "-fno-fast-math",
+    "-ffp-contract=off"
+  ],
+  "helper_sha256": "9a6b92c1833bf7b05e095c41c093948808e4af4ef1f39d5f064ca3a39d37b58d",
+  "python_flags": [],
+  "environment_controls": "inherited environment; no CPU affinity or background-load control",
+  "repeat": 9,
+  "warmups": 2,
+  "order": "deterministically shuffled per round, seed 266",
+  "measurement": "whole-process wall and child CPU time, child peak RSS via a minimal C wait4 helper (Linux KiB converted to bytes); helper startup, fixture setup and validation excluded; RSS has the small helper inheritance floor, zero accounting samples are null",
+  "size_scope": "main executable image only; excludes shared libraries and Python standard library",
+  "correctness": "stdout, stderr, exit status and private working-directory regular file hashes on every run",
+  "limitations": "not CPU-pinned; whole-process samples include startup/shutdown and stdout; GUI responsiveness and runtime hotness are not measured",
+  "workloads": {
+    "startup": {
+      "source_sha256": "9f56e761d79bfdb34304a012586cb04d16b435ef6130091a97702e559260a2f2",
+      "runtimes": {
+        "cpython": {
+          "status": "supported",
+          "compile_wall_seconds": 0.22380462200089823,
+          "executable_bytes": 58328,
+          "dependencies": [
+            "CPython 3.14",
+            "matching standard library"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.009000306,
+              "cpu_seconds": 0.008889,
+              "peak_rss_bytes": 11624448
+            },
+            {
+              "wall_seconds": 0.009854032,
+              "cpu_seconds": 0.009547,
+              "peak_rss_bytes": 12042240
+            },
+            {
+              "wall_seconds": 0.008474994,
+              "cpu_seconds": 0.008375,
+              "peak_rss_bytes": 11923456
+            },
+            {
+              "wall_seconds": 0.008861096,
+              "cpu_seconds": 0.008748,
+              "peak_rss_bytes": 11923456
+            },
+            {
+              "wall_seconds": 0.008705194,
+              "cpu_seconds": 0.008587,
+              "peak_rss_bytes": 11915264
+            },
+            {
+              "wall_seconds": 0.008803027,
+              "cpu_seconds": 0.00868,
+              "peak_rss_bytes": 11776000
+            },
+            {
+              "wall_seconds": 0.009333839,
+              "cpu_seconds": 0.009233,
+              "peak_rss_bytes": 11923456
+            },
+            {
+              "wall_seconds": 0.008719772,
+              "cpu_seconds": 0.008623,
+              "peak_rss_bytes": 12087296
+            },
+            {
+              "wall_seconds": 0.008437394,
+              "cpu_seconds": 0.008283,
+              "peak_rss_bytes": 11988992
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.008803027,
+            "iqr": 0.00029511200000000015,
+            "min": 0.008437394,
+            "max": 0.009854032
+          },
+          "cpu_seconds": {
+            "median": 0.00868,
+            "iqr": 0.0003020000000000002,
+            "min": 0.008283,
+            "max": 0.009547
+          },
+          "peak_rss_bytes": {
+            "median": 11923456,
+            "iqr": 73728.0,
+            "min": 11624448,
+            "max": 12087296
+          }
+        },
+        "native": {
+          "status": "supported",
+          "compile_wall_seconds": 0.4190359360000002,
+          "executable_bytes": 39128,
+          "dependencies": [
+            "C11 platform C library",
+            "libm"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.000477362,
+              "cpu_seconds": 0.000434,
+              "peak_rss_bytes": 2117632
+            },
+            {
+              "wall_seconds": 0.000501477,
+              "cpu_seconds": 0.000437,
+              "peak_rss_bytes": 1982464
+            },
+            {
+              "wall_seconds": 0.000589362,
+              "cpu_seconds": 0.000546,
+              "peak_rss_bytes": 2011136
+            },
+            {
+              "wall_seconds": 0.000538867,
+              "cpu_seconds": 0.000483,
+              "peak_rss_bytes": 2174976
+            },
+            {
+              "wall_seconds": 0.000542955,
+              "cpu_seconds": 0.000493,
+              "peak_rss_bytes": 2191360
+            },
+            {
+              "wall_seconds": 0.000446875,
+              "cpu_seconds": 0.000396,
+              "peak_rss_bytes": 2215936
+            },
+            {
+              "wall_seconds": 0.000438209,
+              "cpu_seconds": 0.00039,
+              "peak_rss_bytes": 2060288
+            },
+            {
+              "wall_seconds": 0.000543556,
+              "cpu_seconds": 0.000485,
+              "peak_rss_bytes": 2039808
+            },
+            {
+              "wall_seconds": 0.000460281,
+              "cpu_seconds": 0.000409,
+              "peak_rss_bytes": 2113536
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.000501477,
+            "iqr": 8.267400000000003e-05,
+            "min": 0.000438209,
+            "max": 0.000589362
+          },
+          "cpu_seconds": {
+            "median": 0.000437,
+            "iqr": 7.6e-05,
+            "min": 0.00039,
+            "max": 0.000546
+          },
+          "peak_rss_bytes": {
+            "median": 2113536,
+            "iqr": 135168.0,
+            "min": 1982464,
+            "max": 2215936
+          }
+        },
+        "python": {
+          "status": "supported",
+          "executable_bytes": 14424,
+          "samples": [
+            {
+              "wall_seconds": 0.007957948,
+              "cpu_seconds": 0.007861,
+              "peak_rss_bytes": 12197888
+            },
+            {
+              "wall_seconds": 0.008828435,
+              "cpu_seconds": 0.008704,
+              "peak_rss_bytes": 12066816
+            },
+            {
+              "wall_seconds": 0.00792212,
+              "cpu_seconds": 0.007833,
+              "peak_rss_bytes": 12197888
+            },
+            {
+              "wall_seconds": 0.008238822,
+              "cpu_seconds": 0.008128,
+              "peak_rss_bytes": 12201984
+            },
+            {
+              "wall_seconds": 0.008585781,
+              "cpu_seconds": 0.008488,
+              "peak_rss_bytes": 12197888
+            },
+            {
+              "wall_seconds": 0.008683895,
+              "cpu_seconds": 0.008584,
+              "peak_rss_bytes": 12136448
+            },
+            {
+              "wall_seconds": 0.008294868,
+              "cpu_seconds": 0.008219,
+              "peak_rss_bytes": 12197888
+            },
+            {
+              "wall_seconds": 0.008114911,
+              "cpu_seconds": 0.008032,
+              "peak_rss_bytes": 12201984
+            },
+            {
+              "wall_seconds": 0.009205149,
+              "cpu_seconds": 0.009096,
+              "peak_rss_bytes": 11878400
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.008294868,
+            "iqr": 0.0005689839999999998,
+            "min": 0.00792212,
+            "max": 0.009205149
+          },
+          "cpu_seconds": {
+            "median": 0.008219,
+            "iqr": 0.0005520000000000004,
+            "min": 0.007833,
+            "max": 0.009096
+          },
+          "peak_rss_bytes": {
+            "median": 12197888,
+            "iqr": 61440.0,
+            "min": 11878400,
+            "max": 12201984
+          }
+        }
+      }
+    },
+    "arithmetic": {
+      "source_sha256": "cac1eadccd4f774ae263dc841ef97200015dee5768bd712cd8f1d118b991b039",
+      "runtimes": {
+        "cpython": {
+          "status": "supported",
+          "compile_wall_seconds": 0.21665212999869254,
+          "executable_bytes": 71152,
+          "dependencies": [
+            "CPython 3.14",
+            "matching standard library"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.01009904,
+              "cpu_seconds": 0.009978,
+              "peak_rss_bytes": 12058624
+            },
+            {
+              "wall_seconds": 0.011070506,
+              "cpu_seconds": 0.010954,
+              "peak_rss_bytes": 11988992
+            },
+            {
+              "wall_seconds": 0.010675709,
+              "cpu_seconds": 0.010528,
+              "peak_rss_bytes": 11874304
+            },
+            {
+              "wall_seconds": 0.010536218,
+              "cpu_seconds": 0.010324,
+              "peak_rss_bytes": 12103680
+            },
+            {
+              "wall_seconds": 0.011640141,
+              "cpu_seconds": 0.011473,
+              "peak_rss_bytes": 11804672
+            },
+            {
+              "wall_seconds": 0.01089601,
+              "cpu_seconds": 0.010778,
+              "peak_rss_bytes": 11931648
+            },
+            {
+              "wall_seconds": 0.010293113,
+              "cpu_seconds": 0.01016,
+              "peak_rss_bytes": 11993088
+            },
+            {
+              "wall_seconds": 0.010417666,
+              "cpu_seconds": 0.010292,
+              "peak_rss_bytes": 11862016
+            },
+            {
+              "wall_seconds": 0.010603523,
+              "cpu_seconds": 0.010482,
+              "peak_rss_bytes": 11878400
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.010603523,
+            "iqr": 0.0004783439999999986,
+            "min": 0.01009904,
+            "max": 0.011640141
+          },
+          "cpu_seconds": {
+            "median": 0.010482,
+            "iqr": 0.0004859999999999986,
+            "min": 0.009978,
+            "max": 0.011473
+          },
+          "peak_rss_bytes": {
+            "median": 11931648,
+            "iqr": 118784.0,
+            "min": 11804672,
+            "max": 12103680
+          }
+        },
+        "native": {
+          "status": "supported",
+          "compile_wall_seconds": 0.434500086999833,
+          "executable_bytes": 43432,
+          "dependencies": [
+            "C11 platform C library",
+            "libm"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.002323794,
+              "cpu_seconds": 0.002247,
+              "peak_rss_bytes": 2420736
+            },
+            {
+              "wall_seconds": 0.002263122,
+              "cpu_seconds": 0.002163,
+              "peak_rss_bytes": 2301952
+            },
+            {
+              "wall_seconds": 0.002100757,
+              "cpu_seconds": 0.002036,
+              "peak_rss_bytes": 2314240
+            },
+            {
+              "wall_seconds": 0.002164827,
+              "cpu_seconds": 0.002079,
+              "peak_rss_bytes": 2265088
+            },
+            {
+              "wall_seconds": 0.00184009,
+              "cpu_seconds": 0.00179,
+              "peak_rss_bytes": 2453504
+            },
+            {
+              "wall_seconds": 0.002063759,
+              "cpu_seconds": 0.00199,
+              "peak_rss_bytes": 2478080
+            },
+            {
+              "wall_seconds": 0.002212747,
+              "cpu_seconds": 0.002141,
+              "peak_rss_bytes": 2383872
+            },
+            {
+              "wall_seconds": 0.002070721,
+              "cpu_seconds": 0.001975,
+              "peak_rss_bytes": 2351104
+            },
+            {
+              "wall_seconds": 0.002323334,
+              "cpu_seconds": 0.002237,
+              "peak_rss_bytes": 2383872
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.002164827,
+            "iqr": 0.0001924009999999996,
+            "min": 0.00184009,
+            "max": 0.002323794
+          },
+          "cpu_seconds": {
+            "median": 0.002079,
+            "iqr": 0.00017299999999999998,
+            "min": 0.00179,
+            "max": 0.002247
+          },
+          "peak_rss_bytes": {
+            "median": 2383872,
+            "iqr": 106496.0,
+            "min": 2265088,
+            "max": 2478080
+          }
+        },
+        "python": {
+          "status": "supported",
+          "executable_bytes": 14424,
+          "samples": [
+            {
+              "wall_seconds": 0.048536259,
+              "cpu_seconds": 0.048312,
+              "peak_rss_bytes": 12193792
+            },
+            {
+              "wall_seconds": 0.049624082,
+              "cpu_seconds": 0.049379,
+              "peak_rss_bytes": 11845632
+            },
+            {
+              "wall_seconds": 0.05001366,
+              "cpu_seconds": 0.049649,
+              "peak_rss_bytes": 12058624
+            },
+            {
+              "wall_seconds": 0.049196293,
+              "cpu_seconds": 0.048966,
+              "peak_rss_bytes": 12201984
+            },
+            {
+              "wall_seconds": 0.048790143,
+              "cpu_seconds": 0.048595,
+              "peak_rss_bytes": 12095488
+            },
+            {
+              "wall_seconds": 0.059861401,
+              "cpu_seconds": 0.059586,
+              "peak_rss_bytes": 12165120
+            },
+            {
+              "wall_seconds": 0.054930011,
+              "cpu_seconds": 0.054598,
+              "peak_rss_bytes": 12197888
+            },
+            {
+              "wall_seconds": 0.049042034,
+              "cpu_seconds": 0.048757,
+              "peak_rss_bytes": 12177408
+            },
+            {
+              "wall_seconds": 0.049313702,
+              "cpu_seconds": 0.048977,
+              "peak_rss_bytes": 11857920
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.049313702,
+            "iqr": 0.0009716260000000032,
+            "min": 0.048536259,
+            "max": 0.059861401
+          },
+          "cpu_seconds": {
+            "median": 0.048977,
+            "iqr": 0.000891999999999997,
+            "min": 0.048312,
+            "max": 0.059586
+          },
+          "peak_rss_bytes": {
+            "median": 12165120,
+            "iqr": 135168.0,
+            "min": 11845632,
+            "max": 12201984
+          }
+        }
+      }
+    },
+    "recursion": {
+      "source_sha256": "bf71d2c48e93349b9353c9dde043be8ab95e0d98fb01e715b6e4ddd084d38ca1",
+      "runtimes": {
+        "cpython": {
+          "status": "supported",
+          "compile_wall_seconds": 0.2020702900008473,
+          "executable_bytes": 75472,
+          "dependencies": [
+            "CPython 3.14",
+            "matching standard library"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.010378983,
+              "cpu_seconds": 0.010265,
+              "peak_rss_bytes": 11923456
+            },
+            {
+              "wall_seconds": 0.010895769,
+              "cpu_seconds": 0.010778,
+              "peak_rss_bytes": 11616256
+            },
+            {
+              "wall_seconds": 0.010004163,
+              "cpu_seconds": 0.009843,
+              "peak_rss_bytes": 12189696
+            },
+            {
+              "wall_seconds": 0.010092627,
+              "cpu_seconds": 0.009941,
+              "peak_rss_bytes": 12247040
+            },
+            {
+              "wall_seconds": 0.010418047,
+              "cpu_seconds": 0.010297,
+              "peak_rss_bytes": 11837440
+            },
+            {
+              "wall_seconds": 0.010495651,
+              "cpu_seconds": 0.010389,
+              "peak_rss_bytes": 12066816
+            },
+            {
+              "wall_seconds": 0.009653778,
+              "cpu_seconds": 0.009518,
+              "peak_rss_bytes": 12206080
+            },
+            {
+              "wall_seconds": 0.010737404,
+              "cpu_seconds": 0.010534,
+              "peak_rss_bytes": 11522048
+            },
+            {
+              "wall_seconds": 0.010691759,
+              "cpu_seconds": 0.010522,
+              "peak_rss_bytes": 12177408
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.010418047,
+            "iqr": 0.0005991320000000005,
+            "min": 0.009653778,
+            "max": 0.010895769
+          },
+          "cpu_seconds": {
+            "median": 0.010297,
+            "iqr": 0.0005809999999999999,
+            "min": 0.009518,
+            "max": 0.010778
+          },
+          "peak_rss_bytes": {
+            "median": 12066816,
+            "iqr": 352256.0,
+            "min": 11522048,
+            "max": 12247040
+          }
+        },
+        "native": {
+          "status": "supported",
+          "compile_wall_seconds": 0.459546711999792,
+          "executable_bytes": 43504,
+          "dependencies": [
+            "C11 platform C library",
+            "libm"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.001310891,
+              "cpu_seconds": 0.001255,
+              "peak_rss_bytes": 2437120
+            },
+            {
+              "wall_seconds": 0.001313556,
+              "cpu_seconds": 0.001254,
+              "peak_rss_bytes": 2437120
+            },
+            {
+              "wall_seconds": 0.001250177,
+              "cpu_seconds": 0.001182,
+              "peak_rss_bytes": 2478080
+            },
+            {
+              "wall_seconds": 0.001354432,
+              "cpu_seconds": 0.001294,
+              "peak_rss_bytes": 2392064
+            },
+            {
+              "wall_seconds": 0.001354262,
+              "cpu_seconds": 0.001299,
+              "peak_rss_bytes": 2273280
+            },
+            {
+              "wall_seconds": 0.001433891,
+              "cpu_seconds": 0.001344,
+              "peak_rss_bytes": 2478080
+            },
+            {
+              "wall_seconds": 0.001450602,
+              "cpu_seconds": 0.001365,
+              "peak_rss_bytes": 2297856
+            },
+            {
+              "wall_seconds": 0.001194433,
+              "cpu_seconds": 0.001151,
+              "peak_rss_bytes": 2392064
+            },
+            {
+              "wall_seconds": 0.001361806,
+              "cpu_seconds": 0.001273,
+              "peak_rss_bytes": 2351104
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.001354262,
+            "iqr": 5.09149999999999e-05,
+            "min": 0.001194433,
+            "max": 0.001450602
+          },
+          "cpu_seconds": {
+            "median": 0.001273,
+            "iqr": 4.500000000000012e-05,
+            "min": 0.001151,
+            "max": 0.001365
+          },
+          "peak_rss_bytes": {
+            "median": 2392064,
+            "iqr": 86016.0,
+            "min": 2273280,
+            "max": 2478080
+          }
+        },
+        "python": {
+          "status": "supported",
+          "executable_bytes": 14424,
+          "samples": [
+            {
+              "wall_seconds": 0.01440525,
+              "cpu_seconds": 0.014225,
+              "peak_rss_bytes": 12173312
+            },
+            {
+              "wall_seconds": 0.014376747,
+              "cpu_seconds": 0.014256,
+              "peak_rss_bytes": 12115968
+            },
+            {
+              "wall_seconds": 0.014797383,
+              "cpu_seconds": 0.014527,
+              "peak_rss_bytes": 12201984
+            },
+            {
+              "wall_seconds": 0.014700854,
+              "cpu_seconds": 0.014584,
+              "peak_rss_bytes": 12103680
+            },
+            {
+              "wall_seconds": 0.015763129,
+              "cpu_seconds": 0.015575,
+              "peak_rss_bytes": 12066816
+            },
+            {
+              "wall_seconds": 0.014178346,
+              "cpu_seconds": 0.014033,
+              "peak_rss_bytes": 12181504
+            },
+            {
+              "wall_seconds": 0.014022014,
+              "cpu_seconds": 0.013836,
+              "peak_rss_bytes": 12197888
+            },
+            {
+              "wall_seconds": 0.014176312,
+              "cpu_seconds": 0.013951,
+              "peak_rss_bytes": 12083200
+            },
+            {
+              "wall_seconds": 0.014166193,
+              "cpu_seconds": 0.013988,
+              "peak_rss_bytes": 11956224
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.014376747,
+            "iqr": 0.0005245419999999994,
+            "min": 0.014022014,
+            "max": 0.015763129
+          },
+          "cpu_seconds": {
+            "median": 0.014225,
+            "iqr": 0.0005389999999999995,
+            "min": 0.013836,
+            "max": 0.015575
+          },
+          "peak_rss_bytes": {
+            "median": 12115968,
+            "iqr": 98304.0,
+            "min": 11956224,
+            "max": 12201984
+          }
+        }
+      }
+    },
+    "strings": {
+      "source_sha256": "26125d2308778418dbf68c963d501482d484176689f902521b9786ff688c0237",
+      "runtimes": {
+        "cpython": {
+          "status": "supported",
+          "compile_wall_seconds": 0.20517011500123772,
+          "executable_bytes": 62616,
+          "dependencies": [
+            "CPython 3.14",
+            "matching standard library"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.010936636,
+              "cpu_seconds": 0.010809,
+              "peak_rss_bytes": 12095488
+            },
+            {
+              "wall_seconds": 0.010331815,
+              "cpu_seconds": 0.010217,
+              "peak_rss_bytes": 12247040
+            },
+            {
+              "wall_seconds": 0.01086415,
+              "cpu_seconds": 0.010738,
+              "peak_rss_bytes": 12242944
+            },
+            {
+              "wall_seconds": 0.012459984,
+              "cpu_seconds": 0.011724,
+              "peak_rss_bytes": 11862016
+            },
+            {
+              "wall_seconds": 0.012323158,
+              "cpu_seconds": 0.012086,
+              "peak_rss_bytes": 11661312
+            },
+            {
+              "wall_seconds": 0.010876533,
+              "cpu_seconds": 0.010761,
+              "peak_rss_bytes": 12247040
+            },
+            {
+              "wall_seconds": 0.010581432,
+              "cpu_seconds": 0.010469,
+              "peak_rss_bytes": 12185600
+            },
+            {
+              "wall_seconds": 0.010778811,
+              "cpu_seconds": 0.010654,
+              "peak_rss_bytes": 12214272
+            },
+            {
+              "wall_seconds": 0.012223612,
+              "cpu_seconds": 0.012059,
+              "peak_rss_bytes": 12128256
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.010876533,
+            "iqr": 0.0014448010000000008,
+            "min": 0.010331815,
+            "max": 0.012459984
+          },
+          "cpu_seconds": {
+            "median": 0.010761,
+            "iqr": 0.0010699999999999998,
+            "min": 0.010217,
+            "max": 0.012086
+          },
+          "peak_rss_bytes": {
+            "median": 12185600,
+            "iqr": 147456.0,
+            "min": 11661312,
+            "max": 12247040
+          }
+        },
+        "native": {
+          "status": "supported",
+          "compile_wall_seconds": 0.4323856450009771,
+          "executable_bytes": 43288,
+          "dependencies": [
+            "C11 platform C library",
+            "libm"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.002413433,
+              "cpu_seconds": 0.002352,
+              "peak_rss_bytes": 2871296
+            },
+            {
+              "wall_seconds": 0.002997284,
+              "cpu_seconds": 0.002917,
+              "peak_rss_bytes": 2523136
+            },
+            {
+              "wall_seconds": 0.002798461,
+              "cpu_seconds": 0.00271,
+              "peak_rss_bytes": 2768896
+            },
+            {
+              "wall_seconds": 0.002830752,
+              "cpu_seconds": 0.002768,
+              "peak_rss_bytes": 2658304
+            },
+            {
+              "wall_seconds": 0.002608848,
+              "cpu_seconds": 0.002539,
+              "peak_rss_bytes": 2658304
+            },
+            {
+              "wall_seconds": 0.00239652,
+              "cpu_seconds": 0.002338,
+              "peak_rss_bytes": 2772992
+            },
+            {
+              "wall_seconds": 0.002435423,
+              "cpu_seconds": 0.002323,
+              "peak_rss_bytes": 2764800
+            },
+            {
+              "wall_seconds": 0.002693426,
+              "cpu_seconds": 0.002624,
+              "peak_rss_bytes": 2871296
+            },
+            {
+              "wall_seconds": 0.002938344,
+              "cpu_seconds": 0.002873,
+              "peak_rss_bytes": 2621440
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.002693426,
+            "iqr": 0.00039532900000000025,
+            "min": 0.00239652,
+            "max": 0.002997284
+          },
+          "cpu_seconds": {
+            "median": 0.002624,
+            "iqr": 0.00041600000000000014,
+            "min": 0.002323,
+            "max": 0.002917
+          },
+          "peak_rss_bytes": {
+            "median": 2764800,
+            "iqr": 114688.0,
+            "min": 2523136,
+            "max": 2871296
+          }
+        },
+        "python": {
+          "status": "supported",
+          "executable_bytes": 14424,
+          "samples": [
+            {
+              "wall_seconds": 0.010636825,
+              "cpu_seconds": 0.010531,
+              "peak_rss_bytes": 12201984
+            },
+            {
+              "wall_seconds": 0.009893537,
+              "cpu_seconds": 0.009737,
+              "peak_rss_bytes": 12324864
+            },
+            {
+              "wall_seconds": 0.010553329,
+              "cpu_seconds": 0.010433,
+              "peak_rss_bytes": 12333056
+            },
+            {
+              "wall_seconds": 0.010213684,
+              "cpu_seconds": 0.010069,
+              "peak_rss_bytes": 12029952
+            },
+            {
+              "wall_seconds": 0.011030061,
+              "cpu_seconds": 0.010899,
+              "peak_rss_bytes": 11952128
+            },
+            {
+              "wall_seconds": 0.01152755,
+              "cpu_seconds": 0.011351,
+              "peak_rss_bytes": 12201984
+            },
+            {
+              "wall_seconds": 0.010187285,
+              "cpu_seconds": 0.010071,
+              "peak_rss_bytes": 12308480
+            },
+            {
+              "wall_seconds": 0.010649439,
+              "cpu_seconds": 0.010507,
+              "peak_rss_bytes": 12083200
+            },
+            {
+              "wall_seconds": 0.011069384,
+              "cpu_seconds": 0.010507,
+              "peak_rss_bytes": 12197888
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.010636825,
+            "iqr": 0.0008163770000000001,
+            "min": 0.009893537,
+            "max": 0.01152755
+          },
+          "cpu_seconds": {
+            "median": 0.010507,
+            "iqr": 0.00046000000000000034,
+            "min": 0.009737,
+            "max": 0.011351
+          },
+          "peak_rss_bytes": {
+            "median": 12201984,
+            "iqr": 225280.0,
+            "min": 11952128,
+            "max": 12333056
+          }
+        }
+      }
+    },
+    "functions": {
+      "source_sha256": "fffb7bb4bbcb019eac0649dc3be82837ef1695b3c93ab51a1171b1509efadccd",
+      "runtimes": {
+        "cpython": {
+          "status": "supported",
+          "compile_wall_seconds": 0.2096412139999302,
+          "executable_bytes": 75400,
+          "dependencies": [
+            "CPython 3.14",
+            "matching standard library"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.12196321,
+              "cpu_seconds": 0.119871,
+              "peak_rss_bytes": 11743232
+            },
+            {
+              "wall_seconds": 0.118843748,
+              "cpu_seconds": 0.11846,
+              "peak_rss_bytes": 12054528
+            },
+            {
+              "wall_seconds": 0.116548087,
+              "cpu_seconds": 0.116036,
+              "peak_rss_bytes": 11857920
+            },
+            {
+              "wall_seconds": 0.118464579,
+              "cpu_seconds": 0.118002,
+              "peak_rss_bytes": 12054528
+            },
+            {
+              "wall_seconds": 0.119907958,
+              "cpu_seconds": 0.119359,
+              "peak_rss_bytes": 12058624
+            },
+            {
+              "wall_seconds": 0.116700221,
+              "cpu_seconds": 0.116146,
+              "peak_rss_bytes": 11919360
+            },
+            {
+              "wall_seconds": 0.122268722,
+              "cpu_seconds": 0.121708,
+              "peak_rss_bytes": 11919360
+            },
+            {
+              "wall_seconds": 0.122039834,
+              "cpu_seconds": 0.121406,
+              "peak_rss_bytes": 11960320
+            },
+            {
+              "wall_seconds": 0.118980094,
+              "cpu_seconds": 0.118361,
+              "peak_rss_bytes": 11915264
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.118980094,
+            "iqr": 0.003498631000000002,
+            "min": 0.116548087,
+            "max": 0.122268722
+          },
+          "cpu_seconds": {
+            "median": 0.11846,
+            "iqr": 0.0018690000000000095,
+            "min": 0.116036,
+            "max": 0.121708
+          },
+          "peak_rss_bytes": {
+            "median": 11919360,
+            "iqr": 139264.0,
+            "min": 11743232,
+            "max": 12058624
+          }
+        },
+        "native": {
+          "status": "supported",
+          "compile_wall_seconds": 0.46214373799921304,
+          "executable_bytes": 43584,
+          "dependencies": [
+            "C11 platform C library",
+            "libm"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.025538765,
+              "cpu_seconds": 0.024782,
+              "peak_rss_bytes": 2404352
+            },
+            {
+              "wall_seconds": 0.027697901,
+              "cpu_seconds": 0.027079,
+              "peak_rss_bytes": 2404352
+            },
+            {
+              "wall_seconds": 0.025971383,
+              "cpu_seconds": 0.025694,
+              "peak_rss_bytes": 2314240
+            },
+            {
+              "wall_seconds": 0.024731025,
+              "cpu_seconds": 0.02455,
+              "peak_rss_bytes": 2478080
+            },
+            {
+              "wall_seconds": 0.024639163,
+              "cpu_seconds": 0.024441,
+              "peak_rss_bytes": 2428928
+            },
+            {
+              "wall_seconds": 0.025388785,
+              "cpu_seconds": 0.025206,
+              "peak_rss_bytes": 2404352
+            },
+            {
+              "wall_seconds": 0.024937531,
+              "cpu_seconds": 0.024772,
+              "peak_rss_bytes": 2396160
+            },
+            {
+              "wall_seconds": 0.025449839,
+              "cpu_seconds": 0.025321,
+              "peak_rss_bytes": 2301952
+            },
+            {
+              "wall_seconds": 0.025244324,
+              "cpu_seconds": 0.025082,
+              "peak_rss_bytes": 2396160
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.025388785,
+            "iqr": 0.0006012340000000026,
+            "min": 0.024639163,
+            "max": 0.027697901
+          },
+          "cpu_seconds": {
+            "median": 0.025082,
+            "iqr": 0.0005490000000000009,
+            "min": 0.024441,
+            "max": 0.027079
+          },
+          "peak_rss_bytes": {
+            "median": 2404352,
+            "iqr": 8192.0,
+            "min": 2301952,
+            "max": 2478080
+          }
+        },
+        "python": {
+          "status": "supported",
+          "executable_bytes": 14424,
+          "samples": [
+            {
+              "wall_seconds": 0.06085031,
+              "cpu_seconds": 0.058823,
+              "peak_rss_bytes": 12070912
+            },
+            {
+              "wall_seconds": 0.058706101,
+              "cpu_seconds": 0.058405,
+              "peak_rss_bytes": 12066816
+            },
+            {
+              "wall_seconds": 0.057754332,
+              "cpu_seconds": 0.05746,
+              "peak_rss_bytes": 12075008
+            },
+            {
+              "wall_seconds": 0.057890105,
+              "cpu_seconds": 0.057614,
+              "peak_rss_bytes": 12050432
+            },
+            {
+              "wall_seconds": 0.06187238,
+              "cpu_seconds": 0.061453,
+              "peak_rss_bytes": 12201984
+            },
+            {
+              "wall_seconds": 0.058947383,
+              "cpu_seconds": 0.058664,
+              "peak_rss_bytes": 12201984
+            },
+            {
+              "wall_seconds": 0.060470369,
+              "cpu_seconds": 0.060096,
+              "peak_rss_bytes": 11927552
+            },
+            {
+              "wall_seconds": 0.058811718,
+              "cpu_seconds": 0.058479,
+              "peak_rss_bytes": 12070912
+            },
+            {
+              "wall_seconds": 0.07761993,
+              "cpu_seconds": 0.077123,
+              "peak_rss_bytes": 12144640
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.058947383,
+            "iqr": 0.002144209000000001,
+            "min": 0.057754332,
+            "max": 0.07761993
+          },
+          "cpu_seconds": {
+            "median": 0.058664,
+            "iqr": 0.001690999999999998,
+            "min": 0.05746,
+            "max": 0.077123
+          },
+          "peak_rss_bytes": {
+            "median": 12070912,
+            "iqr": 77824.0,
+            "min": 11927552,
+            "max": 12201984
+          }
+        }
+      }
+    },
+    "containers": {
+      "source_sha256": "9be7d394971f4c5b98fca5e8c35f922af66fb083de7aa0ee01059d688e609712",
+      "runtimes": {
+        "cpython": {
+          "status": "supported",
+          "compile_wall_seconds": 0.20568892600022082,
+          "executable_bytes": 70768,
+          "dependencies": [
+            "CPython 3.14",
+            "matching standard library"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.009674616,
+              "cpu_seconds": 0.009547,
+              "peak_rss_bytes": 13135872
+            },
+            {
+              "wall_seconds": 0.009710453,
+              "cpu_seconds": 0.009595,
+              "peak_rss_bytes": 12910592
+            },
+            {
+              "wall_seconds": 0.009461719,
+              "cpu_seconds": 0.00936,
+              "peak_rss_bytes": 12976128
+            },
+            {
+              "wall_seconds": 0.009199869,
+              "cpu_seconds": 0.009053,
+              "peak_rss_bytes": 13021184
+            },
+            {
+              "wall_seconds": 0.009070538,
+              "cpu_seconds": 0.008902,
+              "peak_rss_bytes": 13037568
+            },
+            {
+              "wall_seconds": 0.009513376,
+              "cpu_seconds": 0.009398,
+              "peak_rss_bytes": 12996608
+            },
+            {
+              "wall_seconds": 0.008891112,
+              "cpu_seconds": 0.008769,
+              "peak_rss_bytes": 13152256
+            },
+            {
+              "wall_seconds": 0.009487557,
+              "cpu_seconds": 0.009372,
+              "peak_rss_bytes": 13037568
+            },
+            {
+              "wall_seconds": 0.00926965,
+              "cpu_seconds": 0.009178,
+              "peak_rss_bytes": 13094912
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.009461719,
+            "iqr": 0.00031350700000000106,
+            "min": 0.008891112,
+            "max": 0.009710453
+          },
+          "cpu_seconds": {
+            "median": 0.00936,
+            "iqr": 0.0003449999999999998,
+            "min": 0.008769,
+            "max": 0.009595
+          },
+          "peak_rss_bytes": {
+            "median": 13037568,
+            "iqr": 98304.0,
+            "min": 12910592,
+            "max": 13152256
+          }
+        },
+        "native": {
+          "status": "unsupported",
+          "diagnostics": [
+            "native backend: ListComp is not supported in the standalone milestone; no CPython fallback is available",
+            "native backend: DictComp is not supported in the standalone milestone; no CPython fallback is available",
+            "native backend: builtin 'sum' is not implemented; no CPython fallback is available",
+            "native backend: builtin 'len' is not implemented; no CPython fallback is available",
+            "native backend: builtin 'len' is not implemented; no CPython fallback is available",
+            "native backend: builtin 'set' is not implemented; no CPython fallback is available"
+          ]
+        },
+        "python": {
+          "status": "supported",
+          "executable_bytes": 14424,
+          "samples": [
+            {
+              "wall_seconds": 0.010423367,
+              "cpu_seconds": 0.010332,
+              "peak_rss_bytes": 13225984
+            },
+            {
+              "wall_seconds": 0.009469193,
+              "cpu_seconds": 0.009364,
+              "peak_rss_bytes": 12984320
+            },
+            {
+              "wall_seconds": 0.009055559,
+              "cpu_seconds": 0.008941,
+              "peak_rss_bytes": 13246464
+            },
+            {
+              "wall_seconds": 0.009813376,
+              "cpu_seconds": 0.009665,
+              "peak_rss_bytes": 13058048
+            },
+            {
+              "wall_seconds": 0.008693873,
+              "cpu_seconds": 0.008612,
+              "peak_rss_bytes": 13209600
+            },
+            {
+              "wall_seconds": 0.009511582,
+              "cpu_seconds": 0.009384,
+              "peak_rss_bytes": 13090816
+            },
+            {
+              "wall_seconds": 0.009316918,
+              "cpu_seconds": 0.009194,
+              "peak_rss_bytes": 13242368
+            },
+            {
+              "wall_seconds": 0.010239132,
+              "cpu_seconds": 0.010118,
+              "peak_rss_bytes": 12988416
+            },
+            {
+              "wall_seconds": 0.010321986,
+              "cpu_seconds": 0.010189,
+              "peak_rss_bytes": 13066240
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.009511582,
+            "iqr": 0.0009222139999999993,
+            "min": 0.008693873,
+            "max": 0.010423367
+          },
+          "cpu_seconds": {
+            "median": 0.009384,
+            "iqr": 0.0009239999999999995,
+            "min": 0.008612,
+            "max": 0.010332
+          },
+          "peak_rss_bytes": {
+            "median": 13090816,
+            "iqr": 167936.0,
+            "min": 12984320,
+            "max": 13246464
+          }
+        }
+      }
+    },
+    "objects": {
+      "source_sha256": "469be55205dd9ff318e6213b03a48e77a96c5816d57201858b56658f17c1d9dd",
+      "runtimes": {
+        "cpython": {
+          "status": "supported",
+          "compile_wall_seconds": 0.30248884400134557,
+          "executable_bytes": 62568,
+          "dependencies": [
+            "CPython 3.14",
+            "matching standard library"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.012272403,
+              "cpu_seconds": 0.012123,
+              "peak_rss_bytes": 11792384
+            },
+            {
+              "wall_seconds": 0.011730771,
+              "cpu_seconds": 0.011586,
+              "peak_rss_bytes": 11972608
+            },
+            {
+              "wall_seconds": 0.01147909,
+              "cpu_seconds": 0.011356,
+              "peak_rss_bytes": 11988992
+            },
+            {
+              "wall_seconds": 0.011794741,
+              "cpu_seconds": 0.011678,
+              "peak_rss_bytes": 11976704
+            },
+            {
+              "wall_seconds": 0.011577074,
+              "cpu_seconds": 0.011461,
+              "peak_rss_bytes": 11976704
+            },
+            {
+              "wall_seconds": 0.012110851,
+              "cpu_seconds": 0.011972,
+              "peak_rss_bytes": 11931648
+            },
+            {
+              "wall_seconds": 0.011444616,
+              "cpu_seconds": 0.011307,
+              "peak_rss_bytes": 12058624
+            },
+            {
+              "wall_seconds": 0.011580921,
+              "cpu_seconds": 0.011468,
+              "peak_rss_bytes": 12021760
+            },
+            {
+              "wall_seconds": 0.011693321,
+              "cpu_seconds": 0.011576,
+              "peak_rss_bytes": 11980800
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.011693321,
+            "iqr": 0.00021766699999999951,
+            "min": 0.011444616,
+            "max": 0.012272403
+          },
+          "cpu_seconds": {
+            "median": 0.011576,
+            "iqr": 0.00021699999999999844,
+            "min": 0.011307,
+            "max": 0.012123
+          },
+          "peak_rss_bytes": {
+            "median": 11976704,
+            "iqr": 16384.0,
+            "min": 11792384,
+            "max": 12058624
+          }
+        },
+        "native": {
+          "status": "unsupported",
+          "diagnostics": [
+            "native backend: ClassDef is not supported in the standalone milestone; no CPython fallback is available",
+            "native backend: Attribute is not supported in the standalone milestone; no CPython fallback is available"
+          ]
+        },
+        "python": {
+          "status": "supported",
+          "executable_bytes": 14424,
+          "samples": [
+            {
+              "wall_seconds": 0.009445127,
+              "cpu_seconds": 0.009345,
+              "peak_rss_bytes": 12177408
+            },
+            {
+              "wall_seconds": 0.009614705,
+              "cpu_seconds": 0.009526,
+              "peak_rss_bytes": 12083200
+            },
+            {
+              "wall_seconds": 0.009045882,
+              "cpu_seconds": 0.00895,
+              "peak_rss_bytes": 12189696
+            },
+            {
+              "wall_seconds": 0.009951545,
+              "cpu_seconds": 0.009795,
+              "peak_rss_bytes": 12062720
+            },
+            {
+              "wall_seconds": 0.01029172,
+              "cpu_seconds": 0.01018,
+              "peak_rss_bytes": 12136448
+            },
+            {
+              "wall_seconds": 0.010163491,
+              "cpu_seconds": 0.01005,
+              "peak_rss_bytes": 12210176
+            },
+            {
+              "wall_seconds": 0.011027616,
+              "cpu_seconds": 0.010594,
+              "peak_rss_bytes": 12173312
+            },
+            {
+              "wall_seconds": 0.009747864,
+              "cpu_seconds": 0.00964,
+              "peak_rss_bytes": 12120064
+            },
+            {
+              "wall_seconds": 0.009193417,
+              "cpu_seconds": 0.009099,
+              "peak_rss_bytes": 12197888
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.009747864,
+            "iqr": 0.0007183640000000008,
+            "min": 0.009045882,
+            "max": 0.011027616
+          },
+          "cpu_seconds": {
+            "median": 0.00964,
+            "iqr": 0.0007050000000000008,
+            "min": 0.00895,
+            "max": 0.010594
+          },
+          "peak_rss_bytes": {
+            "median": 12173312,
+            "iqr": 69632.0,
+            "min": 12062720,
+            "max": 12210176
+          }
+        }
+      }
+    },
+    "imports": {
+      "source_sha256": "9864a1c797393489a00b59741a064994043c9086737ea511a5584c681e4566c6",
+      "runtimes": {
+        "cpython": {
+          "status": "supported",
+          "compile_wall_seconds": 0.20937405499898887,
+          "executable_bytes": 62448,
+          "dependencies": [
+            "CPython 3.14",
+            "matching standard library",
+            "external import: collections",
+            "external import: json",
+            "external import: pathlib"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.017147517,
+              "cpu_seconds": 0.016775,
+              "peak_rss_bytes": 14016512
+            },
+            {
+              "wall_seconds": 0.015819976,
+              "cpu_seconds": 0.015693,
+              "peak_rss_bytes": 14323712
+            },
+            {
+              "wall_seconds": 0.015476293,
+              "cpu_seconds": 0.015326,
+              "peak_rss_bytes": 14311424
+            },
+            {
+              "wall_seconds": 0.016129945,
+              "cpu_seconds": 0.015976,
+              "peak_rss_bytes": 14368768
+            },
+            {
+              "wall_seconds": 0.015878866,
+              "cpu_seconds": 0.015716,
+              "peak_rss_bytes": 14045184
+            },
+            {
+              "wall_seconds": 0.01607366,
+              "cpu_seconds": 0.015865,
+              "peak_rss_bytes": 14249984
+            },
+            {
+              "wall_seconds": 0.015055587,
+              "cpu_seconds": 0.014928,
+              "peak_rss_bytes": 14303232
+            },
+            {
+              "wall_seconds": 0.016404268,
+              "cpu_seconds": 0.016212,
+              "peak_rss_bytes": 14114816
+            },
+            {
+              "wall_seconds": 0.016207901,
+              "cpu_seconds": 0.015998,
+              "peak_rss_bytes": 14012416
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.01607366,
+            "iqr": 0.00038792500000000077,
+            "min": 0.015055587,
+            "max": 0.017147517
+          },
+          "cpu_seconds": {
+            "median": 0.015865,
+            "iqr": 0.0003049999999999997,
+            "min": 0.014928,
+            "max": 0.016775
+          },
+          "peak_rss_bytes": {
+            "median": 14249984,
+            "iqr": 266240.0,
+            "min": 14012416,
+            "max": 14368768
+          }
+        },
+        "native": {
+          "status": "unsupported",
+          "diagnostics": [
+            "native backend: Import is not supported in the standalone milestone; no CPython fallback is available",
+            "native backend: Attribute is not supported in the standalone milestone; no CPython fallback is available",
+            "native backend: Dict is not supported in the standalone milestone; no CPython fallback is available"
+          ]
+        },
+        "python": {
+          "status": "supported",
+          "executable_bytes": 14424,
+          "samples": [
+            {
+              "wall_seconds": 0.016674924,
+              "cpu_seconds": 0.016518,
+              "peak_rss_bytes": 14327808
+            },
+            {
+              "wall_seconds": 0.015865701,
+              "cpu_seconds": 0.015695,
+              "peak_rss_bytes": 14331904
+            },
+            {
+              "wall_seconds": 0.015981247,
+              "cpu_seconds": 0.015845,
+              "peak_rss_bytes": 14196736
+            },
+            {
+              "wall_seconds": 0.01689228,
+              "cpu_seconds": 0.016729,
+              "peak_rss_bytes": 14430208
+            },
+            {
+              "wall_seconds": 0.016483586,
+              "cpu_seconds": 0.016345,
+              "peak_rss_bytes": 14299136
+            },
+            {
+              "wall_seconds": 0.015296797,
+              "cpu_seconds": 0.015147,
+              "peak_rss_bytes": 14520320
+            },
+            {
+              "wall_seconds": 0.016585728,
+              "cpu_seconds": 0.016435,
+              "peak_rss_bytes": 14381056
+            },
+            {
+              "wall_seconds": 0.015896319,
+              "cpu_seconds": 0.015764,
+              "peak_rss_bytes": 14241792
+            },
+            {
+              "wall_seconds": 0.01580612,
+              "cpu_seconds": 0.015594,
+              "peak_rss_bytes": 14143488
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.015981247,
+            "iqr": 0.0007200270000000016,
+            "min": 0.015296797,
+            "max": 0.01689228
+          },
+          "cpu_seconds": {
+            "median": 0.015845,
+            "iqr": 0.0007400000000000011,
+            "min": 0.015147,
+            "max": 0.016729
+          },
+          "peak_rss_bytes": {
+            "median": 14327808,
+            "iqr": 139264.0,
+            "min": 14143488,
+            "max": 14520320
+          }
+        }
+      }
+    },
+    "filesystem": {
+      "source_sha256": "5fd47c6baf5ef9e8e1a414471949f427075082f20a8c46855ad8cd289080d858",
+      "runtimes": {
+        "cpython": {
+          "status": "supported",
+          "compile_wall_seconds": 0.21321603899923502,
+          "executable_bytes": 74824,
+          "dependencies": [
+            "CPython 3.14",
+            "matching standard library"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.008981542,
+              "cpu_seconds": 0.008854,
+              "peak_rss_bytes": 12316672
+            },
+            {
+              "wall_seconds": 0.008695736,
+              "cpu_seconds": 0.008579,
+              "peak_rss_bytes": 12374016
+            },
+            {
+              "wall_seconds": 0.009417597,
+              "cpu_seconds": 0.009306,
+              "peak_rss_bytes": 12427264
+            },
+            {
+              "wall_seconds": 0.008478521,
+              "cpu_seconds": 0.008386,
+              "peak_rss_bytes": 12259328
+            },
+            {
+              "wall_seconds": 0.008999754,
+              "cpu_seconds": 0.008789,
+              "peak_rss_bytes": 12374016
+            },
+            {
+              "wall_seconds": 0.009324602,
+              "cpu_seconds": 0.009234,
+              "peak_rss_bytes": 12410880
+            },
+            {
+              "wall_seconds": 0.009267766,
+              "cpu_seconds": 0.009132,
+              "peak_rss_bytes": 12173312
+            },
+            {
+              "wall_seconds": 0.008215649,
+              "cpu_seconds": 0.008124,
+              "peak_rss_bytes": 12304384
+            },
+            {
+              "wall_seconds": 0.008813236,
+              "cpu_seconds": 0.008724,
+              "peak_rss_bytes": 12382208
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.008981542,
+            "iqr": 0.0005720299999999994,
+            "min": 0.008215649,
+            "max": 0.009417597
+          },
+          "cpu_seconds": {
+            "median": 0.008789,
+            "iqr": 0.0005529999999999997,
+            "min": 0.008124,
+            "max": 0.009306
+          },
+          "peak_rss_bytes": {
+            "median": 12374016,
+            "iqr": 77824.0,
+            "min": 12173312,
+            "max": 12427264
+          }
+        },
+        "native": {
+          "status": "unsupported",
+          "diagnostics": [
+            "native backend: With is not supported in the standalone milestone; no CPython fallback is available",
+            "native backend: With is not supported in the standalone milestone; no CPython fallback is available"
+          ]
+        },
+        "python": {
+          "status": "supported",
+          "executable_bytes": 14424,
+          "samples": [
+            {
+              "wall_seconds": 0.008605778,
+              "cpu_seconds": 0.00851,
+              "peak_rss_bytes": 12308480
+            },
+            {
+              "wall_seconds": 0.007990648,
+              "cpu_seconds": 0.007896,
+              "peak_rss_bytes": 12460032
+            },
+            {
+              "wall_seconds": 0.008728237,
+              "cpu_seconds": 0.008528,
+              "peak_rss_bytes": 12328960
+            },
+            {
+              "wall_seconds": 0.008818937,
+              "cpu_seconds": 0.008718,
+              "peak_rss_bytes": 12427264
+            },
+            {
+              "wall_seconds": 0.008996018,
+              "cpu_seconds": 0.008889,
+              "peak_rss_bytes": 12263424
+            },
+            {
+              "wall_seconds": 0.008422947,
+              "cpu_seconds": 0.008326,
+              "peak_rss_bytes": 12193792
+            },
+            {
+              "wall_seconds": 0.008797587,
+              "cpu_seconds": 0.008626,
+              "peak_rss_bytes": 12197888
+            },
+            {
+              "wall_seconds": 0.009336254,
+              "cpu_seconds": 0.009236,
+              "peak_rss_bytes": 12210176
+            },
+            {
+              "wall_seconds": 0.008752402,
+              "cpu_seconds": 0.008641,
+              "peak_rss_bytes": 12238848
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.008752402,
+            "iqr": 0.00021315900000000096,
+            "min": 0.007990648,
+            "max": 0.009336254
+          },
+          "cpu_seconds": {
+            "median": 0.008626,
+            "iqr": 0.00020799999999999985,
+            "min": 0.007896,
+            "max": 0.009236
+          },
+          "peak_rss_bytes": {
+            "median": 12263424,
+            "iqr": 118784.0,
+            "min": 12193792,
+            "max": 12460032
+          }
+        }
+      }
+    }
+  },
+  "real_applications": {
+    "status": "not executed; native package/import/object support is not implemented"
+  }
+}

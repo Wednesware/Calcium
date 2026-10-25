@@ -53,6 +53,8 @@ def _publish_directory(staged: Path, output: Path):
             }
             if manifest.is_file():
                 previous = json.loads(manifest.read_text())
+                if previous.get("backend") == "native":
+                    allowed.add("cart.h")
                 for record in previous.get("modules", []):
                     for key in ("c_file", "ir_file", "ast_file"):
                         name = record.get(key)
@@ -96,8 +98,13 @@ class Calcium:
     include_all: bool = False
     cache: bool = True
     cache_dir: str | Path | None = None
+    backend: str = "cpython"
 
     def __post_init__(self):
+        if self.backend not in {"cpython", "native"}:
+            raise ValueError("backend must be cpython or native")
+        if self.backend == "native" and self.target == "extension":
+            raise ValueError("native backend cannot produce CPython extensions")
         if self.optimization not in (0, 1, 2, 3):
             raise ValueError("optimization must be between 0 and 3")
         if self.target not in {"c", "executable", "extension"}:
@@ -140,6 +147,7 @@ class Calcium:
             allow_fallback = self.fallback if self.fallback is not None else not project_build
             result.metadata = {
                 "calcium_version": __version__,
+                "backend": "cpython",
                 "python": config,
                 "source": str(snapshot.path),
                 "source_sha256": snapshot.digest,
@@ -306,6 +314,10 @@ class Calcium:
         return result, snapshot, analysis, None
 
     def analyze(self, source=None, *, module=None) -> Result:
+        if self.backend == "native":
+            from .backend.native.api import analyze
+
+            return analyze(self, source, module)[0]
         return self._prepare(source, module=module)[0]
 
     def inspect(self, source=None, *, module=None) -> Result:
@@ -314,6 +326,10 @@ class Calcium:
     def transpile(self, source=None, *, module=None, output=None) -> Result:
         if self.target != "c":
             raise ValueError("transpile requires target c; use build for native targets")
+        if self.backend == "native":
+            from .backend.native.api import build
+
+            return build(self, source, module, output, transpile=True)
         result, snapshot, analysis, program = self._prepare(source, module=module)
         if not result.success:
             return result
@@ -390,6 +406,7 @@ class Calcium:
         manifest = {
             "schema_version": 2,
             "generator": "calcium",
+            "backend": "cpython",
             "version": __version__,
             "source_sha256": snapshot.digest,
             "source": str(snapshot.path),
@@ -437,6 +454,10 @@ class Calcium:
             (directory / "program.ast.txt").write_text(result.analysis["ast"] + "\n")
 
     def build(self, source=None, *, module=None, output=None) -> Result:
+        if self.backend == "native" and self.target != "c":
+            from .backend.native.api import build
+
+            return build(self, source, module, output)
         if self.target == "c":
             return self.transpile(source, module=module, output=output)
         result, snapshot, analysis, program = self._prepare(source, module=module)
@@ -508,6 +529,10 @@ class Calcium:
         self, source=None, *, module=None, output=None, resources=(), dependencies=True
     ) -> Result:
         """Build a relocatable Linux folder including its matching CPython runtime."""
+        if self.backend == "native":
+            raise ValueError(
+                "native executables already use standalone CaRT; --bundle is for the cpython backend"
+            )
         from .deployment import bundle
 
         return bundle(

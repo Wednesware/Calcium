@@ -121,3 +121,10 @@ located fallback reasons and optimizer decisions to stderr. JSON output, the API
 and emitted manifests expose `optimization_report`; strict rejection still returns
 coverage when analysis completes. See [Optimization report](OPTIMIZATION_REPORT.md).
 This does not measure startup or runtime hotness.
+
+`--backend cpython` is the default compatibility runtime. `--backend native`
+selects the standalone CaRT milestone and always rejects unsupported features,
+regardless of `--allow-fallback`. The native backend supports C/executable targets,
+retained C/IR/AST and static reports, but not extensions or CPython bundles.
+`ca --info --backend native` works without querying a Python SDK.
+See [Native backend](NATIVE.md).

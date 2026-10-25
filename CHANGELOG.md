@@ -1,5 +1,14 @@
 # Changelog
 
+## 26.6 — 2026-10-25
+
+- Add explicit `--backend native` / `--backend cpython`, preserving CPython as default.
+- Introduce independent CaRT tagged values, arbitrary-precision integer arithmetic, float/string operations, tracing memory management, native functions and range/string iteration.
+- Generate standalone C11/executables without Python headers, libpython or runtime Python execution; reject unsupported language features with located diagnostics.
+- Reuse verified CIR and checked integer kernels; add guarded direct native calls, scalar self-recursion and native optimization reports.
+- Add standalone examples, differential/error/ownership/IEEE-format tests, GCC/Clang ASan+UBSan checks and a three-runtime benchmark suite with wall/CPU/RSS, compile time and executable sizes.
+- Document the initial subset, recursion/argument limits and unsupported containers, classes, exceptions, imports and standard-library bindings.
+
 ## 26.5 — 2026-10-24
 
 - Add `--optimization-report` with static native/fallback function coverage, precise reason categories and qualified locations, enclosing fallback boundaries, JSON/API/manifest output and explicit partial-analysis reporting.

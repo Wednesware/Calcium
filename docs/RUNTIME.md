@@ -1,3 +1,6 @@
+> 26.6: the independent CaRT backend has its own [native contract](NATIVE.md).
+> The compatibility-backend design below remains supported and is still default.
+
 # Runtime and C backend
 
 Status: proposed; decisions D01, D02 and D06 in [Architecture](ARCHITECTURE.md).

@@ -53,6 +53,7 @@ def normalize_argv(argv):
         "--keyword-arguments",
         "--working-directory",
         "--resource",
+        "--backend",
     }
     value = False
     for arg in argv:
@@ -100,6 +101,7 @@ def parser():
     )
     info = commands.add_parser("info", help="runtime and toolchain availability")
     info.add_argument("--python", default=sys.executable)
+    info.add_argument("--backend", choices=["cpython", "native"], default="cpython")
     info.add_argument("--format", choices=["text", "json"], default="text")
     for name in ["check", "inspect", "transpile", "build", "run", "benchmark"]:
         cmd = commands.add_parser(name)
@@ -114,6 +116,12 @@ def parser():
         )
         cmd.add_argument("-O", dest="optimization", type=int, choices=[0, 1, 2, 3], default=0)
         cmd.add_argument("--python", default=sys.executable)
+        cmd.add_argument(
+            "--backend",
+            choices=["cpython", "native"],
+            default="cpython",
+            help="execution runtime; native is standalone and always rejects unsupported features",
+        )
         cmd.add_argument("--debug", action="store_true")
         cmd.add_argument("--verbose", action="store_true")
         fallback = cmd.add_mutually_exclusive_group()
@@ -226,7 +234,13 @@ def display(result, args):
     if args.optimization_report and result.optimization_report:
         from .reporting import format_optimization_report
 
-        print(format_optimization_report(result.optimization_report), file=sys.stderr)
+        report = result.optimization_report
+        print(
+            json.dumps(report, indent=2)
+            if report.get("backend") == "native"
+            else format_optimization_report(report),
+            file=sys.stderr,
+        )
     if args.verbose and "toolchain" in result.metadata:
         print(json.dumps(result.metadata["toolchain"], indent=2), file=sys.stderr)
     if result.success:
@@ -255,6 +269,10 @@ def benchmark(compiler, args, program_args):
     if args.repeat < 1 or args.warmups < 0 or args.timeout <= 0:
         raise ValueError("benchmark repeat/timeout must be positive and warmups nonnegative")
     if args.function:
+        if compiler.backend == "native":
+            raise ValueError(
+                "--function benchmarks require the cpython backend; use the native whole-process benchmark suite"
+            )
         from .benchmark import benchmark_function
 
         if args.source is None or args.module is not None:
@@ -399,6 +417,23 @@ def main(argv=None):
         root.error("arguments after -- are only supported by run and benchmark")
     try:
         if args.command == "info":
+            if args.backend == "native":
+                data = {
+                    "calcium_version": __version__,
+                    "backend": "native",
+                    "runtime": "CaRT ABI 1",
+                    "targets": ["c", "executable"],
+                    "backends": ["cpython", "native"],
+                    "python_runtime_required": False,
+                    "optimization_levels": [0, 1, 2, 3],
+                    "compilers": {n: shutil.which(n) for n in ["gcc", "clang"]},
+                }
+                print(
+                    json.dumps(data, indent=2)
+                    if args.format == "json"
+                    else f"Calcium {__version__}\nNative backend: CaRT ABI 1\nTargets: C11, executable\nNo Python SDK or runtime dependency"
+                )
+                return 0
             data = {
                 "calcium_version": __version__,
                 "python": python_config(args.python),
@@ -429,6 +464,7 @@ def main(argv=None):
                 raise ValueError("use a separate --transpile build to retain bundle intermediates")
         compiler = Calcium(
             optimization=args.optimization,
+            backend=args.backend,
             target=target,
             python=args.python,
             compiler=getattr(args, "compiler", None),
