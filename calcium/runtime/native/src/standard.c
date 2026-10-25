@@ -94,7 +94,47 @@ static const CaFunction functions[] = {
     {"gen_send", 0, 0, NULL, NULL, N_GEN_SEND},
     {"gen_close", 0, 0, NULL, NULL, N_GEN_CLOSE},
     {"gen_throw", 0, 0, NULL, NULL, N_GEN_THROW},
+    {"sys_exit", 0, 0, NULL, NULL, N_SYS_EXIT},
+    {"suppress", 0, 0, NULL, NULL, N_SUPPRESS},
+    {"suppress_enter", 0, 0, NULL, NULL, N_SUPPRESS_ENTER},
+    {"suppress_exit", 0, 0, NULL, NULL, N_SUPPRESS_EXIT},
+    {"nullcontext", 0, 0, NULL, NULL, N_NULLCONTEXT},
+    {"parser", 0, 0, NULL, NULL, N_PARSER},
+    {"add_argument", 0, 0, NULL, NULL, N_ADD_ARGUMENT},
+    {"parse_args", 0, 0, NULL, NULL, N_PARSE_ARGS},
+    {"parse_intermixed", 0, 0, NULL, NULL, N_PARSE_INTERMIXED},
+    {"parser_error", 0, 0, NULL, NULL, N_PARSER_ERROR},
+    {"parser_help", 0, 0, NULL, NULL, N_PARSER_HELP},
+    {"as_run", 0, 0, NULL, NULL, N_AS_RUN},
+    {"as_sleep", 0, 0, NULL, NULL, N_AS_SLEEP},
+    {"as_task", 0, 0, NULL, NULL, N_AS_TASK},
+    {"as_wait_for", 0, 0, NULL, NULL, N_AS_WAIT_FOR},
+    {"as_gather", 0, 0, NULL, NULL, N_AS_GATHER},
+    {"as_lock", 0, 0, NULL, NULL, N_AS_LOCK},
+    {"lock_acquire", 0, 0, NULL, NULL, N_LOCK_ACQUIRE},
+    {"lock_release", 0, 0, NULL, NULL, N_LOCK_RELEASE},
+    {"lock_locked", 0, 0, NULL, NULL, N_LOCK_LOCKED},
+    {"lock_enter", 0, 0, NULL, NULL, N_LOCK_ENTER},
+    {"lock_exit", 0, 0, NULL, NULL, N_LOCK_EXIT},
+    {"task_cancel", 0, 0, NULL, NULL, N_TASK_CANCEL},
+    {"task_done", 0, 0, NULL, NULL, N_TASK_DONE},
+    {"task_result", 0, 0, NULL, NULL, N_TASK_RESULT},
+    {"task_exception", 0, 0, NULL, NULL, N_TASK_EXCEPTION},
+    {"http_server", 0, 0, NULL, NULL, N_HTTP_SERVER},
+    {"http_thread_server", 0, 0, NULL, NULL, N_HTTP_THREAD_SERVER},
+    {"http_serve", 0, 0, NULL, NULL, N_HTTP_SERVE},
+    {"http_handle", 0, 0, NULL, NULL, N_HTTP_HANDLE},
+    {"http_close", 0, 0, NULL, NULL, N_HTTP_CLOSE},
+    {"http_shutdown", 0, 0, NULL, NULL, N_HTTP_SHUTDOWN},
+    {"os_open", 0, 0, NULL, NULL, N_OS_OPEN},
+    {"compare_digest", 0, 0, NULL, NULL, N_COMPARE_DIGEST},
+    {"path_glob", 0, 0, NULL, NULL, N_PATH_GLOB},
+    {"path_unlink", 0, 0, NULL, NULL, N_PATH_UNLINK},
+    {"path_suffix", 0, 0, NULL, NULL, N_PATH_SUFFIX},
+    {"dict_pop", 0, 0, NULL, NULL, N_DICT_POP},
 };
+_Static_assert(sizeof functions / sizeof functions[0] == N_LAST - 1000,
+               "native function registry must match operation IDs");
 CaValue ca_native_function(int id) {
   return id >= 1000 && id < N_LAST ? ca_function(functions + (id - 1000))
                                    : CA_UNBOUND;
@@ -202,6 +242,12 @@ static CaValue init_10(CaRuntime *);
 static CaValue init_11(CaRuntime *);
 static CaValue init_12(CaRuntime *);
 static CaValue init_13(CaRuntime *);
+static CaValue init_14(CaRuntime *);
+static CaValue init_15(CaRuntime *);
+static CaValue init_16(CaRuntime *);
+static CaValue init_17(CaRuntime *);
+static CaValue init_18(CaRuntime *);
+static CaValue init_19(CaRuntime *);
 static CaModule modules[] = {
     {.name = "os", .package = "", .initialize = init_0},
     {.name = "os.path", .package = "", .initialize = init_1},
@@ -217,11 +263,18 @@ static CaModule modules[] = {
     {.name = "datetime", .package = "", .initialize = init_11},
     {.name = "dataclasses", .package = "", .initialize = init_12},
     {.name = "functools", .package = "", .initialize = init_13},
+    {.name = "sys", .package = "", .initialize = init_14},
+    {.name = "contextlib", .package = "", .initialize = init_15},
+    {.name = "argparse", .package = "", .initialize = init_16},
+    {.name = "asyncio", .package = "", .initialize = init_17},
+    {.name = "http", .package = "", .is_package = 1, .initialize = init_18},
+    {.name = "http.server", .package = "", .initialize = init_19},
 };
 static CaModule *registry[] = {
-    &modules[0],  &modules[1],  &modules[2],  &modules[3], &modules[4],
-    &modules[5],  &modules[6],  &modules[7],  &modules[8], &modules[9],
-    &modules[10], &modules[11], &modules[12], &modules[13]};
+    &modules[0],  &modules[1],  &modules[2],  &modules[3],  &modules[4],
+    &modules[5],  &modules[6],  &modules[7],  &modules[8],  &modules[9],
+    &modules[10], &modules[11], &modules[12], &modules[13], &modules[14],
+    &modules[15], &modules[16], &modules[17], &modules[18], &modules[19]};
 void ca_standard_setup(CaRuntime *rt) {
   rt->standard_modules = registry;
   rt->standard_count = sizeof registry / sizeof registry[0];
@@ -253,6 +306,7 @@ static void put(CaRuntime *rt, int module, const char *key, CaValue value) {
 }
 
 static CaValue init_0(CaRuntime *rt) {
+  ca_extra_os(rt, ca_module_value(&modules[0]));
   put(rt, 0, "getcwd", ca_native_function(N_GETCWD));
   put(rt, 0, "getenv", ca_native_function(N_GETENV));
   put(rt, 0, "replace", ca_native_function(N_REPLACE));
@@ -325,6 +379,7 @@ static CaValue init_9(CaRuntime *rt) {
   return CA_NONE;
 }
 static CaValue init_10(CaRuntime *rt) {
+  put(rt, 10, "compare_digest", ca_native_function(N_COMPARE_DIGEST));
   put(rt, 10, "token_hex", ca_native_function(N_TOKEN_HEX));
   put(rt, 10, "token_urlsafe", ca_native_function(N_TOKEN_URLSAFE));
   return CA_NONE;
@@ -347,6 +402,15 @@ static CaValue init_13(CaRuntime *rt) {
 }
 CaValue ca_standard_call(CaRuntime *rt, int id, int n, int nkw, CaValue *args,
                          const char **keys) {
+  if (id >= N_OS_OPEN && id <= N_DICT_POP)
+    return ca_extra_call(rt, id, n, nkw, args, keys);
+  if (id >= N_SYS_EXIT && id <= N_PARSER_HELP)
+    return ca_cli_call(rt, id, n, nkw, args, keys);
+  if (id >= N_AS_RUN && id <= N_TASK_EXCEPTION)
+    return ca_async_call(rt, id, n, nkw, args, keys);
+  if (id >= N_HTTP_SERVER && id <= N_HTTP_SHUTDOWN)
+    return ca_http_call(rt, id, n, nkw, args, keys);
+
   if (id == CA_T_PATH || (id >= N_PATH_HOME && id <= N_RMTREE) ||
       (id >= N_GETCWD && id <= N_PATH_BASENAME))
     return ca_io_call(rt, id, n, nkw, args, keys);
@@ -385,6 +449,13 @@ CaValue ca_foreign_attribute(CaRuntime *rt, CaValue value, const char *name) {
     }
   } else {
     CaForeign *f = (CaForeign *)value.as.obj;
+    if (f->kind == CA_F_SUPPRESS || f->kind == CA_F_NULLCONTEXT ||
+        f->kind == CA_F_PARSER || f->kind == CA_F_ACTION)
+      return ca_cli_attribute(rt, value, name);
+    if (f->kind >= CA_F_TASK && f->kind <= CA_F_GATHER)
+      return ca_async_attribute(rt, value, name);
+    if (f->kind == CA_F_HTTP_SERVER)
+      return ca_http_attribute(rt, value, name);
     if (f->kind == CA_F_STAT) {
       CaValue key = ca_string(rt, name, strlen(name));
       return rt->error ? CA_UNBOUND : ca_getitem(rt, f->state, key);
@@ -439,6 +510,7 @@ CaValue ca_foreign_attribute(CaRuntime *rt, CaValue value, const char *name) {
   return CA_UNBOUND;
 }
 void ca_foreign_finalize(CaForeign *f) {
+  ca_http_finalize(f);
   ca_io_finalize(f);
   ca_data_finalize(f);
   ca_sql_finalize(f);
@@ -549,4 +621,55 @@ void ca_foreign_render(CaRuntime *rt, FILE *stream, CaValue value, int mode) {
     return;
   }
   fputs("<native object>", stream);
+}
+
+void ca_standard_arguments(CaRuntime *rt, int argc, char **argv) {
+  rt->arguments = ca_container(rt, CA_LIST_T, 0, NULL);
+  for (int i = 0; i < argc && !rt->error; i++)
+    ca_append(rt, rt->arguments, ca_string(rt, argv[i], strlen(argv[i])));
+}
+static CaValue init_14(CaRuntime *rt) {
+  put(rt, 14, "argv", rt->arguments);
+  put(rt, 14, "exit", ca_native_function(N_SYS_EXIT));
+  put(rt, 14, "platform", ca_string(rt, "linux", 5));
+  return CA_NONE;
+}
+static CaValue init_15(CaRuntime *rt) {
+  put(rt, 15, "suppress", ca_native_function(N_SUPPRESS));
+  put(rt, 15, "nullcontext", ca_native_function(N_NULLCONTEXT));
+  return CA_NONE;
+}
+static CaValue init_16(CaRuntime *rt) {
+  put(rt, 16, "ArgumentParser", ca_native_function(N_PARSER));
+  CaValue cls = ca_class(rt, "Namespace", 0, NULL);
+  if (!rt->error) {
+    ca_set_attribute(rt, cls, "__module__", ca_string(rt, "argparse", 8));
+    put(rt, 16, "Namespace", cls);
+  }
+  return CA_NONE;
+}
+static CaValue init_17(CaRuntime *rt) {
+  const char *names[] = {"run",      "sleep",  "create_task",
+                         "wait_for", "gather", "Lock"};
+  int ids[] = {N_AS_RUN,      N_AS_SLEEP,  N_AS_TASK,
+               N_AS_WAIT_FOR, N_AS_GATHER, N_AS_LOCK};
+  for (size_t i = 0; i < 6; i++)
+    put(rt, 17, names[i], ca_native_function(ids[i]));
+  put(rt, 17, "CancelledError", ca_type(CA_T_CANCELLEDERROR));
+  put(rt, 17, "TimeoutError", ca_type(CA_T_TIMEOUTERROR));
+  return CA_NONE;
+}
+static CaValue init_18(CaRuntime *rt) {
+  (void)rt;
+  return CA_NONE;
+}
+static CaValue init_19(CaRuntime *rt) {
+  put(rt, 19, "HTTPServer", ca_native_function(N_HTTP_SERVER));
+  put(rt, 19, "ThreadingHTTPServer", ca_native_function(N_HTTP_THREAD_SERVER));
+  CaValue cls = ca_class(rt, "SimpleHTTPRequestHandler", 0, NULL);
+  if (!rt->error) {
+    ca_set_attribute(rt, cls, "__module__", ca_string(rt, "http.server", 11));
+    put(rt, 19, "SimpleHTTPRequestHandler", cls);
+  }
+  return CA_NONE;
 }

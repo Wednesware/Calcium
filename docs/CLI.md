@@ -1,6 +1,6 @@
 # CLI and Python API
 
-26.8 defaults to Bonemarrow. Use `--use bmrw` / `--bmrw` / `--backend native`
+26.9 defaults to Bonemarrow. Use `--use bmrw` / `--bmrw` / `--backend native`
 for explicit native selection, or `--cpython` / `--use cpython` / `--backend cpython`
 for compatibility. Conflicts fail. `Calcium()` defaults to `backend="bmrw"`.
 See [NATIVE.md](NATIVE.md) for the native support boundary; broader compatibility

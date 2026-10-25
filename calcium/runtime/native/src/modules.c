@@ -103,6 +103,14 @@ CaValue ca_attribute(CaRuntime *rt, CaValue value, const char *name,
     CaGenerator *g = (CaGenerator *)value.as.obj;
     if (!strcmp(name, "__name__"))
       return ca_string(rt, g->definition->name, strlen(g->definition->name));
+    if (g->coroutine &&
+        (!strcmp(name, "send") || !strcmp(name, "throw") ||
+         (!strcmp(name, "close") && g->started && !g->closed))) {
+      ca_error(rt, "NotImplementedError",
+               "manual native coroutine driving is not implemented; use "
+               "asyncio.run/create_task");
+      return CA_UNBOUND;
+    }
     int method = !strcmp(name, "send")    ? N_GEN_SEND
                  : !strcmp(name, "close") ? N_GEN_CLOSE
                  : !strcmp(name, "throw") ? N_GEN_THROW

@@ -2,6 +2,12 @@
 
 MODULES = frozenset(
     {
+        "sys",
+        "contextlib",
+        "argparse",
+        "asyncio",
+        "http",
+        "http.server",
         "os",
         "os.path",
         "pathlib",

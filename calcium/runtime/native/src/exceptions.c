@@ -35,7 +35,7 @@ static const char *names[] = {"BaseException",
                               "sqlite3.DataError",
                               "UnicodeError",
                               "UnicodeEncodeError",
-                              "UnicodeDecodeError"};
+                              "UnicodeDecodeError", "asyncio.exceptions.CancelledError", "TimeoutError"};
 const char *ca_type_name(CaValue type) {
   if (type.tag == CA_CLASS_T)
     return ((CaString *)((CaClass *)type.as.obj)->name.as.obj)->data;

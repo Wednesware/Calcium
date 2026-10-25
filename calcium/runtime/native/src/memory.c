@@ -67,6 +67,7 @@ void ca_safepoint(CaRuntime *rt) {
   mark(rt->pending, &pending);
   mark(rt->handled, &pending);
   mark(rt->environment, &pending);
+  mark(rt->arguments, &pending);
   for (CaFrame *f = rt->roots; f; f = f->previous)
     for (size_t i = 0; i < f->count; i++)
       mark(f->values[i], &pending);
@@ -85,6 +86,8 @@ void ca_safepoint(CaRuntime *rt) {
       CaGenerator *g = (CaGenerator *)obj;
       mark(g->sent, &pending);
       mark(g->result, &pending);
+      mark(g->injected, &pending);
+      mark(g->handled, &pending);
       for (size_t i = 0; i < g->count; i++)
         mark(g->values[i], &pending);
     } else if (obj->kind == CA_CELL_T)

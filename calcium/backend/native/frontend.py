@@ -9,6 +9,15 @@ from ...models import Diagnostic
 
 ALLOWED = (
     ast.Module,
+    ast.AsyncFunctionDef,
+    ast.Await,
+    ast.AsyncWith,
+    ast.BitOr,
+    ast.BitAnd,
+    ast.BitXor,
+    ast.Invert,
+    ast.LShift,
+    ast.RShift,
     ast.ClassDef,
     ast.AnnAssign,
     ast.Lambda,
@@ -213,6 +222,7 @@ def prepare(source):
                     "NotImplementedError",
                     "SystemExit",
                     "KeyboardInterrupt",
+                    "TimeoutError",
                     "UnicodeError",
                     "UnicodeEncodeError",
                     "UnicodeDecodeError",
@@ -396,6 +406,8 @@ def prepare(source):
             self.depth -= 1
             self.locals_ = previous
 
+        visit_AsyncFunctionDef = visit_FunctionDef
+
         def visit_If(self, node):
             self.control += 1
             self.generic_visit(node)
@@ -412,7 +424,7 @@ def prepare(source):
         if not (isinstance(n, ast.ImportFrom) and n.module == "__future__")
     ]
     for node in ast.walk(normalized):
-        if isinstance(node, ast.FunctionDef):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             node.returns = None
             for arg in (
                 node.args.posonlyargs

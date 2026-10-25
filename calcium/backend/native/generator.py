@@ -115,6 +115,7 @@ def generate(program, optimization=0, *, module_info=None):
             for name in sorted(cellvars):
                 code.append(f"values[{local[name]}]=ca_cell(rt,values[{local[name]}]);")
             code += [
+                f"g->coroutine={int(native.get('coroutine', False))};",
                 "return rt->error?CA_UNBOUND:value;}",
                 f"static int {fn.symbol}_resume(CaRuntime *rt,CaGenerator *g,CaValue *out){{",
                 "CaValue *values=g->values;",
@@ -166,7 +167,10 @@ def generate(program, optimization=0, *, module_info=None):
         yield_ids = {
             op.result: i + 1
             for i, op in enumerate(
-                op for block in fn.blocks for op in block.instructions if op.op == "native_yield"
+                op
+                for block in fn.blocks
+                for op in block.instructions
+                if op.op in {"native_yield", "native_await"}
             )
         }
         if generator:
@@ -245,12 +249,17 @@ def generate(program, optimization=0, *, module_info=None):
                     expr = f"ca_compare(rt,{v[0]},{v[1]},{cstr(op.data)})"
                     counts["generic_operations"] += 1
                     counts["potential_heap_operations"] += 1
-                elif op.op == "native_yield":
+                elif op.op in {"native_yield", "native_await"}:
                     index = yield_ids[op.result]
                     code += [
                         f"g->pc={index};*out={v[0]};ca_pop(rt,&frame);ca_leave(rt);return 1;",
                         f"resume_{index}:;",
                     ]
+                    if op.op == "native_await":
+                        code += [
+                            "if(g->injected.tag!=CA_NONE_T && g->injected.tag!=CA_UNBOUND_T){CaValue failure=g->injected;g->injected=CA_NONE;ca_error_set(rt,failure);",
+                            f"goto {'error' if op.error == 'error' else 'err_' + op.error};}}",
+                        ]
                     expr = "g->sent"
                 elif op.op == "native_class":
                     for index, value in enumerate(v):

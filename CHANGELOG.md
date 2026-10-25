@@ -1,5 +1,9 @@
 # Changelog
 
+## 26.9
+
+Native coroutines/await/async context managers, selected asyncio/contextlib/argparse/HTTP APIs, process arguments, bitwise integers and session filesystem helpers. The reported Discribe C160 blockers are removed; full external GUI/collaboration dependencies remain open. See [release notes](docs/releases/26.9.md).
+
 ## 26.8
 
 Native classes, closures, structured exceptions, lazy generator expressions and

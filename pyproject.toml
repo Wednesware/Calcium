@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wednesware-calcium"
-version = "26.8"
+version = "26.9"
 description = "Python-to-C compiler with explicit CPython interoperability"
 readme = "README.md"
 requires-python = ">=3.12,<3.15"

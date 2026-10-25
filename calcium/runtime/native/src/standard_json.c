@@ -497,7 +497,11 @@ static void encode(Encoder *e, CaValue value) {
     }
     size_t entries = c->length / 2;
     for (size_t i = 0; i < entries && !rt->error; i++) {
-      if(c->length/2!=entries){ca_error(rt,"RuntimeError","dictionary changed size during JSON encoding");break;}
+      if (c->length / 2 != entries) {
+        ca_error(rt, "RuntimeError",
+                 "dictionary changed size during JSON encoding");
+        break;
+      }
       CaValue key = e->sort ? ((CaContainer *)roots[1].as.obj)->items[i]
                             : c->items[i * 2];
       roots[2] = key_text(e, key);

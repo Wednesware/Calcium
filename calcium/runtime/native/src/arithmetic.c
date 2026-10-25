@@ -3,6 +3,9 @@ static int integer(CaValue v) {
   return v.tag == CA_INT_T || v.tag == CA_BOOL_T || v.tag == CA_BIG_T;
 }
 CaValue ca_binary_op(CaRuntime *rt, CaValue a, CaValue b, const char *op) {
+  if (!strcmp(op, "or") || !strcmp(op, "and") || !strcmp(op, "xor") ||
+      !strcmp(op, "lshift") || !strcmp(op, "rshift"))
+    return ca_integer_bitwise(rt, a, b, op);
   if (!strcmp(op, "add"))
     return ca_binary(rt, a, b, '+');
   if (!strcmp(op, "subtract"))

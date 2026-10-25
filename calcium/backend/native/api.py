@@ -182,11 +182,11 @@ def analyze(compiler, source, module):
                 f"void {symbol}_roots(CaRuntime *,CaFrame *,CaFrame *);",
             ]
         lines += [
-            "int main(void){CaRuntime runtime={0};CaRuntime *rt=&runtime;",
+            "int main(int argc,char **argv){CaRuntime runtime={0};CaRuntime *rt=&runtime;",
             "CaModule *modules[]={" + ",".join("&" + i["symbol"] for i in infos) + "};",
             f"CaFrame roots[{len(infos) * 2}];",
             f"rt->modules=modules;rt->module_count={len(infos)};",
-            "ca_standard_setup(rt);",
+            "ca_standard_setup(rt);ca_standard_arguments(rt,argc,argv);",
         ]
         for index, info in enumerate(infos):
             lines += [f"{info['symbol']}_roots(rt,&roots[{index * 2}],&roots[{index * 2 + 1}]);"]
@@ -209,6 +209,8 @@ def analyze(compiler, source, module):
         result.metadata["native_standard_library_scope"] = (
             "Selected native APIs only; module presence does not imply full stdlib compatibility"
         )
+        if "http.server" in result.metadata["native_standard_modules"]:
+            result.runtime_dependencies.append("POSIX threads")
         result.success = True
         return result, (snapshot, units)
     except (SyntaxError, UnicodeError) as exc:
@@ -246,9 +248,15 @@ def emit(directory, result, plan):
         "generator": "calcium",
         "version": __version__,
         "backend": "native",
-        "runtime_abi": 3,
+        "runtime_abi": 4,
         "runtime_dependencies": result.runtime_dependencies,
         "native_standard_modules": result.metadata["native_standard_modules"],
+        "compile_flags": ["-pthread"]
+        if "http.server" in result.metadata["native_standard_modules"]
+        else [],
+        "link_flags": ["-pthread"]
+        if "http.server" in result.metadata["native_standard_modules"]
+        else [],
         "compile_definitions": [f"CART_PY_MINOR={sys.version_info.minor}"]
         + [
             definition + "=1"
@@ -347,6 +355,9 @@ def build(compiler, source, module, output, *, transpile=False):
                 elif compiler.cache:
                     flags += [f"-ffile-prefix-map={staged}=/calcium/generated"]
                 link_flags = []
+                if "http.server" in result.metadata["native_standard_modules"]:
+                    flags.append("-pthread")
+                    link_flags.append("-pthread")
                 for module_name, (package, definition) in LIBRARIES.items():
                     if module_name in result.metadata["native_standard_modules"]:
                         probe = subprocess.run(
@@ -375,7 +386,7 @@ def build(compiler, source, module, output, *, transpile=False):
                 ).splitlines()[0]
                 identity = {
                     "backend": "bmrw",
-                    "runtime_abi": 3,
+                    "runtime_abi": 4,
                     "compiler": version,
                     "compiler_sha256": sha256(Path(cc).read_bytes()).hexdigest(),
                 }
@@ -384,7 +395,7 @@ def build(compiler, source, module, output, *, transpile=False):
                     if compiler.cache_dir is not None
                     else Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
                     / "calcium"
-                    / "objects-native-v3"
+                    / "objects-native-v4"
                 )
                 objects, commands, reports, warnings = [], [], [], []
                 for path in sorted(staged.glob("*.c")):

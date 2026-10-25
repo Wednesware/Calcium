@@ -1,4 +1,4 @@
-# Bonemarrow 26.8 native library scope
+# Bonemarrow 26.9 native library scope
 
 Imports below resolve to native C modules. Import availability does **not** mean
 every Python API or option exists. Unsupported attributes/options raise native
@@ -30,8 +30,7 @@ Native exceptions expose arguments and cause/context, but do not recreate Python
 traceback objects. Classes have single inheritance and bounded descriptors;
 metaclasses, multiple inheritance, subclassing scalar/library types, custom
 allocation/attribute hooks, slots,
-weakrefs and finalizers are unsupported. General generator functions, async/await,
-bitwise operations and unrestricted reflection remain outside the contract.
+weakrefs and finalizers are unsupported. General generator functions, async iteration/generators and unrestricted reflection remain outside the contract.
 
 JSON unpaired surrogate values, UTF-16/32 byte input and custom encoder/decoder
 classes are unsupported. Path strings require valid UTF-8; arbitrary filesystem
@@ -61,3 +60,17 @@ The committed Unicode case tables are generated from CPython's Unicode 16.0.0
 database by `tools/generate_unicode_case.py`; regeneration requires that database
 version and formatting the result with `clang-format`. Runtime casing reads the
 committed C tables and has no Python dependency.
+
+## 26.9 entry points and coroutine APIs
+
+See [26.9 release notes](releases/26.9.md) for the exact argparse, contextlib,
+asyncio, sys and http.server API scope. These are native implementations with
+explicit boundaries; import availability never implies complete module emulation.
+`ThreadingHTTPServer` uses real POSIX workers for the supported static handler;
+custom Python handlers are rejected. Native event-loop timers/tasks/locks do not
+provide a general network transport or CPython extension bridge.
+
+Session helpers also include os.open/common O_* flags, Path.glob/with_suffix/unlink,
+dict.pop and ASCII-str/bytes secrets.compare_digest. Unsupported directory-fd
+options and multi-component glob patterns remain explicit errors. HTTP manifests
+record -pthread for compilation and linking.

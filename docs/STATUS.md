@@ -1,4 +1,4 @@
-# Remaining-work ledger — 26.8
+# Remaining-work ledger — 26.9
 
 This ledger distinguishes shipped work from architecture projects. A passing
 regression suite establishes tested behavior; it does not establish complete
@@ -7,7 +7,9 @@ Python compatibility or every possible lifetime/finalizer behavior.
 Bonemarrow is the default. 26.8 adds native classes, closures, structured exceptions,
 comprehensions/lazy generator expressions and selected native library APIs. The
 Discribe persistence core has passed a local differential probe; its full GUI and
-async collaboration remain unsupported. See [26.8 notes](releases/26.8.md).
+collaboration dependencies remain unsupported. 26.9 adds native coroutines, CLI
+parsing, context helpers and static HTTP serving; Discribe builds and --help runs.
+See [26.9 notes](releases/26.9.md).
 
 The existing rows describe the CPython backend unless stated otherwise. The native
 backend is an initial standalone subset; see [its exact contract](NATIVE.md).

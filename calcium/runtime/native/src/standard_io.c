@@ -408,6 +408,12 @@ void ca_io_finalize(CaForeign *foreign) {
   }
 }
 CaValue ca_path_attribute(CaRuntime *rt, CaValue value, const char *attribute) {
+  if (!strcmp(attribute, "glob"))
+    return ca_native_method(rt, value, N_PATH_GLOB);
+  if (!strcmp(attribute, "unlink"))
+    return ca_native_method(rt, value, N_PATH_UNLINK);
+  if (!strcmp(attribute, "with_suffix"))
+    return ca_native_method(rt, value, N_PATH_SUFFIX);
   const char *name = ca_native_text(rt, value, 1);
   if (!name)
     return CA_UNBOUND;
@@ -477,6 +483,9 @@ CaValue ca_path_attribute(CaRuntime *rt, CaValue value, const char *attribute) {
   return CA_UNBOUND
 CaValue ca_io_call(CaRuntime *rt, int kind, int n, int nkw, CaValue *args,
                    const char **keys) {
+  int glob_only = kind == N_PATH_GLOB;
+  if (glob_only)
+    kind = N_PATH_RGLOB;
   CaValue out[8], defaults[8] = {CA_NONE, CA_NONE, CA_NONE, CA_NONE,
                                  CA_NONE, CA_NONE, CA_NONE, CA_NONE};
   if (kind == CA_T_PATH) {
@@ -1116,7 +1125,7 @@ CaValue ca_io_call(CaRuntime *rt, int kind, int n, int nkw, CaValue *args,
         return CA_UNBOUND;
       }
       walk->pattern = strdup(pattern);
-      walk->recursive = kind == N_PATH_RGLOB;
+      walk->recursive = kind == N_PATH_RGLOB && !glob_only;
       int error = walk->pattern ? walk_push(walk, name) : ENOMEM;
       if (error) {
         free(walk->pattern);
