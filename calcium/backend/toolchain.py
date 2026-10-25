@@ -53,6 +53,7 @@ def compile_c(
     optimization: int,
     debug: bool,
     cache_dir: Path | None = None,
+    progress=None,
 ) -> dict:
     selected = (
         shutil.which(compiler) if compiler else (shutil.which("gcc") or shutil.which("clang"))
@@ -114,10 +115,16 @@ def compile_c(
                 object_file = objects / (source.stem + ".o")
                 compile_command = [*compile_flags, "-c", str(source), "-o", str(object_file)]
                 compile_commands.append(compile_command)
+
+                def compiling():
+                    if progress:
+                        progress("compiling " + source.name)
+
                 report = cached_object(
                     compile_flags,
                     source,
                     object_file,
+                    on_compile=compiling,
                     directory=directory,
                     cache=cache_dir,
                     identity={
@@ -127,6 +134,7 @@ def compile_c(
                     },
                 )
                 if report is None:
+                    compiling()
                     compiled = subprocess.run(
                         compile_command, capture_output=True, text=True, timeout=120
                     )
@@ -142,6 +150,8 @@ def compile_c(
                         raise ToolchainError(
                             f"C compiler exited {failed.returncode}:\n{failed.stderr}"
                         )
+                    if progress and report["hit"]:
+                        progress("reusing " + source.name)
                     warnings.append(report.pop("warnings"))
                     cache_reports.append(dict(report, source=source.name))
             # Reuse linker flags from the original command after its -o OUTPUT.
@@ -154,6 +164,12 @@ def compile_c(
                 str(output),
                 *tail,
             ]
+        if progress:
+            progress(
+                "linking executable"
+                if cache_dir is not None and not debug
+                else "compiling and linking " + target
+            )
         run = subprocess.run(command, capture_output=True, text=True, timeout=120)
     except (OSError, subprocess.SubprocessError) as exc:
         raise ToolchainError(f"native toolchain failed: {exc}") from exc

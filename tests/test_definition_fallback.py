@@ -44,9 +44,9 @@ exceptions()
 print(counter + Counter(2), native(2, 3), list(generator()), events)
 """)
     baseline = subprocess.run([sys.executable, str(source)], capture_output=True)
-    result = Calcium(target="executable", fallback=True, optimization=level, keep_c=True).build(
-        source, output=tmp_path / "program"
-    )
+    result = Calcium(
+        backend="cpython", target="executable", fallback=True, optimization=level, keep_c=True
+    ).build(source, output=tmp_path / "program")
     assert result.success, result.diagnostics
     assert result.metadata["mode"] == "mixed"
     assert all(reason["boundary"] == "definition" for reason in result.fallbacks)
@@ -61,7 +61,7 @@ print(counter + Counter(2), native(2, 3), list(generator()), events)
         baseline.stderr,
     )
     source = tmp_path / "hidden.py"
-    strict = Calcium(fallback=False).analyze(source)
+    strict = Calcium(backend="cpython", fallback=False).analyze(source)
     assert not strict.success
 
 
@@ -73,7 +73,7 @@ def f(a: missing = print('default')) -> missing:
     return a
 print(f.__annotations__)
 """)
-    result = Calcium(target="executable", fallback=True).build(source)
+    result = Calcium(backend="cpython", target="executable", fallback=True).build(source)
     assert result.success, result.diagnostics
     assert result.metadata["mode"] == "fallback"
     assert subprocess.check_output([str(result.executable)]) == subprocess.check_output(
@@ -87,6 +87,6 @@ def test_analysis_never_executes_fallback_definitions(tmp_path):
     source.write_text(f"""class C:
     open({str(marker)!r}, 'w').write('bad')
 """)
-    result = Calcium(fallback=True).analyze(source)
+    result = Calcium(backend="cpython", fallback=True).analyze(source)
     assert result.success
     assert not marker.exists()

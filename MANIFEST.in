@@ -2,4 +2,4 @@ include README.md CHANGELOG.md LICENSE
 recursive-include docs *.md *.json
 recursive-include examples *.py *.c
 recursive-include tests *.py
-include 26.6_PLAN.md
+include 26.7_PLAN.md

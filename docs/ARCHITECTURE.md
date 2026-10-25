@@ -1,6 +1,6 @@
-> 26.6 adds an explicit independent CaRT backend while preserving this CPython
-> compatibility design as the default. See [Native backend](NATIVE.md) for the
-> implemented subset, representation, tracing ownership and remaining phases.
+> 26.7 makes Bonemarrow the default independent native engine, adding native
+> projects/imports and partial container/signature expansion. The compatibility
+> architecture below applies to explicit `--cpython`. See [Native](NATIVE.md).
 
 # Architecture proposal
 

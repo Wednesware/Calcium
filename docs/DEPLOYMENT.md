@@ -1,5 +1,9 @@
 # Relocatable Linux CPython bundles
 
+In 26.7 select `--cpython --bundle` explicitly. The default Bonemarrow backend
+already produces a CPython-free executable for its [supported subset](NATIVE.md)
+and rejects CPython bundle requests.
+
 A bundle contains the compiled C executable, a matching CPython interpreter and
 standard library, transitive non-system ELF dependencies, and application data.
 It runs without a separately installed Python. It still requires a compatible

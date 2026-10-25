@@ -54,6 +54,7 @@ def normalize_argv(argv):
         "--working-directory",
         "--resource",
         "--backend",
+        "--use",
     }
     value = False
     for arg in argv:
@@ -69,6 +70,30 @@ def normalize_argv(argv):
     if len(selected) > 1:
         raise ValueError("choose one action: " + ", ".join(selected))
     return [command, *remaining]
+
+
+def backend_options(command):
+    command.add_argument(
+        "--backend", choices=["cpython", "native", "bmrw"], action="append", default=[]
+    )
+    command.add_argument("--use", choices=["cpython", "bmrw"], action="append", default=[])
+    command.add_argument("--bmrw", action="store_true")
+    command.add_argument("--cpython", action="store_true")
+
+
+def select_backend(args):
+    choices = (
+        args.backend
+        + args.use
+        + (["bmrw"] if args.bmrw else [])
+        + (["cpython"] if args.cpython else [])
+    )
+    choices = {"native" if c == "bmrw" else c for c in choices}
+    if len(choices) > 1:
+        raise ValueError(
+            "conflicting backend selections; choose Bonemarrow (--bmrw) or CPython (--cpython)"
+        )
+    return next(iter(choices), "native")
 
 
 def parser():
@@ -101,7 +126,7 @@ def parser():
     )
     info = commands.add_parser("info", help="runtime and toolchain availability")
     info.add_argument("--python", default=sys.executable)
-    info.add_argument("--backend", choices=["cpython", "native"], default="cpython")
+    backend_options(info)
     info.add_argument("--format", choices=["text", "json"], default="text")
     for name in ["check", "inspect", "transpile", "build", "run", "benchmark"]:
         cmd = commands.add_parser(name)
@@ -116,14 +141,10 @@ def parser():
         )
         cmd.add_argument("-O", dest="optimization", type=int, choices=[0, 1, 2, 3], default=0)
         cmd.add_argument("--python", default=sys.executable)
-        cmd.add_argument(
-            "--backend",
-            choices=["cpython", "native"],
-            default="cpython",
-            help="execution runtime; native is standalone and always rejects unsupported features",
-        )
+        backend_options(cmd)
         cmd.add_argument("--debug", action="store_true")
-        cmd.add_argument("--verbose", action="store_true")
+        cmd.add_argument("-v", "--verbose", action="store_true")
+        cmd.add_argument("--fancy", action="store_true")
         fallback = cmd.add_mutually_exclusive_group()
         fallback.add_argument(
             "--no-fallback",
@@ -241,8 +262,6 @@ def display(result, args):
             else format_optimization_report(report),
             file=sys.stderr,
         )
-    if args.verbose and "toolchain" in result.metadata:
-        print(json.dumps(result.metadata["toolchain"], indent=2), file=sys.stderr)
     if result.success:
         if args.command == "inspect":
             if args.emit_ast:
@@ -416,14 +435,19 @@ def main(argv=None):
     if program_args and args.command not in ["run", "benchmark"]:
         root.error("arguments after -- are only supported by run and benchmark")
     try:
+        args.backend = select_backend(args)
         if args.command == "info":
             if args.backend == "native":
                 data = {
                     "calcium_version": __version__,
-                    "backend": "native",
-                    "runtime": "CaRT ABI 1",
+                    "backend": "bmrw",
+                    "bonemarrow_version": __version__,
+                    "runtime": "CaRT ABI 2",
                     "targets": ["c", "executable"],
-                    "backends": ["cpython", "native"],
+                    "backends": {
+                        "bmrw": __version__,
+                        "cpython": "target interpreter (query with --cpython)",
+                    },
                     "python_runtime_required": False,
                     "optimization_levels": [0, 1, 2, 3],
                     "compilers": {n: shutil.which(n) for n in ["gcc", "clang"]},
@@ -431,11 +455,14 @@ def main(argv=None):
                 print(
                     json.dumps(data, indent=2)
                     if args.format == "json"
-                    else f"Calcium {__version__}\nNative backend: CaRT ABI 1\nTargets: C11, executable\nNo Python SDK or runtime dependency"
+                    else f"Calcium {__version__}\nBonemarrow {__version__} (bmrw), CaRT ABI 2\nAvailable backends: bmrw, cpython\nTargets: C11, executable\nNo Python SDK or runtime dependency"
                 )
                 return 0
             data = {
                 "calcium_version": __version__,
+                "bonemarrow_version": __version__,
+                "backend": "cpython",
+                "backends": ["bmrw", "cpython"],
                 "python": python_config(args.python),
                 "compilers": {name: shutil.which(name) for name in ["gcc", "clang"]},
                 "optimization_levels": [0, 1, 2, 3],
@@ -445,7 +472,7 @@ def main(argv=None):
             print(
                 json.dumps(data, indent=2)
                 if args.format == "json"
-                else f"Calcium {__version__}\nCPython {'.'.join(map(str, data['python']['version']))}\nTargets: C11, executable, CPython extension\nCompilers: {data['compilers']}"
+                else f"Calcium {__version__}\nBonemarrow {__version__} (bmrw)\nAvailable backends: bmrw, cpython\nCPython {'.'.join(map(str, data['python']['version']))}\nTargets: C11, executable, CPython extension\nCompilers: {data['compilers']}"
             )
             return 0
         target = getattr(
@@ -462,8 +489,25 @@ def main(argv=None):
                 raise ValueError("--resource and --no-dependencies require --bundle")
             if args.bundle and (args.keep_c or args.emit_ir or args.emit_ast):
                 raise ValueError("use a separate --transpile build to retain bundle intermediates")
+        verbose = getattr(args, "verbose", False)
+
+        def progress(message):
+            if verbose:
+                print("calcium: " + message, file=sys.stderr)
+
+        progress(
+            "using Bonemarrow (bmrw)" if args.backend == "native" else "using CPython (cpython)"
+        )
+        if getattr(args, "fancy", False):
+            print(
+                "calcium: awakening Bonemarrow..."
+                if args.backend == "native"
+                else "calcium: awakening CPython...",
+                file=sys.stderr,
+            )
         compiler = Calcium(
             optimization=args.optimization,
+            progress=progress,
             backend=args.backend,
             target=target,
             python=args.python,
@@ -497,6 +541,8 @@ def main(argv=None):
             )
         else:
             result = compiler.build(args.source, module=args.module, output=args.output)
+        if result.success and result.executable:
+            progress("built " + str(result.executable))
         display(result, args)
         if not result.success:
             return error_status(result)

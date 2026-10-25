@@ -174,3 +174,27 @@ Keep performance jobs informational until stable hardware/baselines exist.
 Correctness, native safety or schema regressions block release even if benchmarks
 improve. Do not add a green placeholder CI badge that implies nonexistent compiler
 validation.
+
+## Bonemarrow 26.7
+
+The historical compatibility suite explicitly selects `backend="cpython"` /
+`--cpython` now that Bonemarrow is the default. Native 26.6 arithmetic, IEEE float,
+source-free and sanitizer checks remain in `test_native_backend.py`.
+`test_bonemarrow_projects.py` adds differential O0–O3 project/module/package
+execution, import ordering/cache/cycles/failures, namespace isolation, cross-module
+recursion, entry metadata, native collections/methods/defaults/variadics/expansion,
+NaN collection identity, mutable cycles/deep graphs, saved bound methods,
+source-deleted empty-PATH runs, ABI-aware object cache validation and CLI logging.
+The module/container lifetime fixture runs under GCC and Clang ASan+UBSan;
+the installed-wheel smoke builds a native multi-file package with containers.
+
+```sh
+python -m pytest -q
+CALCIUM_SANITIZERS=1 python -m pytest -q tests/test_sanitizers.py
+python examples/native/package_benchmark.py --output /tmp/packages.json
+```
+
+The package benchmark uses all three runtimes and compares stdout, stderr, exit
+status and private working-directory file hashes before accepting samples. Raw
+wall/CPU/RSS samples, IQR, compilation time and image size are retained. See
+[NATIVE_BENCHMARKS.md](NATIVE_BENCHMARKS.md) for limitations and reference results.

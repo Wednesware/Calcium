@@ -1,15 +1,19 @@
-# Remaining-work ledger — 26.6
+# Remaining-work ledger — 26.7
 
 This ledger distinguishes shipped work from architecture projects. A passing
 regression suite establishes tested behavior; it does not establish complete
 Python compatibility or every possible lifetime/finalizer behavior.
+
+Bonemarrow is now the default. Native packages/imports, containers, indexing/slicing,
+richer function signatures and common methods ship in 26.7. Classes, structured
+exceptions, closures and library bindings remain open; Discribe is not natively compatible.
 
 The existing rows describe the CPython backend unless stated otherwise. The native
 backend is an initial standalone subset; see [its exact contract](NATIVE.md).
 
 | Review item | Current status |
 | --- | --- |
-| Independent native backend | Delivered first CaRT/C11 milestone: primitives, big integers, strings, basic functions/loops, checked scalar kernels and guarded direct calls; no Python runtime fallback. Native containers/classes/imports/exceptions and ecosystem support remain open |
+| Independent native backend | Delivered first CaRT/C11 milestone: primitives, big integers, strings, basic functions/loops, checked scalar kernels and guarded direct calls; no Python runtime fallback. 26.7 adds native containers/imports and richer calls; classes/exceptions and ecosystem support remain open |
 | Simpler CLI | Delivered: `ca main.py`, `ca my_package/`, action options, legacy commands |
 | Fixed-only native signatures | Delivered: defaults, positional-only/keyword-only, variadic args/kwargs |
 | Missing native expressions | Delivered: chained comparisons, f-strings, walrus, call expansion |
@@ -21,7 +25,7 @@ backend is an initial standalone subset; see [its exact contract](NATIVE.md).
 | Dynamic dict keys/set expansion | Delivered native dynamic keys and set expansion, with evaluation/hash-order differential checks; broader adversarial coverage remains useful |
 | O2/O3 unavailable | Delivered: checked integer operation fast paths and literal-branch simplification; general specialization/inlining/loop passes remain open |
 | Unboxed numeric regions | Delivered for pure integer functions: checked C locals/arithmetic/range/while and guarded direct self-recursion, boxing at public return. Floats, arbitrary-call specialization/inlining and mid-function deoptimization remain open; no broad speedup claim |
-| Incremental builds | Delivered: validated content-addressed native object caching; every build relinks |
+| Incremental builds | Delivered: validated content-addressed object caching for both backends; every build relinks |
 | Folded NaN/import hooks | Fixed NaN emission, sign and constant identity; plain imports pass CPython-compatible fromlist values |
 | Relocated Python build failure | Fixed: matching libpython can be resolved within selected interpreter prefix |
 | Function metadata, frames, reflection | Native wrappers still differ; Python fallback definitions preserve ordinary Python function behavior; exact native frame emulation remains open |

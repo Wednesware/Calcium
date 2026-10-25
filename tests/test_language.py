@@ -123,7 +123,11 @@ def test_language_differential(tmp_path, compiler, level, program):
     source = tmp_path / "program.py"
     source.write_text(program)
     result = Calcium(
-        target="executable", fallback=False, compiler=compiler, optimization=level
+        backend="cpython",
+        target="executable",
+        fallback=False,
+        compiler=compiler,
+        optimization=level,
     ).build(source)
     assert result.success, result.diagnostics
     assert result.metadata["mode"] == "native"
@@ -156,7 +160,7 @@ def test_language_differential(tmp_path, compiler, level, program):
 def test_language_errors(tmp_path, program, exception):
     source = tmp_path / "errors.py"
     source.write_text(program)
-    result = Calcium(target="executable", fallback=False).build(source)
+    result = Calcium(backend="cpython", target="executable", fallback=False).build(source)
     assert result.success, result.diagnostics
     expected = subprocess.run([sys.executable, str(source)], capture_output=True, timeout=10)
     actual = subprocess.run([str(result.executable)], capture_output=True, timeout=10)
@@ -174,7 +178,7 @@ def test_comparison_custom_result_truth_once(tmp_path):
     else:
         print('no')
 """)
-    result = Calcium(target="extension", fallback=False).build(source)
+    result = Calcium(backend="cpython", target="extension", fallback=False).build(source)
     assert result.success, result.diagnostics
     runner = """import importlib.util, sys
 spec = importlib.util.spec_from_file_location('chain', sys.argv[1])
@@ -205,7 +209,7 @@ def f(a, /, b=2, *args, c=3, **kw):
 f(*mark([1, 4]), *mark([5, 6]), **mark({'c': 7}), **mark({'a': 8, 'other': 9}))
 print(*[1, 2, 3], sep=':')
 """)
-    result = Calcium(target="executable", fallback=False).build(source)
+    result = Calcium(backend="cpython", target="executable", fallback=False).build(source)
     assert result.success, result.diagnostics
     expected = subprocess.check_output([sys.executable, str(source)])
     actual = subprocess.check_output([str(result.executable)])
@@ -224,7 +228,7 @@ print(*[1, 2, 3], sep=':')
 def test_argument_expansion_errors(tmp_path, call):
     source = tmp_path / "badargs.py"
     source.write_text("def f(**kwargs):\n    print(kwargs)\n" + call)
-    result = Calcium(target="executable", fallback=False).build(source)
+    result = Calcium(backend="cpython", target="executable", fallback=False).build(source)
     assert result.success, result.diagnostics
     actual = subprocess.run([str(result.executable)], capture_output=True)
     expected = subprocess.run([sys.executable, str(source)], capture_output=True)
@@ -243,7 +247,9 @@ for a in [-2**100, -2**63, -1, 0, 1, 2**63-1, 2**100]:
         print(operations(a, b))
 print(operations(True, False), operations(1.5, 2.0))
 """)
-    result = Calcium(target="executable", fallback=False, optimization=level).build(source)
+    result = Calcium(
+        backend="cpython", target="executable", fallback=False, optimization=level
+    ).build(source)
     assert result.success, result.diagnostics
     assert any(
         r["pass"] == "checked-integer-arithmetic" and r["operations"] == 3
@@ -252,9 +258,9 @@ print(operations(True, False), operations(1.5, 2.0))
     assert subprocess.check_output([str(result.executable)]) == subprocess.check_output(
         [sys.executable, str(source)]
     )
-    extension = Calcium(target="extension", fallback=False, optimization=level).build(
-        source, output=tmp_path / ("numeric" + sysconfig.get_config_var("EXT_SUFFIX"))
-    )
+    extension = Calcium(
+        backend="cpython", target="extension", fallback=False, optimization=level
+    ).build(source, output=tmp_path / ("numeric" + sysconfig.get_config_var("EXT_SUFFIX")))
     assert extension.success, extension.diagnostics
     runner = """import importlib.util, sys
 spec = importlib.util.spec_from_file_location('numeric', sys.argv[1])
@@ -275,7 +281,7 @@ def test_fstring_conversion_order_matches_python_minor(tmp_path):
     source.write_text("""def format_value(value, specification):
     return f'{value!r:{specification()}}'
 """)
-    result = Calcium(target="extension", fallback=False).build(source)
+    result = Calcium(backend="cpython", target="extension", fallback=False).build(source)
     assert result.success, result.diagnostics
     runner = """import importlib.util, sys
 spec = importlib.util.spec_from_file_location('format_order', sys.argv[1])
@@ -308,7 +314,9 @@ b = (1e309 - 1e309,)
 print(a is b, a[0] is b[0])
 print(1e309, -1e309, math.copysign(1.0, -0.0))
 """)
-    result = Calcium(target="executable", fallback=False, optimization=level).build(source)
+    result = Calcium(
+        backend="cpython", target="executable", fallback=False, optimization=level
+    ).build(source)
     assert result.success, result.diagnostics
     assert subprocess.check_output([str(result.executable)]) == subprocess.check_output(
         [sys.executable, str(source)]

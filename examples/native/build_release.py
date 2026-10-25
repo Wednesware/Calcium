@@ -23,17 +23,21 @@ def main():
     with tempfile.TemporaryDirectory(prefix="calcium-examples-") as temporary:
         root = Path(temporary) / name
         root.mkdir()
-        for example in ["pass", "hello", "sum_squares", "values"]:
-            source = sources / (example + ".py")
+        for example in ["pass", "hello", "sum_squares", "values", "demo_package"]:
+            source = sources / (example + ".py") if example != "demo_package" else sources / example
             result = Calcium(
                 backend="native",
                 target="executable",
                 optimization=3,
-                keep_c=example == "sum_squares",
+                keep_c=example in {"sum_squares", "demo_package"},
             ).build(source, output=root / example)
             if not result.success:
                 raise RuntimeError(result.diagnostics)
-            expected = subprocess.check_output([sys.executable, str(source)])
+            expected = (
+                subprocess.check_output([sys.executable, "-m", example], cwd=sources)
+                if source.is_dir()
+                else subprocess.check_output([sys.executable, str(source)])
+            )
             actual = subprocess.check_output([str(root / example)])
             if actual != expected:
                 raise RuntimeError(f"{example} output mismatch")
@@ -58,7 +62,7 @@ def main():
             + "\n"
         )
         (root / "README.txt").write_text(
-            "Run ./hello or ./sum_squares. The programs need compatible Linux C/math libraries, but no Python interpreter or libpython. BUILD.json identifies the build host/ABI. sum_squares.calcium contains the generated C and CaRT. These demonstrate only the native 26.6 subset.\n"
+            "Run ./hello or ./sum_squares. The programs need compatible Linux C/math libraries, but no Python interpreter or libpython. BUILD.json identifies the build host/ABI. sum_squares.calcium contains the generated C and CaRT. demo_package demonstrates multi-file imports and containers; demo_package.calcium contains its separate C translation units. These demonstrate only the documented Bonemarrow 26.7 subset.\n"
         )
         shutil.copyfile(sources.parents[1] / "LICENSE", root / "LICENSE")
         output = args.output / (name + ".tar.gz")

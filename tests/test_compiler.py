@@ -121,7 +121,11 @@ def test_native_differential(tmp_path, compiler, level, name):
     source = tmp_path / f"{name}.py"
     source.write_text(PROGRAMS[name])
     result = Calcium(
-        target="executable", compiler=compiler, optimization=level, fallback=False
+        backend="cpython",
+        target="executable",
+        compiler=compiler,
+        optimization=level,
+        fallback=False,
     ).build(source)
     assert result.success, result.diagnostics
     assert result.metadata["mode"] == "native"
@@ -147,7 +151,7 @@ def test_native_differential(tmp_path, compiler, level, name):
 def test_native_errors(tmp_path, source_text, exception):
     source = tmp_path / "errors.py"
     source.write_text(source_text)
-    result = Calcium(target="executable", fallback=False).build(source)
+    result = Calcium(backend="cpython", target="executable", fallback=False).build(source)
     assert result.success, result.diagnostics
     run = subprocess.run([str(result.executable)], capture_output=True, timeout=10)
     baseline = subprocess.run([sys.executable, str(source)], capture_output=True, timeout=10)
@@ -169,7 +173,9 @@ async def run():
     print([x * x for x in range(6)])
 asyncio.run(run())
 """)
-    result = Calcium(target="executable", compiler=compiler, optimization=level).build(source)
+    result = Calcium(
+        backend="cpython", target="executable", compiler=compiler, optimization=level
+    ).build(source)
     assert result.success and result.fallbacks
     assert result.metadata["mode"] == "mixed"
     baseline = subprocess.run([sys.executable, str(source)], capture_output=True, timeout=10)
@@ -179,7 +185,7 @@ asyncio.run(run())
         baseline.stdout,
         baseline.stderr,
     )
-    rejected = Calcium(fallback=False).analyze(source)
+    rejected = Calcium(backend="cpython", fallback=False).analyze(source)
     assert not rejected.success and rejected.diagnostics[0].code == "C101"
 
 
@@ -187,13 +193,13 @@ def test_no_execution_and_scope_validation(tmp_path):
     source = tmp_path / "untrusted.py"
     marker = tmp_path / "marker"
     source.write_text(f"open({str(marker)!r}, 'w').write('executed')\n")
-    assert Calcium().analyze(source).success
+    assert Calcium(backend="cpython").analyze(source).success
     assert not marker.exists()
     source.write_text("return 1\n")
-    result = Calcium().analyze(source)
+    result = Calcium(backend="cpython").analyze(source)
     assert not result.success and result.diagnostics[0].code == "C100"
     source.write_text("if :\n")
-    assert not Calcium().transpile(source).success
+    assert not Calcium(backend="cpython").transpile(source).success
 
 
 def test_c_emission_reproducible(tmp_path, monkeypatch):
@@ -202,7 +208,7 @@ def test_c_emission_reproducible(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "calcium.api.compile_c", lambda *a, **k: pytest.fail("transpile invoked compiler")
     )
-    compiler = Calcium(emit_ir=True, emit_ast=True)
+    compiler = Calcium(backend="cpython", emit_ir=True, emit_ast=True)
     a, b = tmp_path / "a", tmp_path / "b"
     assert compiler.transpile(source, output=a).success
     assert compiler.transpile(source, output=b).success
@@ -245,7 +251,7 @@ def work(n):
     )
     suffix = sysconfig.get_config_var("EXT_SUFFIX")
     output = tmp_path / ("compiled" + suffix)
-    result = Calcium(target="extension").build(source, output=output)
+    result = Calcium(backend="cpython", target="extension").build(source, output=output)
     assert result.success, result.diagnostics
     script = """import importlib.util, sys, gc
 spec = importlib.util.spec_from_file_location('compiled', sys.argv[1])
@@ -274,7 +280,9 @@ def test_encoding_imports_and_argv(tmp_path):
             "latin-1"
         )
     )
-    result = Calcium(target="executable").build(source, output=tmp_path / "program")
+    result = Calcium(backend="cpython", target="executable").build(
+        source, output=tmp_path / "program"
+    )
     assert result.success, result.diagnostics
     baseline = subprocess.run([sys.executable, str(source), "one", "-x"], capture_output=True)
     run = subprocess.run([str(result.executable), "one", "-x"], capture_output=True)
@@ -289,27 +297,31 @@ def test_build_failures_and_output_protection(tmp_path):
     source = tmp_path / "source.py"
     source.write_text("print(1)")
     with pytest.raises(ValueError):
-        Calcium(optimization=4)
+        Calcium(backend="cpython", optimization=4)
     with pytest.raises(ValueError):
-        Calcium(target="shared")
+        Calcium(backend="cpython", target="shared")
     with pytest.raises(ValueError):
-        Calcium().transpile(source, output=tmp_path)
+        Calcium(backend="cpython").transpile(source, output=tmp_path)
     output = tmp_path / "occupied"
     output.mkdir()
     sentinel = output / "mine.txt"
     sentinel.write_text("keep")
     with pytest.raises(ValueError):
-        Calcium().transpile(source, output=output)
+        Calcium(backend="cpython").transpile(source, output=output)
     assert sentinel.read_text() == "keep"
-    result = Calcium(target="executable", compiler="does-not-exist").build(source)
+    result = Calcium(backend="cpython", target="executable", compiler="does-not-exist").build(
+        source
+    )
     assert not result.success and result.diagnostics[-1].code == "C302"
-    assert not Calcium(python="/does/not/exist").analyze(source).success
+    assert not Calcium(backend="cpython", python="/does/not/exist").analyze(source).success
 
 
 def test_path_quoting(tmp_path):
     source = tmp_path / 'quote " $` space.py'
     source.write_text("print('safe')")
-    result = Calcium(target="executable").build(source, output=tmp_path / "native program")
+    result = Calcium(backend="cpython", target="executable").build(
+        source, output=tmp_path / "native program"
+    )
     assert result.success, result.diagnostics
     assert subprocess.check_output([str(result.executable)]) == b"safe\n"
 
@@ -327,7 +339,7 @@ def f(flag):
         return 2
 print(f(True), f(False))
 """)
-    result = Calcium(optimization=1, fallback=False).inspect(source)
+    result = Calcium(backend="cpython", optimization=1, fallback=False).inspect(source)
     assert result.success
     facts = result.analysis["types"]
     assert next(f for f in facts if f.get("name") == "y")["types"] == ["int", "str"]
@@ -349,7 +361,9 @@ def test_runtime_arithmetic_generated_corpus(tmp_path):
         for op in ["+", "-", "*", "//", "%", "&", "|", "^"]
     )
     source.write_text("def calc(a, b, op):\n" + branches + "\n" + "\n".join(expressions))
-    result = Calcium(target="executable", optimization=1, fallback=False).build(source)
+    result = Calcium(backend="cpython", target="executable", optimization=1, fallback=False).build(
+        source
+    )
     assert result.success, result.diagnostics
     assert subprocess.check_output([str(result.executable)]) == subprocess.check_output(
         [sys.executable, str(source)]
@@ -359,7 +373,7 @@ def test_runtime_arithmetic_generated_corpus(tmp_path):
 def test_identifier_string_interning(tmp_path):
     source = tmp_path / "intern.py"
     source.write_text("name = 'int'\nprint(int.__name__ is name)\n")
-    result = Calcium(target="executable", fallback=False).build(source)
+    result = Calcium(backend="cpython", target="executable", fallback=False).build(source)
     assert result.success
     assert subprocess.check_output([str(result.executable)]) == subprocess.check_output(
         [sys.executable, str(source)]
@@ -377,7 +391,7 @@ for i in range(10):
     x += i
 print(a, b, a is b, x)
 """)
-    result = Calcium(target="executable", fallback=False).build(source)
+    result = Calcium(backend="cpython", target="executable", fallback=False).build(source)
     assert result.success, result.diagnostics
     assert subprocess.check_output([str(result.executable)]) == subprocess.check_output(
         [sys.executable, str(source)]
@@ -399,7 +413,7 @@ def test_short_circuit_custom_truth_protocol(tmp_path):
     if ((a or b) if c else (b and a)):
         print('selected')
 """)
-    result = Calcium(target="extension", fallback=False).build(source)
+    result = Calcium(backend="cpython", target="extension", fallback=False).build(source)
     assert result.success, result.diagnostics
     runner = """import importlib.util, sys
 spec = importlib.util.spec_from_file_location(sys.argv[1], sys.argv[2])
@@ -428,7 +442,7 @@ def test_native_normal_return_finalizer_order(tmp_path):
         middle = make('middle')
     b = make('b')
 """)
-    result = Calcium(target="extension", fallback=False).build(source)
+    result = Calcium(backend="cpython", target="extension", fallback=False).build(source)
     assert result.success, result.diagnostics
     output = next(a.path for a in result.artifacts if a.kind == "extension")
     runner = """import importlib.util, sys
@@ -461,7 +475,7 @@ def test_selected_virtualenv_runtime_paths(tmp_path):
     source.write_text(
         "import sys, calcium_runtime_probe\nprint(sys.executable, sys.prefix, calcium_runtime_probe.value)\n"
     )
-    result = Calcium(target="executable", python=str(python)).build(
+    result = Calcium(backend="cpython", target="executable", python=str(python)).build(
         source, output=tmp_path / "program"
     )
     assert result.success, result.diagnostics

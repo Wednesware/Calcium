@@ -1,163 +1,166 @@
-# Standalone native backend — 26.6
+# Bonemarrow native backend — 26.7
 
-26.6 delivers the first vertical slice from [26.6_PLAN.md](../26.6_PLAN.md).
-CPython remains the default. Native mode is an independent execution backend;
-unsupported input is rejected, even when `--allow-fallback` is present.
+Calcium is the public CLI and API; **Bonemarrow (`bmrw`)** is the independent
+Python-to-C execution engine, using CaRT. Bonemarrow is the default in 26.7.
+`--use bmrw`, `--bmrw`, and legacy `--backend native` select the same engine.
+`--cpython` / `--use cpython` / `--backend cpython` explicitly select the
+established compatibility backend. Conflicting selections are errors.
 
 ```sh
-ca build examples/native/pass.py --backend native -o build/pass
-ca examples/native/hello.py --backend native --run
-ca examples/native/sum_squares.py --backend native -O3 --run --keep-c
-ca check program.py --backend native --optimization-report
-ca --info --backend native
+ca main.py -O3
+ca package/ --run
+ca --module package.cli --project-root ./src --keep-c
+ca program.py --transpile -o build/c
+ca program.py -v --fancy
+ca existing_application/ --cpython
+ca --info
 ```
 
-The Python compiler/frontend still runs on CPython 3.12–3.14. Native C emission
-and compilation do not query a target Python executable, use Python headers,
-link libpython, embed Python source/bytecode, or invoke Python in the generated
-executable. A C11 compiler and the target platform C/math libraries suffice.
-Initial validation covers Linux LP64 (64-bit `long`, 8-bit bytes) and IEEE binary64.
-This is not a static-libc/cross-compilation or CPython-extension ABI claim.
+The Python API defaults to `Calcium(backend="bmrw")`; `backend="native"` is an
+alias, internally normalized to `native` for existing result/manifest consumers.
+Both names always reject unsupported features, regardless of `fallback=True` or
+`--allow-fallback`. Use `Calcium(backend="cpython", fallback=True)` for broad
+Python compatibility. Unsupported native features are never delegated to CPython.
 
-`Calcium(backend="native", target="executable", optimization=3).build("program.py")`
-selects the same backend in the API. Default `backend="cpython"` retains existing
-packages, imports, extensions, caching, fallback and CPython bundle behavior.
-`--backend native --target c` / `--transpile` emits inspectable C, the CaRT header
-and sources, and a manifest. `--keep-c`, `--emit-ir` and `--emit-ast` retain build
-intermediates. Native object caching is not implemented. `--python` selects the
-compatibility interpreter for the CPython backend; native compilation does not
-use it. Native executables already contain CaRT and reject `--bundle` and
-`--target extension` rather than silently switching runtimes.
+The compiler runs on CPython 3.12–3.14. Its generated executables do not query a
+Python SDK, include Python.h, link libpython, initialize an interpreter, embed
+Python source or bytecode for execution, or spawn Python. Builds require GCC or
+Clang and Linux LP64/IEEE binary64. Executables need compatible platform C/math
+libraries and an ELF loader; this is not static-libc/cross-platform support.
+CPython extensions and `--bundle` require explicitly selecting `--cpython`.
 
-## Supported source subset
+## Projects and imports
 
-| Feature | Native 26.6 behavior |
+Script inputs follow statically discovered project imports. Package/directory
+inputs use the existing directory discovery rules (including other local `.py`
+files). A package executable needs `__main__.py`; plain directories need
+`main.py` or `__main__.py`. `--module package` and `--module package.cli` implement
+module entry points. `--project-root`, repeated `--include-path`, and
+`--include-all` reuse the shared filesystem-only resolver, never execute build
+hooks, and preserve source-root/symlink checks.
+
+Supported imports include absolute/dotted/relative imports, aliases, from-imports,
+package initializers, regular/nested/namespace packages, and circular dependencies.
+Import statements inside functions and control flow initialize dependencies when
+executed, rather than in discovery order. There is one C translation unit per
+compiled module, with unique hashed external module symbols and private function,
+constant, and global symbols. `program.c` links their registry and starts the entry.
+`--keep-c`, `--emit-ir`, `--emit-ast`, and `--transpile` retain inspectable output.
+
+Each CaRT module has its own namespace and initialization function. States are
+absent, initializing, and loaded. Initialization runs once; circular imports see
+partial namespaces and missing names raise ImportError/AttributeError. A child is
+bound onto its parent only after successful initialization. Failed modules reset
+rather than being recorded as loaded. Normal imports of the executable source
+have a distinct namespace from `__main__`, matching script/module execution.
+Cross-module calls dispatch to compiled CaRT functions without Python objects.
+`__name__`, `__package__`, and `__file__` are available; packages expose `__path__`.
+Source-location strings are metadata, not a runtime requirement for those files.
+
+Only declared Python source roots are compiled. Standard-library imports without
+native implementations receive located C160 diagnostics with `--cpython` guidance.
+Other unresolved names remain explicit in the analysis/manifest and raise
+ModuleNotFoundError if executed; missing from-import names raise ImportError.
+No host importlib lookup occurs at native runtime. Dynamic imports, star imports,
+custom import hooks, module `__getattr__`, mutable search paths, `__spec__`/
+`__cached__`/`__builtins__` introspection, and CPython extension loading are not
+implemented. Adding files with `--include-all` does not implement dynamic imports.
+
+## Language support
+
+| Feature | Bonemarrow 26.7 |
 | --- | --- |
-| Values | None, bool, arbitrary-precision int, IEEE float, UTF-8 str, compiled functions, ranges |
-| Arithmetic | `+`, `-`, `*`, unary `+`/`-`, with checked machine integers and big-integer promotion; mixed int/float conversions round to even and report overflow |
-| Strings | Literals, concatenation, integer repetition, truth, lexicographic/equality comparisons, Unicode-code-point iteration and printing |
-| Comparison/conditions | Numeric comparisons, exact mixed int/float comparison, range sequence equality, chained comparisons, `and`/`or`/`not`, conditional expressions and if/else |
-| Variables | Local/global bindings, augmented name assignment and global declarations |
-| Loops | while/else, for/else over ranges and strings, break/continue; arbitrary-precision range bounds/steps |
-| Functions | Undecorated module-level definitions, positional/positional-only and named arguments, aliases, recursion and return |
-| Annotations | Only unshadowed builtin int/float/bool/str and None on basic function signatures; never used as unchecked type guarantees; annotation reflection is unsupported |
-| Builtins | print (sep/end/flush, file=None) and range |
-| Errors | Native error indicator with exception class/message, deterministic unwinding and nonzero exit; no Python traceback/frame emulation |
+| Values | None, bool, arbitrary-precision int, IEEE double, UTF-8 str, functions, ranges, modules, lists, tuples, dictionaries, sets |
+| Arithmetic | `+`, `-`, `*`, unary `+`/`-`; checked integer overflow promotes to big integers, mixed int/float comparison is exact |
+| Strings | Concatenation, repetition, truth/comparison, code-point indexing/slicing/iteration; UTF-8 stdout; collection repr uses Unicode 16 printability tables |
+| Collections | Literals/expansion, constructors, iteration, length, indexing, sequence slicing, list/dictionary item assignment, membership, comparisons, list concatenation/repetition/in-place mutation |
+| Methods | list append/extend/pop/clear/copy, dict get/update (dictionary source)/clear/copy, set add/clear/copy; saved bound methods keep their receivers alive |
+| Functions | Undecorated top-level definitions, aliases, recursion, positional-only/keyword-only/default/variadic parameters, named/expanded calls; mutable defaults evaluate at definition time |
+| Annotations | Unshadowed builtin int/float/bool/str or None on signatures; never trusted as unchecked optimization proof; reflection unsupported |
+| Control flow | if/else, conditional expressions, boolean/chained comparisons, while/for with else/break/continue, global declarations, ordinary nested unpacking assignment |
+| Builtins | print (sep/end/flush/file=None), range, len, list, tuple, dict, set |
+| Identity | Only explicit comparisons with None or bool are accepted; arbitrary identity is rejected |
+| Errors | Native error class/message and nonzero exit; deterministic frame unwinding, no Python tracebacks or catchable structured exceptions yet |
 
-Native print writes UTF-8 and does not emulate Python-specific I/O environment
-configuration. Native execution is single-threaded. Recursion is capped at 256 active calls,
-with `RecursionError` instead of allowing C-stack exhaustion. Calls and signatures
-are limited to 128 arguments/parameters. Large CIR frames use checked heap storage;
-small frames and primitives use the C stack/tagged values. Function definitions
-inside control flow and nested definitions are rejected. Only basic name stores
-are implemented. Builtins other than print/range, implicit module metadata and
-reflection are unsupported; local parameter names may shadow builtin names.
+Dictionary/set storage is currently a contiguous, insertion-preserving value
+array with **linear lookup**, not a native hash-table optimization. Dictionary
+replacement preserves the original key object and insertion position. Sets
+preserve membership/equality/subset semantics; their unspecified iteration/repr
+order can differ from a particular CPython build/hash seed. Container/string
+operations are generic CaRT operations, not unboxed container specializations.
+`dict()` accepts a dictionary, iterable pairs and named values; `dict.update`
+currently accepts a dictionary positional source, without keyword expansion.
+Dictionary views and other unlisted methods are not implemented.
 
-Unsupported: imports/packages/standard-library modules, bytes, lists, tuples,
-dicts, sets, indexing/slicing, comprehensions, defaults, keyword-only/variadic or
-expanded signatures/calls, classes/instances, attributes/methods, inheritance,
-closures, decorators, descriptors, generators/async, exceptions/handlers,
-identity/membership tests, division/floor division/modulo/powers/bitwise operators,
-f-strings, arbitrary annotations, future imports and surrogate string code points.
-They receive located `C160` diagnostics, not CPython execution. Modules/packages
-are rejected as unsupported native configuration. Third-party CPython extensions
-cannot be loaded. Use the CPython backend when these capabilities are needed.
+The runtime is single-threaded, with 256 active calls and 128 parameters/call
+arguments (including expanded calls). Source list/tuple/set literals have at most
+128 elements, dictionaries 64 entries; runtime containers can grow beyond these
+frontend limits. Large CIR frames use checked heap allocations. Basic signatures
+may shadow builtin parameter names; some global builtin shadowing is conservatively
+rejected. Embedded-NUL keyword names in expanded calls are unsupported.
 
-Error classes for supported runtime errors are tested against CPython. Exact
-argument-error wording, tracebacks, introspection, object addresses/identity,
-GC scheduling, signal/thread scheduling and resource-exhaustion behavior are not
-claimed identical. No unsafe annotation/overflow opt-in changes Python arithmetic.
-Future object-model support must resolve identity/materialization before exposing
-`is`, `id`, finalizers or weak references.
+Still rejected or unimplemented: classes/instances/custom attributes/descriptors,
+closures/nested or conditional definitions/decorators, comprehensions, generators/
+async, structured exceptions/raise/assert/with, bytes, slice assignment, starred
+unpacking assignment, deletion, f-strings, walrus, division/floor division/modulo/
+powers/bitwise operators, arbitrary annotations/future flags, surrogate string
+code points, standard-library/native-library bindings, and arbitrary reflection.
+Unsupported syntax gets C160; unsupported dynamic operations/methods produce
+native errors. No compatibility fallback occurs in either case.
 
-## CaRT ABI 1 and ownership
+Exact error wording, object addresses, general numeric identity, GC scheduling,
+resource exhaustion, CPython-specific I/O/digit-limit environment configuration,
+thread/signals/finalizers/weakrefs are outside this milestone's contract.
 
-`runtime/native/include/cart.h` declares an internal runtime ABI, not a stable
-public general C ABI. Implementation is split across values/function/range logic,
-integers, float formatting and memory management in `runtime/native/src`.
+## CaRT ABI 2 and ownership
 
-A `CaValue` tags None/bool/int64/double directly; these operations need no numeric
-heap object. Integers beyond int64 use signed base-2^30 limbs. Add/subtract/multiply
-check overflow before C signed arithmetic and promote to arbitrary precision.
-Decimal conversion is implemented in CaRT; printing has a 4300-digit limit
-matching CPython defaults. Python-specific digit-limit configuration is not
-emulated, and literal acceptance is also bounded by the frontend conversion limit. Float formatting finds a shortest
-round-trip decimal using libc correctly rounded formatting, then applies Python's
-fixed/scientific thresholds; IEEE-pattern tests compare against CPython.
+CaRT's internal ABI is version 2, not a stable public C ABI. `CaValue` directly
+tags None/bool/int64/double. Big integers use signed base-2^30 limbs, checked
+promotion, and CaRT decimal conversion; printing retains the default 4300-digit
+limit. Checked O2/O3 scalar integer kernels and guarded same-module direct calls
+from 26.6 remain available. Cross-module functions use native tagged calling
+conventions, with no Python tuple/dictionary argument allocation; variadic Python
+parameters necessarily materialize native tuple/dictionary values. Cross-module
+scalar specialization, general inlining and float kernels remain future work.
 
-Immutable strings, large integers, ranges and internal iterators live in a
-non-moving mark/sweep heap. Generated function/register/local slots, globals and
-constant pools are explicit tracing roots. Collection occurs only at generated
-basic-block safepoints, never halfway through a runtime operation with unrooted
-C intermediates. Return values transfer to caller slots before the next safepoint.
-All frames unwind on failure; shutdown frees the heap. Memory-pressure thresholds
-trigger collection and retain reachable/shared references. An internal cyclic
-object-graph test verifies tracing termination and reclamation, but mutable Python
-containers, user finalizers and weak references are not yet exposed.
+Tagged floats carry a copy-preserved identity token, so NaN membership/key/container
+equality agrees with Python without heap-boxing numeric values. Primitive `nan == nan`
+remains false. This does not expose general `id()` or numeric `is` semantics.
 
-This deliberately avoids premature reference-count/cycle-collector machinery.
-Future mutable container/object tags need graph traversal and finalizer policies;
-adding an enum name is not implementation of those Python types.
+A non-moving mark/sweep heap owns strings, big integers, ranges, iterators,
+containers, slices and bound methods. Register/local frames, module globals,
+constant/default pools and extra module attributes are roots. Container edges,
+method receivers and iterators are traced. **Iterative marking** terminates on
+cycles without recursing through the C stack. Resizable container buffers are
+included in heap-byte accounting and freed during sweeping/shutdown.
 
-## Reused compiler infrastructure and specialization
+Collection occurs at generated basic-block safepoints and explicitly rooted
+runtime iteration loops. C intermediates in other operations are not collected
+mid-operation. Global/default roots are registered before initialization, so
+cyclic imports and early allocations are safe. Shutdown frees module namespaces,
+container buffers and the heap; generated functions unwind their frames on errors.
+No user finalizers or weakrefs are exposed.
 
-The existing filesystem loader, parser/semantic compiler, scope allocator,
-constant-folding decisions, CIR builder/ownership validator, CFG passes and typed
-pure-integer kernel IR remain in use. A separate native capability gate rejects
-unsupported constructs and normalizes only benign primitive signature annotations.
-The C generator consumes CIR, not Python AST nodes.
+## Builds, logging and remaining milestones
 
-O0 emits generic CaRT operations with tagged primitive fast paths. O1 removes
-unreachable CIR blocks. O2/O3 enable checked scalar kernels for eligible pure
-integer functions/range/while regions, guarded direct calls to compiled functions,
-and direct scalar self-recursion. Overflow/type/binding/budget misses replay only
-proven-pure kernels through generic CaRT, never CPython. O3 additionally uses the
-existing immutable-literal branch simplification. GCC/Clang receive the matching
-O-level with fast-math and FP contraction disabled. General inlining, cross-module
-scalar specialization, escape analysis, allocation elimination and LTO are not
-implemented.
+Both backends reuse the validated content-addressed object cache, with distinct
+native ABI/backend identities. Native cache keys cover preprocessed C/header
+contents, compiler binary/version, flags and runtime ABI, without a Python SDK.
+Every build relinks. Debug and `--no-cache` builds bypass caching; `--cache-dir`
+selects a location. Corrupt/unavailable caches safely miss. Compiler warnings,
+commands and cache outcomes are available in result metadata.
 
-Native optimization reports distinguish specialized/generic functions, guarded
-native call sites, generic dispatch and potential heap-operation/frame sites.
-Primitive numeric materialization uses a tag, not a heap box. Counts are static
-sites, not runtime allocation/hotness measurements. Retained generic slow paths
-can appear alongside a scalar kernel in generated C.
+Normal builds print only artifact paths. `-v`/`--verbose` reports selected engine,
+actual O-level, compilation/cache reuse and linking to stderr. `--fancy` explicitly
+adds the awakening message. JSON stdout stays machine-readable; generated
+executables print no compiler/startup identity messages.
 
-## CPython dependency inventory
-
-The compatibility backend retains its dependencies intentionally:
-
-- `backend/generator.py`, `backend/kernels.py` and `backend/project.py` generate
-  `PyObject` wrappers, object operations, scalar guards and interpreter launchers.
-- `runtime/calcium_runtime.h/.c` includes Python.h and implements PyNumber/object,
-  call/binding and Py_InitializeFromConfig behavior.
-- `runtime/calcium_modules.c` implements its importer through CPython/importlib.
-- `backend/toolchain.py` queries the selected Python SDK and links libpython.
-- `api.py` keeps this path behind the default CPython backend. Inference's
-  `PyObject*` presentation is a compatibility-backend fact, not a native runtime
-  dependency or an unchecked native type proof.
-
-The new native path does not call these generators/runtime/toolchain queries.
-Tests replace the Python SDK query with a failure and still emit native C, compile
-with a nonexistent target Python path, delete source files and run with empty PATH
-and invalid Python environment paths. Emitted C is checked for Python.h/PyObject/
-Py_Initialize references, and `ldd` is checked for libpython.
-
-## Benchmarks and next milestones
-
-See [26.6 measurements](NATIVE_BENCHMARKS.md) for a three-runtime suite, raw wall/CPU/
-RSS samples, binary sizes, compilation times and unsupported categories. Benchmarks
-validate output/status/file effects before reporting performance; GUI responsiveness
-is not inferred from startup. Existing real projects such as Discribe still need
-the CPython backend.
-
-Next work: general values/containers, defaults/conversions, structured exceptions,
-object identity/classes/closures, native modules/import caching and standard-library
-bindings, plus wider fuzzing and ownership/finalizer campaigns. CPython remains the
-default until native compatibility/reliability warrant a separate decision.
-
-The GitHub release also includes a CI-built `calcium-26.6-native-linux-x86_64.tar.gz`
-demonstration archive with pass/hello/sum_squares/values binaries, generated C for
-sum_squares, build/ABI metadata and the license. These require compatible Linux
-C/math libraries, but no Python installation. The archive is verified against
-Python output and checked for libpython dependencies before upload.
+Stages A–C (projects, module runtime, static import semantics) and E are shipped.
+Stage D is partial: collections, indexing/slicing, richer signatures/calls and
+common methods are implemented; classes, structured exceptions, closures and
+library bindings remain open. Stage F includes differential, source-free,
+ASan/UBSan, wheel and three-runtime package benchmark checks. See
+[NATIVE_BENCHMARKS.md](NATIVE_BENCHMARKS.md) and
+[the Discribe blocker report](benchmarks/discribe-26.7-blockers.json).
+**Discribe is not natively compatible in 26.7.** Its local checkout was analyzed,
+not executed, and requires further language/library/GUI support.

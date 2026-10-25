@@ -1,6 +1,6 @@
 """Three-runtime Linux process benchmarks, with correctness checks before timings.
 
-python examples/native/benchmark.py --output docs/benchmarks/native-26.6.json
+python examples/native/benchmark.py --output docs/benchmarks/native-26.7.json
 This executes only the bounded fixtures below; it never launches a GUI app.
 """
 
@@ -210,7 +210,7 @@ def main():
                 flush=True,
             )
         report["real_applications"] = {
-            "status": "not executed; native package/import/object support is not implemented"
+            "status": "not executed; package/import support exists; classes/library bindings are not implemented"
         }
         if args.application:
             probes = {}

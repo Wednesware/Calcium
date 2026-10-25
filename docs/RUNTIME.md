@@ -1,5 +1,5 @@
-> 26.6: the independent CaRT backend has its own [native contract](NATIVE.md).
-> The compatibility-backend design below remains supported and is still default.
+> 26.7: Bonemarrow is the default independent CaRT engine; see [its native contract](NATIVE.md).
+> The compatibility-backend design below remains available through explicit `--cpython`.
 
 # Runtime and C backend
 

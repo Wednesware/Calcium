@@ -1,0 +1,2114 @@
+{
+  "schema_version": 1,
+  "calcium_version": "26.7",
+  "measured_at_utc": "2026-10-25T11:57:56.487633+00:00",
+  "python": "3.14.8 (main, Oct  2 2026, 10:23:31) [GCC 16.2.1 20260810]",
+  "python_executable": "/usr/bin/python",
+  "compiler": "gcc (GCC) 16.2.1 20260810",
+  "platform": "Linux-7.2.11-zen1-1-zen-x86_64-with-glibc2.44",
+  "cpu": "AMD Ryzen 5 7600X 6-Core Processor",
+  "optimization": 3,
+  "repeat": 9,
+  "warmups": 2,
+  "cart_sha256": "54fb01b693743fe381f365ef158cda26d792556e107ac89e2af2ef61222b7722",
+  "helper_sha256": "9a6b92c1833bf7b05e095c41c093948808e4af4ef1f39d5f064ca3a39d37b58d",
+  "method": "whole-process wall/child CPU/peak child RSS using minimal C wait4 parent; RSS includes helper inheritance floor; zero RSS samples are null; sources/import graph outside timed working directory; compilation measured separately; shuffled runtime order with seed267; inherited environment, no CPU pinning or background-load control; source-free compiled executables; source bytes retained separately only for Python baseline; main executable size excludes shared libraries",
+  "workloads": {
+    "single_file_startup": {
+      "files": {
+        "main.py": "9f56e761d79bfdb34304a012586cb04d16b435ef6130091a97702e559260a2f2"
+      },
+      "runtimes": {
+        "cpython": {
+          "compile_wall_seconds": 0.609079023999584,
+          "executable_bytes": 58320,
+          "dependencies": [
+            "\tlinux-vdso.so.1 (0x00007f3c2bddf000)",
+            "\tlibpython3.14.so.1.0 => /usr/lib/libpython3.14.so.1.0 (0x00007f3c2b600000)",
+            "\tlibm.so.6 => /usr/lib/libm.so.6 (0x00007f3c2b4c9000)",
+            "\tlibc.so.6 => /usr/lib/libc.so.6 (0x00007f3c2b200000)",
+            "\t/lib64/ld-linux-x86-64.so.2 => /usr/lib64/ld-linux-x86-64.so.2 (0x00007f3c2bde1000)"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.010577384,
+              "cpu_seconds": 0.010391,
+              "peak_rss_bytes": 11993088
+            },
+            {
+              "wall_seconds": 0.010764454,
+              "cpu_seconds": 0.009914,
+              "peak_rss_bytes": 12054528
+            },
+            {
+              "wall_seconds": 0.009577856,
+              "cpu_seconds": 0.00945,
+              "peak_rss_bytes": 12054528
+            },
+            {
+              "wall_seconds": 0.011079474,
+              "cpu_seconds": 0.010546,
+              "peak_rss_bytes": 11759616
+            },
+            {
+              "wall_seconds": 0.01039911,
+              "cpu_seconds": 0.00992,
+              "peak_rss_bytes": 11735040
+            },
+            {
+              "wall_seconds": 0.014238158,
+              "cpu_seconds": 0.012961,
+              "peak_rss_bytes": 11833344
+            },
+            {
+              "wall_seconds": 0.009271102,
+              "cpu_seconds": 0.009141,
+              "peak_rss_bytes": 11927552
+            },
+            {
+              "wall_seconds": 0.009169623,
+              "cpu_seconds": 0.008954,
+              "peak_rss_bytes": 12103680
+            },
+            {
+              "wall_seconds": 0.008615046,
+              "cpu_seconds": 0.008472,
+              "peak_rss_bytes": 11923456
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.01039911,
+            "iqr": 0.0014933519999999999,
+            "min": 0.008615046,
+            "max": 0.014238158
+          },
+          "cpu_seconds": {
+            "median": 0.009914,
+            "iqr": 0.0012499999999999994,
+            "min": 0.008472,
+            "max": 0.012961
+          },
+          "peak_rss_bytes": {
+            "median": 11927552,
+            "iqr": 221184.0,
+            "min": 11735040,
+            "max": 12103680
+          }
+        },
+        "bmrw": {
+          "compile_wall_seconds": 1.067939184998977,
+          "executable_bytes": 94504,
+          "dependencies": [
+            "\tlinux-vdso.so.1 (0x00007f797146a000)",
+            "\tlibm.so.6 => /usr/lib/libm.so.6 (0x00007f79712df000)",
+            "\tlibc.so.6 => /usr/lib/libc.so.6 (0x00007f7971000000)",
+            "\t/lib64/ld-linux-x86-64.so.2 => /usr/lib64/ld-linux-x86-64.so.2 (0x00007f797146c000)"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.000659623,
+              "cpu_seconds": 0.000592,
+              "peak_rss_bytes": 2166784
+            },
+            {
+              "wall_seconds": 0.000586517,
+              "cpu_seconds": 0.000523,
+              "peak_rss_bytes": 2117632
+            },
+            {
+              "wall_seconds": 0.000567751,
+              "cpu_seconds": 0.000514,
+              "peak_rss_bytes": 2191360
+            },
+            {
+              "wall_seconds": 0.000511045,
+              "cpu_seconds": 0.000441,
+              "peak_rss_bytes": 2191360
+            },
+            {
+              "wall_seconds": 0.000570126,
+              "cpu_seconds": 0.00051,
+              "peak_rss_bytes": 2207744
+            },
+            {
+              "wall_seconds": 0.000585946,
+              "cpu_seconds": 0.000508,
+              "peak_rss_bytes": 2113536
+            },
+            {
+              "wall_seconds": 0.000627363,
+              "cpu_seconds": 0.000556,
+              "peak_rss_bytes": 2002944
+            },
+            {
+              "wall_seconds": 0.000501728,
+              "cpu_seconds": 0.000449,
+              "peak_rss_bytes": 2117632
+            },
+            {
+              "wall_seconds": 0.00058309,
+              "cpu_seconds": 0.000518,
+              "peak_rss_bytes": 2084864
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.00058309,
+            "iqr": 1.876600000000003e-05,
+            "min": 0.000501728,
+            "max": 0.000659623
+          },
+          "cpu_seconds": {
+            "median": 0.000514,
+            "iqr": 1.500000000000004e-05,
+            "min": 0.000441,
+            "max": 0.000592
+          },
+          "peak_rss_bytes": {
+            "median": 2117632,
+            "iqr": 77824.0,
+            "min": 2002944,
+            "max": 2207744
+          }
+        },
+        "python": {
+          "executable_bytes": 14424,
+          "samples": [
+            {
+              "wall_seconds": 0.009878909,
+              "cpu_seconds": 0.009743,
+              "peak_rss_bytes": 11939840
+            },
+            {
+              "wall_seconds": 0.010543711,
+              "cpu_seconds": 0.010332,
+              "peak_rss_bytes": 12062720
+            },
+            {
+              "wall_seconds": 0.01106221,
+              "cpu_seconds": 0.010891,
+              "peak_rss_bytes": 12070912
+            },
+            {
+              "wall_seconds": 0.009056832,
+              "cpu_seconds": 0.008892,
+              "peak_rss_bytes": 12197888
+            },
+            {
+              "wall_seconds": 0.010612721,
+              "cpu_seconds": 0.009385,
+              "peak_rss_bytes": 11993088
+            },
+            {
+              "wall_seconds": 0.008619554,
+              "cpu_seconds": 0.008455,
+              "peak_rss_bytes": 12197888
+            },
+            {
+              "wall_seconds": 0.008609425,
+              "cpu_seconds": 0.008514,
+              "peak_rss_bytes": 12177408
+            },
+            {
+              "wall_seconds": 0.010297772,
+              "cpu_seconds": 0.009626,
+              "peak_rss_bytes": 11743232
+            },
+            {
+              "wall_seconds": 0.009734358,
+              "cpu_seconds": 0.00956,
+              "peak_rss_bytes": 12197888
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.009878909,
+            "iqr": 0.001486879,
+            "min": 0.008609425,
+            "max": 0.01106221
+          },
+          "cpu_seconds": {
+            "median": 0.00956,
+            "iqr": 0.0008509999999999993,
+            "min": 0.008455,
+            "max": 0.010891
+          },
+          "peak_rss_bytes": {
+            "median": 12070912,
+            "iqr": 204800.0,
+            "min": 11743232,
+            "max": 12197888
+          }
+        }
+      }
+    },
+    "package_startup": {
+      "files": {
+        "pkg/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pkg/__main__.py": "9f56e761d79bfdb34304a012586cb04d16b435ef6130091a97702e559260a2f2"
+      },
+      "runtimes": {
+        "cpython": {
+          "compile_wall_seconds": 0.6868232649994752,
+          "executable_bytes": 62728,
+          "dependencies": [
+            "\tlinux-vdso.so.1 (0x00007ff7b66a6000)",
+            "\tlibpython3.14.so.1.0 => /usr/lib/libpython3.14.so.1.0 (0x00007ff7b5e00000)",
+            "\tlibm.so.6 => /usr/lib/libm.so.6 (0x00007ff7b6525000)",
+            "\tlibc.so.6 => /usr/lib/libc.so.6 (0x00007ff7b5a00000)",
+            "\t/lib64/ld-linux-x86-64.so.2 => /usr/lib64/ld-linux-x86-64.so.2 (0x00007ff7b66a8000)"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.009541066,
+              "cpu_seconds": 0.009418,
+              "peak_rss_bytes": 11714560
+            },
+            {
+              "wall_seconds": 0.009323601,
+              "cpu_seconds": 0.009197,
+              "peak_rss_bytes": 11993088
+            },
+            {
+              "wall_seconds": 0.008834355,
+              "cpu_seconds": 0.008669,
+              "peak_rss_bytes": 12046336
+            },
+            {
+              "wall_seconds": 0.008649009,
+              "cpu_seconds": 0.008547,
+              "peak_rss_bytes": 11931648
+            },
+            {
+              "wall_seconds": 0.009733046,
+              "cpu_seconds": 0.009612,
+              "peak_rss_bytes": 11862016
+            },
+            {
+              "wall_seconds": 0.009518996,
+              "cpu_seconds": 0.009366,
+              "peak_rss_bytes": 11997184
+            },
+            {
+              "wall_seconds": 0.008754757,
+              "cpu_seconds": 0.008629,
+              "peak_rss_bytes": 11837440
+            },
+            {
+              "wall_seconds": 0.009329922,
+              "cpu_seconds": 0.00922,
+              "peak_rss_bytes": 11923456
+            },
+            {
+              "wall_seconds": 0.00917398,
+              "cpu_seconds": 0.009034,
+              "peak_rss_bytes": 12058624
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.009323601,
+            "iqr": 0.0006846409999999997,
+            "min": 0.008649009,
+            "max": 0.009733046
+          },
+          "cpu_seconds": {
+            "median": 0.009197,
+            "iqr": 0.0006969999999999997,
+            "min": 0.008547,
+            "max": 0.009612
+          },
+          "peak_rss_bytes": {
+            "median": 11931648,
+            "iqr": 135168.0,
+            "min": 11714560,
+            "max": 12058624
+          }
+        },
+        "bmrw": {
+          "compile_wall_seconds": 1.1069570290001138,
+          "executable_bytes": 94864,
+          "dependencies": [
+            "\tlinux-vdso.so.1 (0x00007f6d86d44000)",
+            "\tlibm.so.6 => /usr/lib/libm.so.6 (0x00007f6d86bb9000)",
+            "\tlibc.so.6 => /usr/lib/libc.so.6 (0x00007f6d86800000)",
+            "\t/lib64/ld-linux-x86-64.so.2 => /usr/lib64/ld-linux-x86-64.so.2 (0x00007f6d86d46000)"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.000550169,
+              "cpu_seconds": 0.000491,
+              "peak_rss_bytes": 2121728
+            },
+            {
+              "wall_seconds": 0.00058804,
+              "cpu_seconds": 0.000518,
+              "peak_rss_bytes": 2195456
+            },
+            {
+              "wall_seconds": 0.000676294,
+              "cpu_seconds": 0.000599,
+              "peak_rss_bytes": 2166784
+            },
+            {
+              "wall_seconds": 0.000575666,
+              "cpu_seconds": 0.000509,
+              "peak_rss_bytes": 2084864
+            },
+            {
+              "wall_seconds": 0.000572401,
+              "cpu_seconds": 0.000512,
+              "peak_rss_bytes": 2109440
+            },
+            {
+              "wall_seconds": 0.000493232,
+              "cpu_seconds": 0.000434,
+              "peak_rss_bytes": 2195456
+            },
+            {
+              "wall_seconds": 0.000709376,
+              "cpu_seconds": 0.000608,
+              "peak_rss_bytes": 2072576
+            },
+            {
+              "wall_seconds": 0.000695951,
+              "cpu_seconds": 0.000595,
+              "peak_rss_bytes": 2011136
+            },
+            {
+              "wall_seconds": 0.000570156,
+              "cpu_seconds": 0.00051,
+              "peak_rss_bytes": 2215936
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.000575666,
+            "iqr": 0.00010613799999999998,
+            "min": 0.000493232,
+            "max": 0.000709376
+          },
+          "cpu_seconds": {
+            "median": 0.000512,
+            "iqr": 8.600000000000003e-05,
+            "min": 0.000434,
+            "max": 0.000608
+          },
+          "peak_rss_bytes": {
+            "median": 2121728,
+            "iqr": 110592.0,
+            "min": 2011136,
+            "max": 2215936
+          }
+        },
+        "python": {
+          "executable_bytes": 14424,
+          "samples": [
+            {
+              "wall_seconds": 0.011178107,
+              "cpu_seconds": 0.011022,
+              "peak_rss_bytes": 12271616
+            },
+            {
+              "wall_seconds": 0.010099581,
+              "cpu_seconds": 0.00988,
+              "peak_rss_bytes": 12599296
+            },
+            {
+              "wall_seconds": 0.011619202,
+              "cpu_seconds": 0.011452,
+              "peak_rss_bytes": 12275712
+            },
+            {
+              "wall_seconds": 0.009693873,
+              "cpu_seconds": 0.009569,
+              "peak_rss_bytes": 12582912
+            },
+            {
+              "wall_seconds": 0.00954844,
+              "cpu_seconds": 0.009431,
+              "peak_rss_bytes": 12562432
+            },
+            {
+              "wall_seconds": 0.010695616,
+              "cpu_seconds": 0.010334,
+              "peak_rss_bytes": 12328960
+            },
+            {
+              "wall_seconds": 0.010261694,
+              "cpu_seconds": 0.010138,
+              "peak_rss_bytes": 12587008
+            },
+            {
+              "wall_seconds": 0.011135056,
+              "cpu_seconds": 0.010725,
+              "peak_rss_bytes": 12161024
+            },
+            {
+              "wall_seconds": 0.01060222,
+              "cpu_seconds": 0.010485,
+              "peak_rss_bytes": 12595200
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.01060222,
+            "iqr": 0.001035475000000001,
+            "min": 0.00954844,
+            "max": 0.011619202
+          },
+          "cpu_seconds": {
+            "median": 0.010334,
+            "iqr": 0.0008450000000000003,
+            "min": 0.009431,
+            "max": 0.011452
+          },
+          "peak_rss_bytes": {
+            "median": 12562432,
+            "iqr": 311296.0,
+            "min": 12161024,
+            "max": 12599296
+          }
+        }
+      }
+    },
+    "one_module_import": {
+      "files": {
+        "main.py": "848ab56c90f8598f63bbb2ed929db70cdb84d99e0c9fcf0f55d77a8765bd9a74",
+        "worker.py": "48bd7f785ff64bd191578c7102107e7b7ca77b476b3afa30a4a516ecebaf95a0"
+      },
+      "runtimes": {
+        "cpython": {
+          "compile_wall_seconds": 0.6606093179998425,
+          "executable_bytes": 66920,
+          "dependencies": [
+            "\tlinux-vdso.so.1 (0x00007fa0fabfe000)",
+            "\tlibpython3.14.so.1.0 => /usr/lib/libpython3.14.so.1.0 (0x00007fa0fa400000)",
+            "\tlibm.so.6 => /usr/lib/libm.so.6 (0x00007fa0fa2c9000)",
+            "\tlibc.so.6 => /usr/lib/libc.so.6 (0x00007fa0fa000000)",
+            "\t/lib64/ld-linux-x86-64.so.2 => /usr/lib64/ld-linux-x86-64.so.2 (0x00007fa0fac00000)"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.009204347,
+              "cpu_seconds": 0.009065,
+              "peak_rss_bytes": 12087296
+            },
+            {
+              "wall_seconds": 0.011061429,
+              "cpu_seconds": 0.010288,
+              "peak_rss_bytes": 12034048
+            },
+            {
+              "wall_seconds": 0.009149925,
+              "cpu_seconds": 0.009011,
+              "peak_rss_bytes": 11730944
+            },
+            {
+              "wall_seconds": 0.009408128,
+              "cpu_seconds": 0.008966,
+              "peak_rss_bytes": 11767808
+            },
+            {
+              "wall_seconds": 0.008942448,
+              "cpu_seconds": 0.008843,
+              "peak_rss_bytes": 11862016
+            },
+            {
+              "wall_seconds": 0.009119269,
+              "cpu_seconds": 0.008986,
+              "peak_rss_bytes": 11988992
+            },
+            {
+              "wall_seconds": 0.0091468,
+              "cpu_seconds": 0.008666,
+              "peak_rss_bytes": 11993088
+            },
+            {
+              "wall_seconds": 0.00904519,
+              "cpu_seconds": 0.008869,
+              "peak_rss_bytes": 11804672
+            },
+            {
+              "wall_seconds": 0.009047905,
+              "cpu_seconds": 0.008937,
+              "peak_rss_bytes": 12013568
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.0091468,
+            "iqr": 0.0001564419999999997,
+            "min": 0.008942448,
+            "max": 0.011061429
+          },
+          "cpu_seconds": {
+            "median": 0.008966,
+            "iqr": 0.00014199999999999977,
+            "min": 0.008666,
+            "max": 0.010288
+          },
+          "peak_rss_bytes": {
+            "median": 11988992,
+            "iqr": 208896.0,
+            "min": 11730944,
+            "max": 12087296
+          }
+        },
+        "bmrw": {
+          "compile_wall_seconds": 1.0862587240007997,
+          "executable_bytes": 94976,
+          "dependencies": [
+            "\tlinux-vdso.so.1 (0x00007f33b1d7f000)",
+            "\tlibm.so.6 => /usr/lib/libm.so.6 (0x00007f33b1bf4000)",
+            "\tlibc.so.6 => /usr/lib/libc.so.6 (0x00007f33b1800000)",
+            "\t/lib64/ld-linux-x86-64.so.2 => /usr/lib64/ld-linux-x86-64.so.2 (0x00007f33b1d81000)"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.000590985,
+              "cpu_seconds": 0.000537,
+              "peak_rss_bytes": 2265088
+            },
+            {
+              "wall_seconds": 0.000668059,
+              "cpu_seconds": 0.000598,
+              "peak_rss_bytes": 2265088
+            },
+            {
+              "wall_seconds": 0.000581898,
+              "cpu_seconds": 0.000513,
+              "peak_rss_bytes": 2478080
+            },
+            {
+              "wall_seconds": 0.000559386,
+              "cpu_seconds": 0.000498,
+              "peak_rss_bytes": 2461696
+            },
+            {
+              "wall_seconds": 0.000671946,
+              "cpu_seconds": 0.000539,
+              "peak_rss_bytes": 2265088
+            },
+            {
+              "wall_seconds": 0.000579243,
+              "cpu_seconds": 0.000517,
+              "peak_rss_bytes": 2486272
+            },
+            {
+              "wall_seconds": 0.000864907,
+              "cpu_seconds": 0.000602,
+              "peak_rss_bytes": 2392064
+            },
+            {
+              "wall_seconds": 0.000564065,
+              "cpu_seconds": 0.000502,
+              "peak_rss_bytes": 2478080
+            },
+            {
+              "wall_seconds": 0.0005778,
+              "cpu_seconds": 0.000518,
+              "peak_rss_bytes": 2392064
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.000581898,
+            "iqr": 9.025900000000009e-05,
+            "min": 0.000559386,
+            "max": 0.000864907
+          },
+          "cpu_seconds": {
+            "median": 0.000518,
+            "iqr": 2.599999999999998e-05,
+            "min": 0.000498,
+            "max": 0.000602
+          },
+          "peak_rss_bytes": {
+            "median": 2392064,
+            "iqr": 212992.0,
+            "min": 2265088,
+            "max": 2486272
+          }
+        },
+        "python": {
+          "executable_bytes": 14424,
+          "samples": [
+            {
+              "wall_seconds": 0.010044728,
+              "cpu_seconds": 0.009787,
+              "peak_rss_bytes": 12333056
+            },
+            {
+              "wall_seconds": 0.010192415,
+              "cpu_seconds": 0.009954,
+              "peak_rss_bytes": 12464128
+            },
+            {
+              "wall_seconds": 0.011316196,
+              "cpu_seconds": 0.011123,
+              "peak_rss_bytes": 11948032
+            },
+            {
+              "wall_seconds": 0.009437664,
+              "cpu_seconds": 0.009219,
+              "peak_rss_bytes": 12460032
+            },
+            {
+              "wall_seconds": 0.010017478,
+              "cpu_seconds": 0.009502,
+              "peak_rss_bytes": 12169216
+            },
+            {
+              "wall_seconds": 0.012787646,
+              "cpu_seconds": 0.012647,
+              "peak_rss_bytes": 12435456
+            },
+            {
+              "wall_seconds": 0.00994389,
+              "cpu_seconds": 0.009367,
+              "peak_rss_bytes": 12435456
+            },
+            {
+              "wall_seconds": 0.009810541,
+              "cpu_seconds": 0.009201,
+              "peak_rss_bytes": 12242944
+            },
+            {
+              "wall_seconds": 0.009610757,
+              "cpu_seconds": 0.009242,
+              "peak_rss_bytes": 12464128
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.010017478,
+            "iqr": 0.00038187399999999906,
+            "min": 0.009437664,
+            "max": 0.012787646
+          },
+          "cpu_seconds": {
+            "median": 0.009502,
+            "iqr": 0.0007119999999999991,
+            "min": 0.009201,
+            "max": 0.012647
+          },
+          "peak_rss_bytes": {
+            "median": 12435456,
+            "iqr": 217088.0,
+            "min": 11948032,
+            "max": 12464128
+          }
+        }
+      }
+    },
+    "multi_module_import": {
+      "files": {
+        "main.py": "6779417c31a6e0cc1b056d15297cdb371c900d0648181703c8ab89d67db557d9",
+        "a.py": "98752ee28d5484bdc2814fb70adb6a0b2fb31f6a9b8ee7ae81fd2fc9cf300b3b",
+        "b.py": "275a123465074564dfca39c16f9e7a10a9eb489d37bab20c72cf261032a66a47",
+        "c.py": "1f20b23f2823c4951a7bac441a2229e17ffae50d64cbfe4be12cbf2ea47952dc"
+      },
+      "runtimes": {
+        "cpython": {
+          "compile_wall_seconds": 0.8195875660003367,
+          "executable_bytes": 75672,
+          "dependencies": [
+            "\tlinux-vdso.so.1 (0x00007fb2823fa000)",
+            "\tlibpython3.14.so.1.0 => /usr/lib/libpython3.14.so.1.0 (0x00007fb281c00000)",
+            "\tlibm.so.6 => /usr/lib/libm.so.6 (0x00007fb281ac9000)",
+            "\tlibc.so.6 => /usr/lib/libc.so.6 (0x00007fb281800000)",
+            "\t/lib64/ld-linux-x86-64.so.2 => /usr/lib64/ld-linux-x86-64.so.2 (0x00007fb2823fc000)"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.009858621,
+              "cpu_seconds": 0.009612,
+              "peak_rss_bytes": 11796480
+            },
+            {
+              "wall_seconds": 0.009550755,
+              "cpu_seconds": 0.00942,
+              "peak_rss_bytes": 11669504
+            },
+            {
+              "wall_seconds": 0.009007509,
+              "cpu_seconds": 0.008889,
+              "peak_rss_bytes": 11993088
+            },
+            {
+              "wall_seconds": 0.009426543,
+              "cpu_seconds": 0.009271,
+              "peak_rss_bytes": 11796480
+            },
+            {
+              "wall_seconds": 0.009620676,
+              "cpu_seconds": 0.009441,
+              "peak_rss_bytes": 12050432
+            },
+            {
+              "wall_seconds": 0.009153953,
+              "cpu_seconds": 0.008827,
+              "peak_rss_bytes": 11968512
+            },
+            {
+              "wall_seconds": 0.008680287,
+              "cpu_seconds": 0.008501,
+              "peak_rss_bytes": 11751424
+            },
+            {
+              "wall_seconds": 0.010900739,
+              "cpu_seconds": 0.010034,
+              "peak_rss_bytes": 11898880
+            },
+            {
+              "wall_seconds": 0.009572155,
+              "cpu_seconds": 0.009464,
+              "peak_rss_bytes": 11857920
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.009550755,
+            "iqr": 0.0004667230000000005,
+            "min": 0.008680287,
+            "max": 0.010900739
+          },
+          "cpu_seconds": {
+            "median": 0.00942,
+            "iqr": 0.0005750000000000009,
+            "min": 0.008501,
+            "max": 0.010034
+          },
+          "peak_rss_bytes": {
+            "median": 11857920,
+            "iqr": 172032.0,
+            "min": 11669504,
+            "max": 12050432
+          }
+        },
+        "bmrw": {
+          "compile_wall_seconds": 1.1503198049995262,
+          "executable_bytes": 104056,
+          "dependencies": [
+            "\tlinux-vdso.so.1 (0x00007f70d0061000)",
+            "\tlibm.so.6 => /usr/lib/libm.so.6 (0x00007f70cfed4000)",
+            "\tlibc.so.6 => /usr/lib/libc.so.6 (0x00007f70cfc00000)",
+            "\t/lib64/ld-linux-x86-64.so.2 => /usr/lib64/ld-linux-x86-64.so.2 (0x00007f70d0063000)"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.000579624,
+              "cpu_seconds": 0.000482,
+              "peak_rss_bytes": 2478080
+            },
+            {
+              "wall_seconds": 0.000569495,
+              "cpu_seconds": 0.00051,
+              "peak_rss_bytes": 2478080
+            },
+            {
+              "wall_seconds": 0.00056684,
+              "cpu_seconds": 0.00051,
+              "peak_rss_bytes": 2469888
+            },
+            {
+              "wall_seconds": 0.000654784,
+              "cpu_seconds": 0.000558,
+              "peak_rss_bytes": 2293760
+            },
+            {
+              "wall_seconds": 0.000642902,
+              "cpu_seconds": 0.00052,
+              "peak_rss_bytes": 2273280
+            },
+            {
+              "wall_seconds": 0.000600863,
+              "cpu_seconds": 0.000536,
+              "peak_rss_bytes": 2371584
+            },
+            {
+              "wall_seconds": 0.000584663,
+              "cpu_seconds": 0.000524,
+              "peak_rss_bytes": 2478080
+            },
+            {
+              "wall_seconds": 0.000635498,
+              "cpu_seconds": 0.000486,
+              "peak_rss_bytes": 2478080
+            },
+            {
+              "wall_seconds": 0.00062025,
+              "cpu_seconds": 0.000555,
+              "peak_rss_bytes": 2486272
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.000600863,
+            "iqr": 5.587399999999992e-05,
+            "min": 0.00056684,
+            "max": 0.000654784
+          },
+          "cpu_seconds": {
+            "median": 0.00052,
+            "iqr": 2.599999999999998e-05,
+            "min": 0.000482,
+            "max": 0.000558
+          },
+          "peak_rss_bytes": {
+            "median": 2478080,
+            "iqr": 106496.0,
+            "min": 2273280,
+            "max": 2486272
+          }
+        },
+        "python": {
+          "executable_bytes": 14424,
+          "samples": [
+            {
+              "wall_seconds": 0.00964454,
+              "cpu_seconds": 0.009535,
+              "peak_rss_bytes": 12197888
+            },
+            {
+              "wall_seconds": 0.009901491,
+              "cpu_seconds": 0.00977,
+              "peak_rss_bytes": 12447744
+            },
+            {
+              "wall_seconds": 0.010512944,
+              "cpu_seconds": 0.010406,
+              "peak_rss_bytes": 12193792
+            },
+            {
+              "wall_seconds": 0.010370949,
+              "cpu_seconds": 0.010216,
+              "peak_rss_bytes": 12267520
+            },
+            {
+              "wall_seconds": 0.010549753,
+              "cpu_seconds": 0.010397,
+              "peak_rss_bytes": 12152832
+            },
+            {
+              "wall_seconds": 0.010587013,
+              "cpu_seconds": 0.01042,
+              "peak_rss_bytes": 12300288
+            },
+            {
+              "wall_seconds": 0.010646403,
+              "cpu_seconds": 0.010507,
+              "peak_rss_bytes": 12390400
+            },
+            {
+              "wall_seconds": 0.0101952,
+              "cpu_seconds": 0.010055,
+              "peak_rss_bytes": 12460032
+            },
+            {
+              "wall_seconds": 0.010386488,
+              "cpu_seconds": 0.010271,
+              "peak_rss_bytes": 12066816
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.010386488,
+            "iqr": 0.0003545530000000005,
+            "min": 0.00964454,
+            "max": 0.010646403
+          },
+          "cpu_seconds": {
+            "median": 0.010271,
+            "iqr": 0.0003510000000000006,
+            "min": 0.009535,
+            "max": 0.010507
+          },
+          "peak_rss_bytes": {
+            "median": 12267520,
+            "iqr": 196608.0,
+            "min": 12066816,
+            "max": 12460032
+          }
+        }
+      }
+    },
+    "cross_module_calls": {
+      "files": {
+        "main.py": "58071f0a3e55b8d3379cb421ca506a85af5471b4cc234733c9df68d062617006",
+        "worker.py": "301e919d6550f52d22333db3fe99db70ace68c6feaa53155978bee807a7cef35"
+      },
+      "runtimes": {
+        "cpython": {
+          "compile_wall_seconds": 0.723748667000109,
+          "executable_bytes": 75496,
+          "dependencies": [
+            "\tlinux-vdso.so.1 (0x00007f4e682ad000)",
+            "\tlibpython3.14.so.1.0 => /usr/lib/libpython3.14.so.1.0 (0x00007f4e67a00000)",
+            "\tlibm.so.6 => /usr/lib/libm.so.6 (0x00007f4e68129000)",
+            "\tlibc.so.6 => /usr/lib/libc.so.6 (0x00007f4e67600000)",
+            "\t/lib64/ld-linux-x86-64.so.2 => /usr/lib64/ld-linux-x86-64.so.2 (0x00007f4e682af000)"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.029980989,
+              "cpu_seconds": 0.029734,
+              "peak_rss_bytes": 11948032
+            },
+            {
+              "wall_seconds": 0.02960696,
+              "cpu_seconds": 0.02938,
+              "peak_rss_bytes": 11923456
+            },
+            {
+              "wall_seconds": 0.032700393,
+              "cpu_seconds": 0.032166,
+              "peak_rss_bytes": 12054528
+            },
+            {
+              "wall_seconds": 0.028773202,
+              "cpu_seconds": 0.028535,
+              "peak_rss_bytes": 11837440
+            },
+            {
+              "wall_seconds": 0.031850444,
+              "cpu_seconds": 0.031314,
+              "peak_rss_bytes": 11636736
+            },
+            {
+              "wall_seconds": 0.031148201,
+              "cpu_seconds": 0.030844,
+              "peak_rss_bytes": 11923456
+            },
+            {
+              "wall_seconds": 0.029917941,
+              "cpu_seconds": 0.029678,
+              "peak_rss_bytes": 11968512
+            },
+            {
+              "wall_seconds": 0.031725079,
+              "cpu_seconds": 0.030062,
+              "peak_rss_bytes": 12054528
+            },
+            {
+              "wall_seconds": 0.032780613,
+              "cpu_seconds": 0.031659,
+              "peak_rss_bytes": 11927552
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.031148201,
+            "iqr": 0.0019325029999999986,
+            "min": 0.028773202,
+            "max": 0.032780613
+          },
+          "cpu_seconds": {
+            "median": 0.030062,
+            "iqr": 0.001636000000000002,
+            "min": 0.028535,
+            "max": 0.032166
+          },
+          "peak_rss_bytes": {
+            "median": 11927552,
+            "iqr": 45056.0,
+            "min": 11636736,
+            "max": 12054528
+          }
+        },
+        "bmrw": {
+          "compile_wall_seconds": 1.142714616999001,
+          "executable_bytes": 103504,
+          "dependencies": [
+            "\tlinux-vdso.so.1 (0x00007f54d2a6e000)",
+            "\tlibm.so.6 => /usr/lib/libm.so.6 (0x00007f54d28e1000)",
+            "\tlibc.so.6 => /usr/lib/libc.so.6 (0x00007f54d2600000)",
+            "\t/lib64/ld-linux-x86-64.so.2 => /usr/lib64/ld-linux-x86-64.so.2 (0x00007f54d2a70000)"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.007805563,
+              "cpu_seconds": 0.007668,
+              "peak_rss_bytes": 2437120
+            },
+            {
+              "wall_seconds": 0.007535918,
+              "cpu_seconds": 0.007457,
+              "peak_rss_bytes": 2347008
+            },
+            {
+              "wall_seconds": 0.008260382,
+              "cpu_seconds": 0.00793,
+              "peak_rss_bytes": 2420736
+            },
+            {
+              "wall_seconds": 0.007713,
+              "cpu_seconds": 0.007628,
+              "peak_rss_bytes": 2379776
+            },
+            {
+              "wall_seconds": 0.007537301,
+              "cpu_seconds": 0.007462,
+              "peak_rss_bytes": 2375680
+            },
+            {
+              "wall_seconds": 0.00779322,
+              "cpu_seconds": 0.007609,
+              "peak_rss_bytes": 2314240
+            },
+            {
+              "wall_seconds": 0.007765608,
+              "cpu_seconds": 0.007617,
+              "peak_rss_bytes": 2396160
+            },
+            {
+              "wall_seconds": 0.007913876,
+              "cpu_seconds": 0.00772,
+              "peak_rss_bytes": 2379776
+            },
+            {
+              "wall_seconds": 0.007908715,
+              "cpu_seconds": 0.007775,
+              "peak_rss_bytes": 2428928
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.00779322,
+            "iqr": 0.00019571499999999995,
+            "min": 0.007535918,
+            "max": 0.008260382
+          },
+          "cpu_seconds": {
+            "median": 0.007628,
+            "iqr": 0.00011099999999999999,
+            "min": 0.007457,
+            "max": 0.00793
+          },
+          "peak_rss_bytes": {
+            "median": 2379776,
+            "iqr": 45056.0,
+            "min": 2314240,
+            "max": 2437120
+          }
+        },
+        "python": {
+          "executable_bytes": 14424,
+          "samples": [
+            {
+              "wall_seconds": 0.019600603,
+              "cpu_seconds": 0.019306,
+              "peak_rss_bytes": 12214272
+            },
+            {
+              "wall_seconds": 0.020663019,
+              "cpu_seconds": 0.019879,
+              "peak_rss_bytes": 12152832
+            },
+            {
+              "wall_seconds": 0.018751857,
+              "cpu_seconds": 0.018422,
+              "peak_rss_bytes": 12374016
+            },
+            {
+              "wall_seconds": 0.018522157,
+              "cpu_seconds": 0.018346,
+              "peak_rss_bytes": 12431360
+            },
+            {
+              "wall_seconds": 0.019157554,
+              "cpu_seconds": 0.018671,
+              "peak_rss_bytes": 12460032
+            },
+            {
+              "wall_seconds": 0.020589862,
+              "cpu_seconds": 0.020353,
+              "peak_rss_bytes": 12464128
+            },
+            {
+              "wall_seconds": 0.019534469,
+              "cpu_seconds": 0.019354,
+              "peak_rss_bytes": 12304384
+            },
+            {
+              "wall_seconds": 0.018375883,
+              "cpu_seconds": 0.018222,
+              "peak_rss_bytes": 12341248
+            },
+            {
+              "wall_seconds": 0.020243956,
+              "cpu_seconds": 0.020002,
+              "peak_rss_bytes": 12460032
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.019534469,
+            "iqr": 0.0014920990000000002,
+            "min": 0.018375883,
+            "max": 0.020663019
+          },
+          "cpu_seconds": {
+            "median": 0.019306,
+            "iqr": 0.001457,
+            "min": 0.018222,
+            "max": 0.020353
+          },
+          "peak_rss_bytes": {
+            "median": 12374016,
+            "iqr": 155648.0,
+            "min": 12152832,
+            "max": 12464128
+          }
+        }
+      }
+    },
+    "repeated_imports": {
+      "files": {
+        "main.py": "3102e38ce6614afa434bb68cb7a96d155b6e97f0f3cc5c46882fdba1abce8e9e",
+        "worker.py": "bce1cc21821f4f27736edec86ad497ed1bbbdf01a0d50dfe428cf7446b1954a3"
+      },
+      "runtimes": {
+        "cpython": {
+          "compile_wall_seconds": 0.7216331910003646,
+          "executable_bytes": 66920,
+          "dependencies": [
+            "\tlinux-vdso.so.1 (0x00007fc80a998000)",
+            "\tlibpython3.14.so.1.0 => /usr/lib/libpython3.14.so.1.0 (0x00007fc80a200000)",
+            "\tlibm.so.6 => /usr/lib/libm.so.6 (0x00007fc80a0c9000)",
+            "\tlibc.so.6 => /usr/lib/libc.so.6 (0x00007fc809e00000)",
+            "\t/lib64/ld-linux-x86-64.so.2 => /usr/lib64/ld-linux-x86-64.so.2 (0x00007fc80a99a000)"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.012212541,
+              "cpu_seconds": 0.012051,
+              "peak_rss_bytes": 11993088
+            },
+            {
+              "wall_seconds": 0.011547177,
+              "cpu_seconds": 0.01142,
+              "peak_rss_bytes": 11837440
+            },
+            {
+              "wall_seconds": 0.011464292,
+              "cpu_seconds": 0.011322,
+              "peak_rss_bytes": 11857920
+            },
+            {
+              "wall_seconds": 0.0129336,
+              "cpu_seconds": 0.012726,
+              "peak_rss_bytes": 11841536
+            },
+            {
+              "wall_seconds": 0.011882975,
+              "cpu_seconds": 0.011743,
+              "peak_rss_bytes": 11857920
+            },
+            {
+              "wall_seconds": 0.012729658,
+              "cpu_seconds": 0.012184,
+              "peak_rss_bytes": 12054528
+            },
+            {
+              "wall_seconds": 0.012610175,
+              "cpu_seconds": 0.011731,
+              "peak_rss_bytes": 11763712
+            },
+            {
+              "wall_seconds": 0.011983974,
+              "cpu_seconds": 0.011718,
+              "peak_rss_bytes": 11960320
+            },
+            {
+              "wall_seconds": 0.012104809,
+              "cpu_seconds": 0.01165,
+              "peak_rss_bytes": 11669504
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.012104809,
+            "iqr": 0.000727199999999999,
+            "min": 0.011464292,
+            "max": 0.0129336
+          },
+          "cpu_seconds": {
+            "median": 0.011731,
+            "iqr": 0.0004009999999999986,
+            "min": 0.011322,
+            "max": 0.012726
+          },
+          "peak_rss_bytes": {
+            "median": 11857920,
+            "iqr": 122880.0,
+            "min": 11669504,
+            "max": 12054528
+          }
+        },
+        "bmrw": {
+          "compile_wall_seconds": 1.1368229319996317,
+          "executable_bytes": 99152,
+          "dependencies": [
+            "\tlinux-vdso.so.1 (0x00007ffa752d9000)",
+            "\tlibm.so.6 => /usr/lib/libm.so.6 (0x00007ffa7514d000)",
+            "\tlibc.so.6 => /usr/lib/libc.so.6 (0x00007ffa74e00000)",
+            "\t/lib64/ld-linux-x86-64.so.2 => /usr/lib64/ld-linux-x86-64.so.2 (0x00007ffa752db000)"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.001082153,
+              "cpu_seconds": 0.001022,
+              "peak_rss_bytes": 2404352
+            },
+            {
+              "wall_seconds": 0.00102119,
+              "cpu_seconds": 0.000955,
+              "peak_rss_bytes": 2437120
+            },
+            {
+              "wall_seconds": 0.000900734,
+              "cpu_seconds": 0.000836,
+              "peak_rss_bytes": 2351104
+            },
+            {
+              "wall_seconds": 0.001063288,
+              "cpu_seconds": 0.000974,
+              "peak_rss_bytes": 2453504
+            },
+            {
+              "wall_seconds": 0.00116088,
+              "cpu_seconds": 0.001086,
+              "peak_rss_bytes": 2379776
+            },
+            {
+              "wall_seconds": 0.000964333,
+              "cpu_seconds": 0.000902,
+              "peak_rss_bytes": 2273280
+            },
+            {
+              "wall_seconds": 0.000935288,
+              "cpu_seconds": 0.000856,
+              "peak_rss_bytes": 2453504
+            },
+            {
+              "wall_seconds": 0.000847775,
+              "cpu_seconds": 0.000781,
+              "peak_rss_bytes": 2469888
+            },
+            {
+              "wall_seconds": 0.001007334,
+              "cpu_seconds": 0.000957,
+              "peak_rss_bytes": 2347008
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.001007334,
+            "iqr": 0.00012799999999999986,
+            "min": 0.000847775,
+            "max": 0.00116088
+          },
+          "cpu_seconds": {
+            "median": 0.000955,
+            "iqr": 0.00011800000000000005,
+            "min": 0.000781,
+            "max": 0.001086
+          },
+          "peak_rss_bytes": {
+            "median": 2404352,
+            "iqr": 102400.0,
+            "min": 2273280,
+            "max": 2469888
+          }
+        },
+        "python": {
+          "executable_bytes": 14424,
+          "samples": [
+            {
+              "wall_seconds": 0.01084813,
+              "cpu_seconds": 0.010335,
+              "peak_rss_bytes": 12201984
+            },
+            {
+              "wall_seconds": 0.01089098,
+              "cpu_seconds": 0.010764,
+              "peak_rss_bytes": 12398592
+            },
+            {
+              "wall_seconds": 0.011540324,
+              "cpu_seconds": 0.011389,
+              "peak_rss_bytes": 12333056
+            },
+            {
+              "wall_seconds": 0.011618861,
+              "cpu_seconds": 0.011097,
+              "peak_rss_bytes": 12333056
+            },
+            {
+              "wall_seconds": 0.012349447,
+              "cpu_seconds": 0.01218,
+              "peak_rss_bytes": 12234752
+            },
+            {
+              "wall_seconds": 0.011082909,
+              "cpu_seconds": 0.010911,
+              "peak_rss_bytes": 12333056
+            },
+            {
+              "wall_seconds": 0.012318098,
+              "cpu_seconds": 0.011426,
+              "peak_rss_bytes": 12185600
+            },
+            {
+              "wall_seconds": 0.011392208,
+              "cpu_seconds": 0.011229,
+              "peak_rss_bytes": 12328960
+            },
+            {
+              "wall_seconds": 0.01160753,
+              "cpu_seconds": 0.010602,
+              "peak_rss_bytes": 12460032
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.011540324,
+            "iqr": 0.0005359519999999993,
+            "min": 0.01084813,
+            "max": 0.012349447
+          },
+          "cpu_seconds": {
+            "median": 0.011097,
+            "iqr": 0.0006250000000000006,
+            "min": 0.010335,
+            "max": 0.01218
+          },
+          "peak_rss_bytes": {
+            "median": 12333056,
+            "iqr": 98304.0,
+            "min": 12185600,
+            "max": 12460032
+          }
+        }
+      }
+    },
+    "circular_imports": {
+      "files": {
+        "main.py": "a93cb79fcb48cfb8fec40edacfc50211abf3e576b29f7aa23bc0ac83f3a1f0b8",
+        "a.py": "ac2a0f254968d6728489093371cddf97f14945243559738dfc67c5af142bf0ef",
+        "b.py": "192de7ef4de09e934743b507185305b3a2ecb2fbff7be5b3de527ab40e2b988a"
+      },
+      "runtimes": {
+        "cpython": {
+          "compile_wall_seconds": 0.7695819710006617,
+          "executable_bytes": 71288,
+          "dependencies": [
+            "\tlinux-vdso.so.1 (0x00007fcbb0308000)",
+            "\tlibpython3.14.so.1.0 => /usr/lib/libpython3.14.so.1.0 (0x00007fcbafc00000)",
+            "\tlibm.so.6 => /usr/lib/libm.so.6 (0x00007fcbafac9000)",
+            "\tlibc.so.6 => /usr/lib/libc.so.6 (0x00007fcbaf800000)",
+            "\t/lib64/ld-linux-x86-64.so.2 => /usr/lib64/ld-linux-x86-64.so.2 (0x00007fcbb030a000)"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.010100533,
+              "cpu_seconds": 0.009553,
+              "peak_rss_bytes": 11726848
+            },
+            {
+              "wall_seconds": 0.009631566,
+              "cpu_seconds": 0.009524,
+              "peak_rss_bytes": 11968512
+            },
+            {
+              "wall_seconds": 0.009791846,
+              "cpu_seconds": 0.009225,
+              "peak_rss_bytes": 11747328
+            },
+            {
+              "wall_seconds": 0.010254851,
+              "cpu_seconds": 0.009748,
+              "peak_rss_bytes": 11821056
+            },
+            {
+              "wall_seconds": 0.009159223,
+              "cpu_seconds": 0.009034,
+              "peak_rss_bytes": 11788288
+            },
+            {
+              "wall_seconds": 0.009374035,
+              "cpu_seconds": 0.008837,
+              "peak_rss_bytes": 12058624
+            },
+            {
+              "wall_seconds": 0.009209978,
+              "cpu_seconds": 0.009026,
+              "peak_rss_bytes": 11780096
+            },
+            {
+              "wall_seconds": 0.009235386,
+              "cpu_seconds": 0.009123,
+              "peak_rss_bytes": 12054528
+            },
+            {
+              "wall_seconds": 0.009920106,
+              "cpu_seconds": 0.009753,
+              "peak_rss_bytes": 11894784
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.009631566,
+            "iqr": 0.0006847199999999998,
+            "min": 0.009159223,
+            "max": 0.010254851
+          },
+          "cpu_seconds": {
+            "median": 0.009225,
+            "iqr": 0.0005190000000000004,
+            "min": 0.008837,
+            "max": 0.009753
+          },
+          "peak_rss_bytes": {
+            "median": 11821056,
+            "iqr": 188416.0,
+            "min": 11726848,
+            "max": 12058624
+          }
+        },
+        "bmrw": {
+          "compile_wall_seconds": 1.0976339089993417,
+          "executable_bytes": 103656,
+          "dependencies": [
+            "\tlinux-vdso.so.1 (0x00007f10a7ac8000)",
+            "\tlibm.so.6 => /usr/lib/libm.so.6 (0x00007f10a793b000)",
+            "\tlibc.so.6 => /usr/lib/libc.so.6 (0x00007f10a7600000)",
+            "\t/lib64/ld-linux-x86-64.so.2 => /usr/lib64/ld-linux-x86-64.so.2 (0x00007f10a7aca000)"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.000576147,
+              "cpu_seconds": 0.000519,
+              "peak_rss_bytes": 2392064
+            },
+            {
+              "wall_seconds": 0.000623485,
+              "cpu_seconds": 0.000553,
+              "peak_rss_bytes": 2379776
+            },
+            {
+              "wall_seconds": 0.000587678,
+              "cpu_seconds": 0.000517,
+              "peak_rss_bytes": 2347008
+            },
+            {
+              "wall_seconds": 0.000819543,
+              "cpu_seconds": 0.000754,
+              "peak_rss_bytes": 2371584
+            },
+            {
+              "wall_seconds": 0.001215412,
+              "cpu_seconds": 0.000584,
+              "peak_rss_bytes": 2469888
+            },
+            {
+              "wall_seconds": 0.000492371,
+              "cpu_seconds": 0.00044,
+              "peak_rss_bytes": 2351104
+            },
+            {
+              "wall_seconds": 0.000574765,
+              "cpu_seconds": 0.000504,
+              "peak_rss_bytes": 2478080
+            },
+            {
+              "wall_seconds": 0.00062054,
+              "cpu_seconds": 0.000548,
+              "peak_rss_bytes": 2379776
+            },
+            {
+              "wall_seconds": 0.000490707,
+              "cpu_seconds": 0.000438,
+              "peak_rss_bytes": 2383872
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.000587678,
+            "iqr": 4.8720000000000035e-05,
+            "min": 0.000490707,
+            "max": 0.001215412
+          },
+          "cpu_seconds": {
+            "median": 0.000519,
+            "iqr": 4.9e-05,
+            "min": 0.000438,
+            "max": 0.000754
+          },
+          "peak_rss_bytes": {
+            "median": 2379776,
+            "iqr": 20480.0,
+            "min": 2347008,
+            "max": 2478080
+          }
+        },
+        "python": {
+          "executable_bytes": 14424,
+          "samples": [
+            {
+              "wall_seconds": 0.010451639,
+              "cpu_seconds": 0.009788,
+              "peak_rss_bytes": 12460032
+            },
+            {
+              "wall_seconds": 0.009876895,
+              "cpu_seconds": 0.009739,
+              "peak_rss_bytes": 12312576
+            },
+            {
+              "wall_seconds": 0.010128636,
+              "cpu_seconds": 0.010005,
+              "peak_rss_bytes": 12390400
+            },
+            {
+              "wall_seconds": 0.011421703,
+              "cpu_seconds": 0.010711,
+              "peak_rss_bytes": 11874304
+            },
+            {
+              "wall_seconds": 0.010849483,
+              "cpu_seconds": 0.010361,
+              "peak_rss_bytes": 12124160
+            },
+            {
+              "wall_seconds": 0.010988443,
+              "cpu_seconds": 0.010191,
+              "peak_rss_bytes": 12070912
+            },
+            {
+              "wall_seconds": 0.01005081,
+              "cpu_seconds": 0.009922,
+              "peak_rss_bytes": 12197888
+            },
+            {
+              "wall_seconds": 0.010529785,
+              "cpu_seconds": 0.010344,
+              "peak_rss_bytes": 12394496
+            },
+            {
+              "wall_seconds": 0.010273917,
+              "cpu_seconds": 0.010148,
+              "peak_rss_bytes": 12455936
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.010451639,
+            "iqr": 0.0007208470000000002,
+            "min": 0.009876895,
+            "max": 0.011421703
+          },
+          "cpu_seconds": {
+            "median": 0.010148,
+            "iqr": 0.0004220000000000005,
+            "min": 0.009739,
+            "max": 0.010711
+          },
+          "peak_rss_bytes": {
+            "median": 12312576,
+            "iqr": 270336.0,
+            "min": 11874304,
+            "max": 12460032
+          }
+        }
+      }
+    },
+    "package_initialization": {
+      "files": {
+        "pkg/__init__.py": "3440e1e02d196c9ac64e7bbb24a8ce9a01b04ba08db5f742ca047cf8f067afe3",
+        "pkg/worker.py": "48bd7f785ff64bd191578c7102107e7b7ca77b476b3afa30a4a516ecebaf95a0",
+        "pkg/__main__.py": "36aab5648d82a80b31dbf331126360eb282df8f1abe350a184e8a508273c534d"
+      },
+      "runtimes": {
+        "cpython": {
+          "compile_wall_seconds": 0.7519074390002061,
+          "executable_bytes": 71360,
+          "dependencies": [
+            "\tlinux-vdso.so.1 (0x00007f1617cf6000)",
+            "\tlibpython3.14.so.1.0 => /usr/lib/libpython3.14.so.1.0 (0x00007f1617600000)",
+            "\tlibm.so.6 => /usr/lib/libm.so.6 (0x00007f16174c9000)",
+            "\tlibc.so.6 => /usr/lib/libc.so.6 (0x00007f1617200000)",
+            "\t/lib64/ld-linux-x86-64.so.2 => /usr/lib64/ld-linux-x86-64.so.2 (0x00007f1617cf8000)"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.009814327,
+              "cpu_seconds": 0.009653,
+              "peak_rss_bytes": 11988992
+            },
+            {
+              "wall_seconds": 0.008577596,
+              "cpu_seconds": 0.008469,
+              "peak_rss_bytes": 12247040
+            },
+            {
+              "wall_seconds": 0.009030973,
+              "cpu_seconds": 0.00885,
+              "peak_rss_bytes": 11829248
+            },
+            {
+              "wall_seconds": 0.008973896,
+              "cpu_seconds": 0.008818,
+              "peak_rss_bytes": 12103680
+            },
+            {
+              "wall_seconds": 0.009446901,
+              "cpu_seconds": 0.009337,
+              "peak_rss_bytes": 12247040
+            },
+            {
+              "wall_seconds": 0.008859042,
+              "cpu_seconds": 0.008739,
+              "peak_rss_bytes": 12242944
+            },
+            {
+              "wall_seconds": 0.00945189,
+              "cpu_seconds": 0.009331,
+              "peak_rss_bytes": 11919360
+            },
+            {
+              "wall_seconds": 0.008245665,
+              "cpu_seconds": 0.008123,
+              "peak_rss_bytes": 12206080
+            },
+            {
+              "wall_seconds": 0.008992862,
+              "cpu_seconds": 0.008821,
+              "peak_rss_bytes": 11886592
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.008992862,
+            "iqr": 0.0005878590000000013,
+            "min": 0.008245665,
+            "max": 0.009814327
+          },
+          "cpu_seconds": {
+            "median": 0.008821,
+            "iqr": 0.0005920000000000005,
+            "min": 0.008123,
+            "max": 0.009653
+          },
+          "peak_rss_bytes": {
+            "median": 12103680,
+            "iqr": 323584.0,
+            "min": 11829248,
+            "max": 12247040
+          }
+        },
+        "bmrw": {
+          "compile_wall_seconds": 1.090276023000115,
+          "executable_bytes": 103728,
+          "dependencies": [
+            "\tlinux-vdso.so.1 (0x00007f956504c000)",
+            "\tlibm.so.6 => /usr/lib/libm.so.6 (0x00007f9564ebf000)",
+            "\tlibc.so.6 => /usr/lib/libc.so.6 (0x00007f9564c00000)",
+            "\t/lib64/ld-linux-x86-64.so.2 => /usr/lib64/ld-linux-x86-64.so.2 (0x00007f956504e000)"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.000516946,
+              "cpu_seconds": 0.000459,
+              "peak_rss_bytes": 2375680
+            },
+            {
+              "wall_seconds": 0.000691583,
+              "cpu_seconds": 0.000636,
+              "peak_rss_bytes": 2437120
+            },
+            {
+              "wall_seconds": 0.000687035,
+              "cpu_seconds": 0.000578,
+              "peak_rss_bytes": 2265088
+            },
+            {
+              "wall_seconds": 0.000671054,
+              "cpu_seconds": 0.000601,
+              "peak_rss_bytes": 2428928
+            },
+            {
+              "wall_seconds": 0.000630429,
+              "cpu_seconds": 0.000582,
+              "peak_rss_bytes": 2273280
+            },
+            {
+              "wall_seconds": 0.00057747,
+              "cpu_seconds": 0.000523,
+              "peak_rss_bytes": 2273280
+            },
+            {
+              "wall_seconds": 0.000584483,
+              "cpu_seconds": 0.000525,
+              "peak_rss_bytes": 2347008
+            },
+            {
+              "wall_seconds": 0.000562752,
+              "cpu_seconds": 0.000507,
+              "peak_rss_bytes": 2265088
+            },
+            {
+              "wall_seconds": 0.000479316,
+              "cpu_seconds": 0.000425,
+              "peak_rss_bytes": 2273280
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.000584483,
+            "iqr": 0.00010830200000000001,
+            "min": 0.000479316,
+            "max": 0.000691583
+          },
+          "cpu_seconds": {
+            "median": 0.000525,
+            "iqr": 7.500000000000009e-05,
+            "min": 0.000425,
+            "max": 0.000636
+          },
+          "peak_rss_bytes": {
+            "median": 2273280,
+            "iqr": 102400.0,
+            "min": 2265088,
+            "max": 2437120
+          }
+        },
+        "python": {
+          "executable_bytes": 14424,
+          "samples": [
+            {
+              "wall_seconds": 0.011391046,
+              "cpu_seconds": 0.01118,
+              "peak_rss_bytes": 12247040
+            },
+            {
+              "wall_seconds": 0.010356612,
+              "cpu_seconds": 0.010237,
+              "peak_rss_bytes": 12591104
+            },
+            {
+              "wall_seconds": 0.01002994,
+              "cpu_seconds": 0.009893,
+              "peak_rss_bytes": 12591104
+            },
+            {
+              "wall_seconds": 0.010075035,
+              "cpu_seconds": 0.009932,
+              "peak_rss_bytes": 12525568
+            },
+            {
+              "wall_seconds": 0.010471036,
+              "cpu_seconds": 0.010287,
+              "peak_rss_bytes": 12296192
+            },
+            {
+              "wall_seconds": 0.009846118,
+              "cpu_seconds": 0.009721,
+              "peak_rss_bytes": 12345344
+            },
+            {
+              "wall_seconds": 0.010841147,
+              "cpu_seconds": 0.010655,
+              "peak_rss_bytes": 12328960
+            },
+            {
+              "wall_seconds": 0.01005627,
+              "cpu_seconds": 0.009945,
+              "peak_rss_bytes": 12460032
+            },
+            {
+              "wall_seconds": 0.00986333,
+              "cpu_seconds": 0.009779,
+              "peak_rss_bytes": 12550144
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.010075035,
+            "iqr": 0.0004410960000000002,
+            "min": 0.009846118,
+            "max": 0.011391046
+          },
+          "cpu_seconds": {
+            "median": 0.009945,
+            "iqr": 0.0003939999999999985,
+            "min": 0.009721,
+            "max": 0.01118
+          },
+          "peak_rss_bytes": {
+            "median": 12460032,
+            "iqr": 221184.0,
+            "min": 12247040,
+            "max": 12591104
+          }
+        }
+      }
+    },
+    "dependency_graph_50": {
+      "files": {
+        "main.py": "a2ff6e7b57e1abc5295b7e88ffceb5072526f7f86d0f570f0b025373d2a6b113",
+        "graph/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "graph/m0.py": "c8bd26c80c53fbf5b738d71596773b194569f265fcfd96a45228ee499772bf1f",
+        "graph/m1.py": "dbf1b42e61d971cbedfa81e6a74757c8deda7bdf29f6fa482dbdd7b38bb559e3",
+        "graph/m2.py": "e58ad5fb4376f766c89ec80dc74d1505f7aeda6a4dde0ce36fd7c20e8cca0d08",
+        "graph/m3.py": "3137f41f51c52804b516d59d3a36353dcd30bbf6b6e68f049dd7d0286bd26239",
+        "graph/m4.py": "2f5ce4cfdaf005d5fc606e1372e665d7cacc5b870371e8ea0c8c501efa899546",
+        "graph/m5.py": "203fcfc93f1031b7ba52c58a62dacb7cb94c0956b50b5a8726759bdf37eba8be",
+        "graph/m6.py": "8d25fcbf63596bb71525aa9f0ad80bc98ed4f8aa1819e92496eef39d6dca41de",
+        "graph/m7.py": "ad7a1f8bec378a32f8463cb268288b354aa663c5ee47282783f77f5a8a976283",
+        "graph/m8.py": "7f7e1a8dbcfa07a7b4e54afd74dce147974b8b0a2d23a8eb18aad28474282c02",
+        "graph/m9.py": "029e7232b65a2fc931009b85c9e87ac001c57e35e91fc976cce6563a1d49d65f",
+        "graph/m10.py": "f97595656dc3ac9d91f244cf28e82aa6eea5373e55b3936baced402260ad9146",
+        "graph/m11.py": "be00fc6cb7bc120c543a893fdd46794f04021048c2301a63ab658c0cca1404d7",
+        "graph/m12.py": "25ef5eb5904ac4f667f89b9d62e9a4083caa6f6897e6f8a5737732327f4da2dc",
+        "graph/m13.py": "6525acd9f175fca9e683f771d0d14894adb0b2c7fdb22708291e3a05b85a017c",
+        "graph/m14.py": "cf9ef520019629bad74447d58ea0e53b80595aec9a8b161b897f383d1f16b1af",
+        "graph/m15.py": "909bbb7b85aa83e118730b9fff7c4eb8cb654f40c9a7cc5a947c637ffbfcb8b7",
+        "graph/m16.py": "357400ccebb1bd336d4695daa1b1e1b37adae8ce55fa775ec41473f684fc29b9",
+        "graph/m17.py": "8f8d124489d7d6a04bced1cbbbee582f320794dde7ebfb9cdbf86e1ffffa0e17",
+        "graph/m18.py": "8959920db579651b0e40dd46aa4fe4e55a31b9d99035bebfb97e9e0c0fb1957d",
+        "graph/m19.py": "c9165b648170125f442c3993f7b0057f007dc76bf33bf9c8fe2fd228e3876d2f",
+        "graph/m20.py": "89f4692a5c65e7af8b57cf9a9c8071b15c41780433aa018aceb579a0ddc9ee0e",
+        "graph/m21.py": "f1de25a0b341df6018700da7b42623c8e0e85b426556efc81ad26264643c5662",
+        "graph/m22.py": "4a2c00b410044ec9b765a501ee3c96a34e260b62624e7310199c237429656c36",
+        "graph/m23.py": "08436a1e48068941d88ca301957f8c85d28646c825c4f3e1b9a4feecac939040",
+        "graph/m24.py": "491ad91701ba495f22138d2d1b8b6891be6628960454ad763b3a5cd706a0ae4f",
+        "graph/m25.py": "cee67aada2898c5ebd653ab80ccab3667d35e00f7af2a98f0b10464a178f0dca",
+        "graph/m26.py": "6bdac47f8b60231259b90b2853d0f934390f91ea3e2cacbc1e783b85c64782f5",
+        "graph/m27.py": "6a2d8406f0879436e183bd06ee5e5fdc1d587c09161b63683991c50c1a265907",
+        "graph/m28.py": "b4c7696a3fa6660f0f1637859d7da5f08a72c20cae9faf0c98d8b3feaedec135",
+        "graph/m29.py": "6b2a09f40b9c67a4c9b0de4bf67d12fb147d112a06981b2f5934408e6a082849",
+        "graph/m30.py": "bf585b038cd7b66ba1604ec6587e30523f8bccb27752357b700ef55c13978ee0",
+        "graph/m31.py": "d08978ed7b0e8767c528690b9cae2660ccd500c225da1023823e42f6b036e6da",
+        "graph/m32.py": "4bd06eece589adc7b22cff5c1173eac9a39729520dec15f762f89b86f2441559",
+        "graph/m33.py": "afcf1b68ba123b3ba986e60ebce9a281290a85b08ccb5203e00169d2727ee0ad",
+        "graph/m34.py": "9e58315e8616ee4f846d4b97c6ef1bb4245e43c9e0b61d256d97361f47d55dc0",
+        "graph/m35.py": "c04142bd6c1154520626253a16ab2d9591451a50eeeb356310c27a3f20c64101",
+        "graph/m36.py": "eb3c058971b53b5b71eee303c75c2938c4181dfb59446959af1111192d13fa53",
+        "graph/m37.py": "d44018157421cee339d6c5270318cfcf4865b395db16534772800e12d03661d1",
+        "graph/m38.py": "800d38b6a907092df37a5331e9bcbacf4c09b3cff1d00edd95d63b39702593d9",
+        "graph/m39.py": "8ac02c6dd21705aea9589bd39458ee4d57da0124519aca29d908527016f3b562",
+        "graph/m40.py": "aab3092ad7db7551a3238f48962772c9279f17de02f88563d144118811fdab33",
+        "graph/m41.py": "4fdf7d81da6064471741a72ecdae227996fc05d0d0a28915831c330d29691aa1",
+        "graph/m42.py": "500f3432e5b60af7f71ad2212a5405193b24f6cc01d72a07252960ea434b008b",
+        "graph/m43.py": "d4dfdfdd4010462637aacdb8f99840418c196624f72b793460df7295aa727f3a",
+        "graph/m44.py": "58af7ae3be5c6bbb3eee1f775cdbb7ce69164a8717a714a191ae96c61024f19a",
+        "graph/m45.py": "81440a6c2dd244dc82fbbbcd97028b5e5a6c283266930bacd782d2da774bd9e3",
+        "graph/m46.py": "b9c8628ca07a4bc8580bf2e7ecd7b85e3971d41d58b520ffd7fc84da875aa89b",
+        "graph/m47.py": "1d5279cacb8a28c4572d24e81638aee7097b7acd1597f880525d3a2f1d037c02",
+        "graph/m48.py": "afcf92fc2a5f797b2a0943bafebba6ae3f2eb2edaf06a38826f6f6d17afeea79",
+        "graph/m49.py": "1e6c40f2abc83e89f48c8825a08aa12c77263fc596ede8096c11fa917f41e925"
+      },
+      "runtimes": {
+        "cpython": {
+          "compile_wall_seconds": 4.28136805900067,
+          "executable_bytes": 205496,
+          "dependencies": [
+            "\tlinux-vdso.so.1 (0x00007f55dab92000)",
+            "\tlibpython3.14.so.1.0 => /usr/lib/libpython3.14.so.1.0 (0x00007f55da400000)",
+            "\tlibm.so.6 => /usr/lib/libm.so.6 (0x00007f55da2c9000)",
+            "\tlibc.so.6 => /usr/lib/libc.so.6 (0x00007f55da000000)",
+            "\t/lib64/ld-linux-x86-64.so.2 => /usr/lib64/ld-linux-x86-64.so.2 (0x00007f55dab94000)"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.009753454,
+              "cpu_seconds": 0.009486,
+              "peak_rss_bytes": 11988992
+            },
+            {
+              "wall_seconds": 0.008751962,
+              "cpu_seconds": 0.008651,
+              "peak_rss_bytes": 12488704
+            },
+            {
+              "wall_seconds": 0.009631866,
+              "cpu_seconds": 0.009458,
+              "peak_rss_bytes": 12316672
+            },
+            {
+              "wall_seconds": 0.010939401,
+              "cpu_seconds": 0.010418,
+              "peak_rss_bytes": 12066816
+            },
+            {
+              "wall_seconds": 0.009895049,
+              "cpu_seconds": 0.009658,
+              "peak_rss_bytes": 12075008
+            },
+            {
+              "wall_seconds": 0.009839926,
+              "cpu_seconds": 0.009688,
+              "peak_rss_bytes": 12189696
+            },
+            {
+              "wall_seconds": 0.00959626,
+              "cpu_seconds": 0.009498,
+              "peak_rss_bytes": 12492800
+            },
+            {
+              "wall_seconds": 0.009985668,
+              "cpu_seconds": 0.009856,
+              "peak_rss_bytes": 12120064
+            },
+            {
+              "wall_seconds": 0.009729038,
+              "cpu_seconds": 0.009626,
+              "peak_rss_bytes": 12189696
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.009753454,
+            "iqr": 0.00026318300000000017,
+            "min": 0.008751962,
+            "max": 0.010939401
+          },
+          "cpu_seconds": {
+            "median": 0.009626,
+            "iqr": 0.0002020000000000008,
+            "min": 0.008651,
+            "max": 0.010418
+          },
+          "peak_rss_bytes": {
+            "median": 12189696,
+            "iqr": 241664.0,
+            "min": 11988992,
+            "max": 12492800
+          }
+        },
+        "bmrw": {
+          "compile_wall_seconds": 2.5181144540001696,
+          "executable_bytes": 208240,
+          "dependencies": [
+            "\tlinux-vdso.so.1 (0x00007f8b1eb5f000)",
+            "\tlibm.so.6 => /usr/lib/libm.so.6 (0x00007f8b1e9bb000)",
+            "\tlibc.so.6 => /usr/lib/libc.so.6 (0x00007f8b1e600000)",
+            "\t/lib64/ld-linux-x86-64.so.2 => /usr/lib64/ld-linux-x86-64.so.2 (0x00007f8b1eb61000)"
+          ],
+          "samples": [
+            {
+              "wall_seconds": 0.000539308,
+              "cpu_seconds": 0.000484,
+              "peak_rss_bytes": 2670592
+            },
+            {
+              "wall_seconds": 0.000535792,
+              "cpu_seconds": 0.000489,
+              "peak_rss_bytes": 2764800
+            },
+            {
+              "wall_seconds": 0.000487291,
+              "cpu_seconds": 0.000446,
+              "peak_rss_bytes": 2764800
+            },
+            {
+              "wall_seconds": 0.000720077,
+              "cpu_seconds": 0.000661,
+              "peak_rss_bytes": 2764800
+            },
+            {
+              "wall_seconds": 0.000554757,
+              "cpu_seconds": 0.000503,
+              "peak_rss_bytes": 2564096
+            },
+            {
+              "wall_seconds": 0.000573362,
+              "cpu_seconds": 0.000512,
+              "peak_rss_bytes": 2621440
+            },
+            {
+              "wall_seconds": 0.000598369,
+              "cpu_seconds": 0.000526,
+              "peak_rss_bytes": 2650112
+            },
+            {
+              "wall_seconds": 0.000601454,
+              "cpu_seconds": 0.00054,
+              "peak_rss_bytes": 2740224
+            },
+            {
+              "wall_seconds": 0.000534509,
+              "cpu_seconds": 0.000494,
+              "peak_rss_bytes": 2670592
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.000554757,
+            "iqr": 6.257699999999997e-05,
+            "min": 0.000487291,
+            "max": 0.000720077
+          },
+          "cpu_seconds": {
+            "median": 0.000503,
+            "iqr": 3.700000000000003e-05,
+            "min": 0.000446,
+            "max": 0.000661
+          },
+          "peak_rss_bytes": {
+            "median": 2670592,
+            "iqr": 114688.0,
+            "min": 2564096,
+            "max": 2764800
+          }
+        },
+        "python": {
+          "executable_bytes": 14424,
+          "samples": [
+            {
+              "wall_seconds": 0.014416832,
+              "cpu_seconds": 0.014104,
+              "peak_rss_bytes": 12525568
+            },
+            {
+              "wall_seconds": 0.012509666,
+              "cpu_seconds": 0.012386,
+              "peak_rss_bytes": 12484608
+            },
+            {
+              "wall_seconds": 0.013385654,
+              "cpu_seconds": 0.013142,
+              "peak_rss_bytes": 12308480
+            },
+            {
+              "wall_seconds": 0.013617909,
+              "cpu_seconds": 0.013449,
+              "peak_rss_bytes": 12722176
+            },
+            {
+              "wall_seconds": 0.012477597,
+              "cpu_seconds": 0.012332,
+              "peak_rss_bytes": 12795904
+            },
+            {
+              "wall_seconds": 0.012213643,
+              "cpu_seconds": 0.012098,
+              "peak_rss_bytes": 12853248
+            },
+            {
+              "wall_seconds": 0.013752139,
+              "cpu_seconds": 0.013073,
+              "peak_rss_bytes": 12660736
+            },
+            {
+              "wall_seconds": 0.013204816,
+              "cpu_seconds": 0.013083,
+              "peak_rss_bytes": 12640256
+            },
+            {
+              "wall_seconds": 0.013623999,
+              "cpu_seconds": 0.013335,
+              "peak_rss_bytes": 12480512
+            }
+          ],
+          "wall_seconds": {
+            "median": 0.013385654,
+            "iqr": 0.0011143330000000003,
+            "min": 0.012213643,
+            "max": 0.014416832
+          },
+          "cpu_seconds": {
+            "median": 0.013083,
+            "iqr": 0.0009490000000000002,
+            "min": 0.012098,
+            "max": 0.014104
+          },
+          "peak_rss_bytes": {
+            "median": 12640256,
+            "iqr": 237568.0,
+            "min": 12308480,
+            "max": 12853248
+          }
+        }
+      }
+    }
+  }
+}

@@ -19,7 +19,7 @@ def main():
             cwd=root,
             text=True,
         )
-        assert version.strip() == "Calcium 26.6", version
+        assert version.strip() == "Calcium 26.7", version
         license_name = subprocess.check_output(
             [
                 sys.executable,
@@ -38,6 +38,7 @@ def main():
                 "-m",
                 "calcium",
                 str(package),
+                "--cpython",
                 "--run",
                 "-O3",
                 "--no-cache",
@@ -55,8 +56,13 @@ def main():
         # Ensure the installed runtime can execute without original project files.
         package.rename(root / "hidden")
         assert subprocess.check_output([str(root / "program")], cwd=root) == b"42\n"
-        native_source = root / "native.py"
-        native_source.write_text("def square(x: int) -> int:\n    return x*x\nprint(square(9))\n")
+        native_source = root / "native_app"
+        native_source.mkdir()
+        (native_source / "__init__.py").write_text("")
+        (native_source / "helpers.py").write_text("def square(x: int) -> int:\n    return x*x\n")
+        (native_source / "__main__.py").write_text(
+            "from .helpers import square\nvalues=[]\nvalues.append(square(9))\nprint(values[0])\n"
+        )
         native = root / "standalone"
         run = subprocess.run(
             [
@@ -80,7 +86,9 @@ def main():
             timeout=60,
         )
         assert run.returncode == 0 and run.stdout == "81\n", run.stderr
-        native_source.unlink()
+        import shutil
+
+        shutil.rmtree(native_source)
         assert (
             subprocess.check_output(
                 [str(native)],

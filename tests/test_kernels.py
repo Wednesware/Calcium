@@ -56,7 +56,12 @@ def test_unboxed_kernels_differential_and_guards(tmp_path, level):
     source.write_text(SOURCE)
     extension = tmp_path / ("numeric" + sysconfig.get_config_var("EXT_SUFFIX"))
     result = Calcium(
-        target="extension", optimization=level, fallback=False, keep_c=True, cache=False
+        backend="cpython",
+        target="extension",
+        optimization=level,
+        fallback=False,
+        keep_c=True,
+        cache=False,
     ).build(source, output=extension)
     assert result.success, result.diagnostics
     assert any(r["pass"] == "unboxed-integer-region" for r in result.optimizations)
@@ -105,7 +110,7 @@ except Exception as e: print(type(e).__name__,str(e))
 def test_effectful_function_is_not_specialized(tmp_path):
     source = tmp_path / "effects.py"
     source.write_text("def work(n):\n    print(n)\n    return n+1\n")
-    result = Calcium(optimization=3, fallback=False).inspect(source)
+    result = Calcium(backend="cpython", optimization=3, fallback=False).inspect(source)
     assert result.success
     assert not any(r["pass"] == "unboxed-integer-region" for r in result.optimizations)
 

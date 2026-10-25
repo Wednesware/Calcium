@@ -23,6 +23,12 @@ def write_tree(root, files):
 
 
 def run(command, **kwargs):
+    command = list(map(str, command))
+    if "calcium" in command:
+        index = command.index("calcium") + 1
+        if command[index] in {"build", "run", "check", "inspect", "benchmark", "transpile"}:
+            index += 1
+        command[index:index] = ["--cpython"]
     return subprocess.run(list(map(str, command)), capture_output=True, timeout=15, **kwargs)
 
 
@@ -96,7 +102,11 @@ def test_project_native_without_source(tmp_path, compiler, optimization, name):
     assert baseline.returncode == 0, baseline.stderr
     output = tmp_path / "program"
     result = Calcium(
-        target="executable", compiler=compiler, optimization=optimization, keep_c=True
+        backend="cpython",
+        target="executable",
+        compiler=compiler,
+        optimization=optimization,
+        keep_c=True,
     ).build(root / "main.py", output=output)
     assert result.success, result.diagnostics
     assert result.metadata["mode"] == "native"
@@ -127,7 +137,7 @@ def test_package_main_and_metadata(tmp_path, as_module):
         },
     )
     baseline = run([sys.executable, "-m", "pkg"], cwd=root)
-    compiler = Calcium(target="executable", project_root=root)
+    compiler = Calcium(backend="cpython", target="executable", project_root=root)
     result = (
         compiler.build(module="pkg", output=tmp_path / "program")
         if as_module
@@ -150,7 +160,9 @@ def test_project_root_directory_dynamic_modules(tmp_path):
         },
     )
     baseline = run([sys.executable, root / "main.py"])
-    result = Calcium(target="executable").build(root, output=tmp_path / "program")
+    result = Calcium(backend="cpython", target="executable").build(
+        root, output=tmp_path / "program"
+    )
     assert result.success, result.diagnostics
     assert set(r["name"] for r in result.metadata["modules"]) == {
         "main",
@@ -171,7 +183,7 @@ def test_namespace_and_additional_import_root(tmp_path):
         },
     )
     write_tree(extra, {"ns/second.py": "VALUE = 2\n"})
-    result = Calcium(target="executable", include_paths=(extra,)).build(
+    result = Calcium(backend="cpython", target="executable", include_paths=(extra,)).build(
         root / "main.py", output=tmp_path / "program"
     )
     assert result.success, result.diagnostics
@@ -203,10 +215,12 @@ def test_strict_project_and_explicit_compatibility(tmp_path):
         },
     )
     output = tmp_path / "program"
-    result = Calcium(target="executable").build(root / "main.py", output=output)
+    result = Calcium(backend="cpython", target="executable").build(root / "main.py", output=output)
     assert not result.success and not output.exists()
     assert any(d.code == "C101" and d.path.endswith("model.py") for d in result.diagnostics)
-    result = Calcium(target="executable", fallback=True).build(root / "main.py", output=output)
+    result = Calcium(backend="cpython", target="executable", fallback=True).build(
+        root / "main.py", output=output
+    )
     assert result.success and result.metadata["mode"] == "mixed"
     assert result.fallbacks[0]["module"] == "pkg.model"
     baseline = run([sys.executable, root / "main.py"])
@@ -231,7 +245,7 @@ print(holder.events)
         },
     )
     baseline = run([sys.executable, root / "main.py"])
-    result = Calcium(target="executable", fallback=True).build(
+    result = Calcium(backend="cpython", target="executable", fallback=True).build(
         root / "main.py", output=tmp_path / "program"
     )
     assert result.success, result.diagnostics
@@ -259,7 +273,7 @@ print(helper.get())
         },
     )
     baseline = run([sys.executable, root / "main.py"])
-    result = Calcium(target="executable", fallback=True).build(
+    result = Calcium(backend="cpython", target="executable", fallback=True).build(
         root / "main.py", output=tmp_path / "program"
     )
     assert result.success, result.diagnostics
@@ -277,7 +291,7 @@ def test_package_extension_without_sources(tmp_path):
     )
     suffix = sysconfig.get_config_var("EXT_SUFFIX")
     output = tmp_path / ("pkg" + suffix)
-    result = Calcium(target="extension").build(root / "pkg", output=output)
+    result = Calcium(backend="cpython", target="extension").build(root / "pkg", output=output)
     assert result.success, result.diagnostics
     baseline = run(
         [
@@ -318,10 +332,10 @@ def test_discovery_never_executes_and_dependency_diagnostics(tmp_path):
     project = discover(root / "main.py")
     assert set(project.modules) == {"main", "pkg", "pkg.child"}
     assert not marker.exists()
-    assert Calcium().analyze(root / "main.py").success
+    assert Calcium(backend="cpython").analyze(root / "main.py").success
     assert not marker.exists()
     (root / "pkg" / "child.py").write_text("if :\n")
-    result = Calcium().analyze(root / "main.py")
+    result = Calcium(backend="cpython").analyze(root / "main.py")
     assert not result.success and result.diagnostics[0].path.endswith("child.py")
 
 
@@ -332,7 +346,7 @@ def test_symlink_dependency_escapes_root(tmp_path):
     outside.write_text("VALUE = 1\n")
     (root / "outside.py").symlink_to(outside)
     with pytest.raises(ValueError, match="escapes"):
-        Calcium().analyze(root / "main.py")
+        Calcium(backend="cpython").analyze(root / "main.py")
 
 
 def test_project_emission_and_cli(tmp_path):
@@ -346,7 +360,9 @@ def test_project_emission_and_cli(tmp_path):
         },
     )
     output = tmp_path / "generated"
-    result = Calcium(emit_ir=True, emit_ast=True).transpile(root / "pkg", output=output)
+    result = Calcium(backend="cpython", emit_ir=True, emit_ast=True).transpile(
+        root / "pkg", output=output
+    )
     assert result.success, result.diagnostics
     manifest = json.loads((output / "manifest.json").read_text())
     assert manifest["schema_version"] == 2 and len(manifest["modules"]) == 3
@@ -354,7 +370,7 @@ def test_project_emission_and_cli(tmp_path):
         (output / m["c_file"]).exists() and (output / m["ir_file"]).exists()
         for m in manifest["modules"]
     )
-    assert Calcium(emit_ir=True).transpile(root / "pkg", output=output).success
+    assert Calcium(backend="cpython", emit_ir=True).transpile(root / "pkg", output=output).success
     cli = run(
         [
             sys.executable,
@@ -394,7 +410,7 @@ print(helper.VALUE)
         },
     )
     baseline = run([sys.executable, root / "main.py"])
-    result = Calcium(target="executable", fallback=True).build(
+    result = Calcium(backend="cpython", target="executable", fallback=True).build(
         root / "main.py", output=tmp_path / "program"
     )
     assert result.success, result.diagnostics
@@ -406,14 +422,14 @@ def test_dependency_fingerprint_changes_and_readable_artifacts(tmp_path):
     write_tree(
         root, {"main.py": "from helper import VALUE\nprint(VALUE)\n", "helper.py": "VALUE = 1\n"}
     )
-    first = Calcium().transpile(root / "main.py", output=tmp_path / "first")
-    second = Calcium().transpile(root / "main.py", output=tmp_path / "second")
+    first = Calcium(backend="cpython").transpile(root / "main.py", output=tmp_path / "first")
+    second = Calcium(backend="cpython").transpile(root / "main.py", output=tmp_path / "second")
     assert first.success and second.success
     files_a = {p.name: p.read_bytes() for p in (tmp_path / "first").iterdir()}
     files_b = {p.name: p.read_bytes() for p in (tmp_path / "second").iterdir()}
     assert files_a == files_b
     (root / "helper.py").write_text("VALUE = 2\n")
-    third = Calcium().inspect(root / "main.py")
+    third = Calcium(backend="cpython").inspect(root / "main.py")
     assert third.success
     assert first.metadata["project_sha256"] != third.metadata["project_sha256"]
     assert first.metadata["source_sha256"] == third.metadata["source_sha256"]
@@ -423,7 +439,7 @@ def test_binary_dependency_is_not_mislabeled_as_native_source(tmp_path):
     root = tmp_path / "source"
     write_tree(root, {"main.py": "import external\n", "external.py": "VALUE = 7\n"})
     (root / ("external" + sysconfig.get_config_var("EXT_SUFFIX"))).write_bytes(b"not a real binary")
-    result = Calcium().inspect(root / "main.py")
+    result = Calcium(backend="cpython").inspect(root / "main.py")
     assert result.success
     assert result.analysis["external_imports"] == ["external"]
     assert [r["name"] for r in result.metadata["modules"]] == ["main"]
@@ -439,7 +455,7 @@ def test_explicit_module_entry_without_package_main(tmp_path):
             "pkg/shared.py": "VALUE = 77\n",
         },
     )
-    compiler = Calcium(target="executable", project_root=root)
+    compiler = Calcium(backend="cpython", target="executable", project_root=root)
     with pytest.raises(ValueError, match="__main__"):
         compiler.build(root / "pkg", output=tmp_path / "wrong")
     result = compiler.build(module="pkg.cli", output=tmp_path / "program")
@@ -494,7 +510,7 @@ def test_relative_literal_dynamic_import_module_entry(tmp_path):
             "pkg/child.py": "VALUE = 63\n",
         },
     )
-    result = Calcium(target="executable", project_root=root).build(
+    result = Calcium(backend="cpython", target="executable", project_root=root).build(
         module="pkg.cli", output=tmp_path / "program"
     )
     assert result.success, result.diagnostics

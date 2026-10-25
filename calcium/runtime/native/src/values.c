@@ -1,5 +1,18 @@
 #include "cart.h"
+CaValue ca_float(double f) {
+  static uint64_t identity = 0;
+  identity++;
+  if (!identity)
+    identity++;
+  return (CaValue){.tag = CA_FLOAT_T, .identity = identity, .as.f = f};
+}
 const CaFunction ca_builtin_print = {"print", 0, 0, NULL, NULL, 1};
+static const CaFunction ca_builtin_collections[] = {
+    {"len", 0, 0, NULL, NULL, 3},
+    {"list", 0, 0, NULL, NULL, 4},
+    {"tuple", 0, 0, NULL, NULL, 5},
+    {"dict", 0, 0, NULL, NULL, 6},
+    {"set", 0, 0, NULL, NULL, 7}};
 const CaFunction ca_builtin_range = {"range", 0, 0, NULL, NULL, 2};
 static int integer(CaValue v) {
   return v.tag == CA_BOOL_T || v.tag == CA_INT_T || v.tag == CA_BIG_T;
@@ -18,6 +31,11 @@ CaValue ca_string(CaRuntime *rt, const char *text, size_t length) {
   return (CaValue){.tag = CA_STR_T, .as.obj = (CaObj *)s};
 }
 CaValue ca_binary(CaRuntime *rt, CaValue a, CaValue b, char op) {
+  if ((op == '+' && a.tag == b.tag &&
+       (a.tag == CA_LIST_T || a.tag == CA_TUPLE_T)) ||
+      (op == '*' && (a.tag == CA_LIST_T || a.tag == CA_TUPLE_T ||
+                     b.tag == CA_LIST_T || b.tag == CA_TUPLE_T)))
+    return ca_sequence_binary(rt, a, b, op);
   if (op == '+' && a.tag == CA_STR_T && b.tag == CA_STR_T) {
     CaString *x = (CaString *)a.as.obj, *y = (CaString *)b.as.obj;
     if (y->length > SIZE_MAX - sizeof(CaString) - 1 - x->length) {
@@ -64,6 +82,11 @@ CaValue ca_binary(CaRuntime *rt, CaValue a, CaValue b, char op) {
 }
 int ca_truth(CaRuntime *rt, CaValue v) {
   switch (v.tag) {
+  case CA_LIST_T:
+  case CA_TUPLE_T:
+  case CA_DICT_T:
+  case CA_SET_T:
+    return ((CaContainer *)v.as.obj)->length != 0;
   case CA_NONE_T:
     return 0;
   case CA_BOOL_T:
@@ -101,7 +124,7 @@ CaValue ca_unary(CaRuntime *rt, CaValue v, const char *op) {
     return ca_float(-v.as.f);
   return ca_negate(rt, v);
 }
-static CaValue range_length(CaRuntime *rt, CaRange *range) {
+CaValue ca_range_length(CaRuntime *rt, CaRange *range) {
   int positive = ca_integer_compare(range->step, ca_int(0)) > 0;
   CaValue distance = ca_numeric(rt, positive ? range->stop : range->start,
                                 positive ? range->start : range->stop, '-');
@@ -117,11 +140,35 @@ static CaValue range_length(CaRuntime *rt, CaRange *range) {
   return rt->error ? CA_UNBOUND : ca_numeric(rt, quotient, ca_int(1), '+');
 }
 CaValue ca_compare(CaRuntime *rt, CaValue a, CaValue b, const char *op) {
+  if (!strcmp(op, "is") || !strcmp(op, "is_not")) {
+    int same =
+        a.tag == b.tag &&
+        (a.tag == CA_NONE_T || (a.tag == CA_BOOL_T && a.as.i == b.as.i) ||
+         (a.tag == CA_MODULE_T && a.as.module == b.as.module) ||
+         (a.tag == CA_FUNCTION_T && a.as.fn == b.as.fn) ||
+         ((ca_is_container(a) || a.tag == CA_STR_T || a.tag == CA_RANGE_T ||
+           a.tag == CA_BIG_T) &&
+          a.as.obj == b.as.obj));
+    return ca_bool(!strcmp(op, "is_not") ? !same : same);
+  }
+  if (!strcmp(op, "in") || !strcmp(op, "not_in")) {
+    int yes = ca_contains(rt, b, a);
+    return ca_bool(!strcmp(op, "not_in") ? !yes : yes);
+  }
+  if ((!strcmp(op, "eq") || !strcmp(op, "ne")) && a.tag == CA_METHOD_T &&
+      b.tag == CA_METHOD_T) {
+    CaMethod *x = (CaMethod *)a.as.obj, *y = (CaMethod *)b.as.obj;
+    int same = x->method == y->method && x->receiver.tag == y->receiver.tag &&
+               x->receiver.as.obj == y->receiver.as.obj;
+    return ca_bool(!strcmp(op, "ne") ? !same : same);
+  }
+  if (ca_is_container(a) || ca_is_container(b))
+    return ca_container_compare(rt, a, b, op);
   int cmp = 0, unordered = 0, equal = !strcmp(op, "eq"),
       unequal = !strcmp(op, "ne");
   if ((equal || unequal) && a.tag == CA_RANGE_T && b.tag == CA_RANGE_T) {
     CaRange *x = (CaRange *)a.as.obj, *y = (CaRange *)b.as.obj;
-    CaValue nx = range_length(rt, x), ny = range_length(rt, y);
+    CaValue nx = ca_range_length(rt, x), ny = ca_range_length(rt, y);
     if (rt->error)
       return CA_UNBOUND;
     int same = ca_integer_compare(nx, ny) == 0;
@@ -143,7 +190,8 @@ CaValue ca_compare(CaRuntime *rt, CaValue a, CaValue b, const char *op) {
   } else if (equal || unequal) {
     int same =
         a.tag == b.tag &&
-        (a.tag == CA_NONE_T || (a.tag == CA_FUNCTION_T && a.as.fn == b.as.fn));
+        (a.tag == CA_NONE_T || (a.tag == CA_FUNCTION_T && a.as.fn == b.as.fn) ||
+         (a.tag == CA_MODULE_T && a.as.module == b.as.module));
     return ca_bool(unequal ? !same : same);
   } else {
     ca_error(rt, "TypeError", "values do not support ordering");
@@ -159,7 +207,7 @@ CaValue ca_compare(CaRuntime *rt, CaValue a, CaValue b, const char *op) {
                                      : cmp >= 0);
 }
 CaValue ca_iter(CaRuntime *rt, CaValue v) {
-  if (v.tag != CA_RANGE_T && v.tag != CA_STR_T) {
+  if (v.tag != CA_RANGE_T && v.tag != CA_STR_T && !ca_is_container(v)) {
     ca_error(rt, "TypeError", "object is not iterable");
     return CA_UNBOUND;
   }
@@ -167,7 +215,9 @@ CaValue ca_iter(CaRuntime *rt, CaValue v) {
   if (!it)
     return CA_UNBOUND;
   it->iterable = v;
-  it->current = v.tag == CA_RANGE_T ? ((CaRange *)v.as.obj)->start : CA_NONE;
+  it->current = v.tag == CA_RANGE_T  ? ((CaRange *)v.as.obj)->start
+                : ca_is_container(v) ? ca_int(((CaContainer *)v.as.obj)->length)
+                                     : CA_NONE;
   return (CaValue){.tag = CA_ITER_T, .as.obj = (CaObj *)it};
 }
 int ca_next(CaRuntime *rt, CaValue v, CaValue *out) {
@@ -184,6 +234,22 @@ int ca_next(CaRuntime *rt, CaValue v, CaValue *out) {
     it->current = ca_numeric(rt, it->current, r->step, '+');
     return rt->error ? -1 : 1;
   }
+  if (ca_is_container(it->iterable)) {
+    CaContainer *c = (CaContainer *)it->iterable.as.obj;
+    if (it->iterable.tag == CA_DICT_T || it->iterable.tag == CA_SET_T) {
+      if (it->current.as.i != (int64_t)c->length) {
+        ca_error(rt, "RuntimeError", "container changed size during iteration");
+        return -1;
+      }
+    }
+    if (it->index >= c->length) {
+      *out = CA_UNBOUND;
+      return 0;
+    }
+    *out = c->items[it->index];
+    it->index += it->iterable.tag == CA_DICT_T ? 2 : 1;
+    return 1;
+  }
   CaString *s = (CaString *)it->iterable.as.obj;
   if (it->index >= s->length) {
     *out = CA_UNBOUND;
@@ -196,8 +262,14 @@ int ca_next(CaRuntime *rt, CaValue v, CaValue *out) {
   *out = ca_string(rt, s->data + start, it->index - start);
   return rt->error ? -1 : 1;
 }
-static void print_value(CaRuntime *rt, CaValue v) {
+void ca_print_value(CaRuntime *rt, CaValue v) {
   switch (v.tag) {
+  case CA_LIST_T:
+  case CA_TUPLE_T:
+  case CA_DICT_T:
+  case CA_SET_T:
+    ca_print_container(rt, v);
+    break;
   case CA_NONE_T:
     fputs("None", stdout);
     break;
@@ -243,6 +315,10 @@ static void print_value(CaRuntime *rt, CaValue v) {
 }
 static CaValue builtin(CaRuntime *rt, const CaFunction *fn, int n, int nkw,
                        CaValue *v, const char **keys) {
+  if (fn->builtin == 6)
+    return ca_dict_constructor(rt, n, nkw, v, keys);
+  if (fn->builtin >= 3)
+    return ca_collection_builtin(rt, fn->builtin, n, nkw, v);
   if (fn->builtin == 1) {
     CaValue sep = CA_NONE, end = CA_NONE;
     int flush = 0;
@@ -278,16 +354,16 @@ static CaValue builtin(CaRuntime *rt, const CaFunction *fn, int n, int nkw,
         if (sep.tag == CA_NONE_T)
           putchar(' ');
         else
-          print_value(rt, sep);
+          ca_print_value(rt, sep);
       }
-      print_value(rt, v[i]);
+      ca_print_value(rt, v[i]);
       if (rt->error)
         return CA_UNBOUND;
     }
     if (end.tag == CA_NONE_T)
       putchar('\n');
     else
-      print_value(rt, end);
+      ca_print_value(rt, end);
     if (ferror(stdout))
       ca_error(rt, "OSError", "stdout write failed");
     if (flush && fflush(stdout) != 0)
@@ -325,6 +401,8 @@ static CaValue builtin(CaRuntime *rt, const CaFunction *fn, int n, int nkw,
 }
 CaValue ca_call(CaRuntime *rt, CaValue callable, int n, int nkw,
                 CaValue *values, const char **keys) {
+  if (callable.tag == CA_METHOD_T)
+    return ca_method_call(rt, callable, n, nkw, values);
   if (callable.tag != CA_FUNCTION_T) {
     ca_error(rt, "TypeError", "object is not callable");
     return CA_UNBOUND;
@@ -332,37 +410,64 @@ CaValue ca_call(CaRuntime *rt, CaValue callable, int n, int nkw,
   const CaFunction *fn = callable.as.fn;
   if (fn->builtin)
     return builtin(rt, fn, n, nkw, values, keys);
-  if (n > fn->count || n + nkw != fn->count) {
-    ca_error(rt, "TypeError", "incorrect number of function arguments");
+  if (n > fn->positional && fn->vararg < 0) {
+    ca_error(rt, "TypeError", "too many positional function arguments");
     return CA_UNBOUND;
   }
   CaValue bound[128] = {0};
-  for (int i = 0; i < n; i++)
+  int regular = n < fn->positional ? n : fn->positional;
+  for (int i = 0; i < regular; i++)
     bound[i] = values[i];
-  for (int i = 0; i < nkw; i++) {
+  if (fn->vararg >= 0)
+    bound[fn->vararg] =
+        ca_container(rt, CA_TUPLE_T, (size_t)(n - regular), values + regular);
+  if (fn->kwarg >= 0)
+    bound[fn->kwarg] = ca_container(rt, CA_DICT_T, 0, NULL);
+  for (int i = 0; i < nkw && !rt->error; i++) {
     int slot = -1;
-    for (int j = fn->posonly; j < fn->count; j++)
-      if (!strcmp(keys[i], fn->parameters[j])) {
+    for (int j = fn->posonly; j < fn->count; j++) {
+      if (j != fn->vararg && j != fn->kwarg &&
+          !strcmp(keys[i], fn->parameters[j])) {
         slot = j;
         break;
       }
-    if (slot < 0 || bound[slot].tag != CA_UNBOUND_T) {
-      ca_error(rt, "TypeError", "unexpected or duplicate keyword argument");
-      return CA_UNBOUND;
     }
-    bound[slot] = values[n + i];
+    if (slot < 0) {
+      if (fn->kwarg < 0) {
+        ca_error(rt, "TypeError", "unexpected keyword argument");
+        return CA_UNBOUND;
+      }
+      CaValue key = ca_string(rt, keys[i], strlen(keys[i]));
+      if (rt->error)
+        return CA_UNBOUND;
+      ca_setitem(rt, bound[fn->kwarg], key, values[n + i]);
+    } else {
+      if (bound[slot].tag != CA_UNBOUND_T) {
+        ca_error(rt, "TypeError", "duplicate keyword argument");
+        return CA_UNBOUND;
+      }
+      bound[slot] = values[n + i];
+    }
   }
-  for (int i = 0; i < fn->count; i++)
+  for (int i = 0; i < fn->count; i++) {
+    if (bound[i].tag == CA_UNBOUND_T && fn->defaults)
+      bound[i] = fn->defaults[i];
     if (bound[i].tag == CA_UNBOUND_T) {
       ca_error(rt, "TypeError", "missing function argument");
       return CA_UNBOUND;
     }
+  }
+  if (rt->error)
+    return CA_UNBOUND;
   return fn->code(rt, bound);
 }
 CaValue ca_load(CaRuntime *rt, CaValue v, const char *name, int local) {
   if (v.tag != CA_UNBOUND_T)
     return v;
   if (!local) {
+    for (size_t i = 0; i < 5; i++)
+      if (!strcmp(name, ca_builtin_collections[i].name))
+        return ca_function(&ca_builtin_collections[i]);
     if (!strcmp(name, "print"))
       return ca_function(&ca_builtin_print);
     if (!strcmp(name, "range"))

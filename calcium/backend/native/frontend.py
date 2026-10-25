@@ -10,6 +10,21 @@ from ...models import Diagnostic
 
 ALLOWED = (
     ast.Module,
+    ast.Import,
+    ast.ImportFrom,
+    ast.alias,
+    ast.Attribute,
+    ast.List,
+    ast.Tuple,
+    ast.Dict,
+    ast.Set,
+    ast.Subscript,
+    ast.Slice,
+    ast.Starred,
+    ast.In,
+    ast.NotIn,
+    ast.Is,
+    ast.IsNot,
     ast.Expr,
     ast.Pass,
     ast.Assign,
@@ -65,6 +80,12 @@ def prepare(source):
     }
     globals_.update(n.name for n in tree.body if isinstance(n, ast.FunctionDef))
 
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            globals_.update(a.asname or a.name.split(".")[0] for a in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            globals_.update(a.asname or a.name for a in node.names)
+
     class Check(ast.NodeVisitor):
         depth = 0
         control = 0
@@ -79,7 +100,7 @@ def prepare(source):
             errors.append(
                 Diagnostic(
                     "C160",
-                    f"native backend: {reason}; no CPython fallback is available",
+                    f"Bonemarrow: {reason}; use --cpython for compatibility (no automatic fallback)",
                     str(source.path),
                     line,
                     column,
@@ -99,13 +120,64 @@ def prepare(source):
                 isinstance(node.ctx, ast.Load)
                 and (
                     hasattr(builtins, node.id)
-                    or node.id
-                    in {"__file__", "__package__", "__spec__", "__cached__", "__annotations__"}
+                    or node.id in {"__spec__", "__cached__", "__annotations__", "__builtins__"}
                 )
-                and node.id not in {"print", "range"}
+                and node.id
+                not in {
+                    "print",
+                    "range",
+                    "__name__",
+                    "__file__",
+                    "__package__",
+                    "len",
+                    "list",
+                    "tuple",
+                    "dict",
+                    "set",
+                }
                 and node.id not in self.locals_
             ):
                 self.reject(node, f"builtin {node.id!r} is not implemented")
+
+        def visit_Compare(self, node):
+            operands = [node.left, *node.comparators]
+            for i, op in enumerate(node.ops):
+                if isinstance(op, (ast.Is, ast.IsNot)) and not any(
+                    isinstance(v, ast.Constant) and (v.value is None or type(v.value) is bool)
+                    for v in operands[i : i + 2]
+                ):
+                    self.reject(
+                        node,
+                        "identity comparisons require None or bool; general object identity is not implemented",
+                    )
+                    return
+            self.generic_visit(node)
+
+        def visit_List(self, node):
+            if len(node.elts) > 128:
+                self.reject(
+                    node, "container literals with more than 128 elements are not supported"
+                )
+            else:
+                self.generic_visit(node)
+
+        visit_Tuple = visit_List
+        visit_Set = visit_List
+
+        def visit_Dict(self, node):
+            if len(node.keys) > 64:
+                self.reject(node, "dictionary literals with more than 64 entries are not supported")
+            else:
+                self.generic_visit(node)
+
+        def visit_ImportFrom(self, node):
+            if node.module == "__future__":
+                self.reject(node, "future flags are not supported")
+                return
+            if any(a.name == "*" for a in node.names):
+                self.reject(node, "star imports are not supported")
+            else:
+                self.generic_visit(node)
 
         def visit_Constant(self, node):
             if type(node.value) is int and node.value.bit_length() > 14000:
@@ -121,13 +193,28 @@ def prepare(source):
                 self.reject(node, "surrogate string code points are not supported")
 
         def visit_Assign(self, node):
-            if any(not isinstance(t, ast.Name) for t in node.targets):
+            if any(
+                not isinstance(t, (ast.Name, ast.Attribute, ast.Subscript, ast.Tuple, ast.List))
+                for t in node.targets
+            ):
                 self.reject(node, "only name assignment is supported")
             else:
                 self.generic_visit(node)
 
+        def visit_Subscript(self, node):
+            if isinstance(node.ctx, ast.Store) and isinstance(node.slice, ast.Slice):
+                self.reject(node, "slice assignment is not implemented")
+            else:
+                self.generic_visit(node)
+
+        def visit_Starred(self, node):
+            if isinstance(node.ctx, ast.Store):
+                self.reject(node, "starred unpacking assignment is not implemented")
+            else:
+                self.generic_visit(node)
+
         def visit_AugAssign(self, node):
-            if not isinstance(node.target, ast.Name):
+            if not isinstance(node.target, (ast.Name, ast.Attribute, ast.Subscript)):
                 self.reject(node, "only name augmented assignment is supported")
             else:
                 self.generic_visit(node)
@@ -136,34 +223,27 @@ def prepare(source):
             if len(node.args) + len(node.keywords) > 128:
                 self.reject(node, "calls with more than 128 arguments are not supported")
                 return
-            if any(isinstance(a, ast.Starred) for a in node.args) or any(
-                k.arg is None for k in node.keywords
-            ):
-                self.reject(node, "expanded calls are not supported")
-            else:
-                self.generic_visit(node)
+            self.generic_visit(node)
 
         def visit_FunctionDef(self, node):
+            if node.name == "__getattr__":
+                self.reject(node, "dynamic module __getattr__ is not implemented")
+                return
             if self.depth or self.control or node.decorator_list or node.type_params:
                 self.reject(
                     node, "only undecorated module-level non-generic functions are supported"
                 )
                 return
             args = node.args
-            parameters = args.posonlyargs + args.args
-            if (
-                args.defaults
-                or args.kwonlyargs
-                or args.vararg
-                or args.kwarg
-                or len(parameters) > 128
-            ):
+            parameters = args.posonlyargs + args.args + args.kwonlyargs
+            annotated_parameters = parameters + [a for a in (args.vararg, args.kwarg) if a]
+            if len(parameters) + bool(args.vararg) + bool(args.kwarg) > 128:
                 self.reject(
                     node,
-                    "defaults, keyword-only/variadic parameters or more than 128 parameters are not supported",
+                    "more than 128 parameters are not supported",
                 )
                 return
-            for annotation in [node.returns, *(a.annotation for a in parameters)]:
+            for annotation in [node.returns, *(a.annotation for a in annotated_parameters)]:
                 if (
                     annotation is not None
                     and not (isinstance(annotation, ast.Constant) and annotation.value is None)
@@ -176,6 +256,8 @@ def prepare(source):
                     self.reject(
                         annotation, "only unshadowed builtin primitive annotations are supported"
                     )
+            for default in [*args.defaults, *(d for d in args.kw_defaults if d is not None)]:
+                self.visit(default)
             previous = self.locals_
             scope = scopes[(node.name, node.lineno)]
             self.locals_ = {s.get_name() for s in scope.get_symbols() if s.is_local()}
@@ -198,6 +280,11 @@ def prepare(source):
     for node in ast.walk(normalized):
         if isinstance(node, ast.FunctionDef):
             node.returns = None
-            for arg in node.args.posonlyargs + node.args.args:
+            for arg in (
+                node.args.posonlyargs
+                + node.args.args
+                + node.args.kwonlyargs
+                + [a for a in (node.args.vararg, node.args.kwarg) if a]
+            ):
                 arg.annotation = None
     return tree, normalized, errors

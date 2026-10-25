@@ -98,11 +98,14 @@ class Calcium:
     include_all: bool = False
     cache: bool = True
     cache_dir: str | Path | None = None
-    backend: str = "cpython"
+    backend: str = "bmrw"
+    progress: object = None
 
     def __post_init__(self):
+        if self.backend == "bmrw":
+            object.__setattr__(self, "backend", "native")
         if self.backend not in {"cpython", "native"}:
-            raise ValueError("backend must be cpython or native")
+            raise ValueError("backend must be bmrw, native or cpython")
         if self.backend == "native" and self.target == "extension":
             raise ValueError("native backend cannot produce CPython extensions")
         if self.optimization not in (0, 1, 2, 3):
@@ -124,6 +127,8 @@ class Calcium:
         discovered_modules = None
         active = str(source or module)
         try:
+            if self.progress:
+                self.progress(f"optimizing at O{self.optimization}")
             config = python_config(str(self.python))
             project = discover(
                 source,
@@ -496,6 +501,7 @@ class Calcium:
                     directory,
                     native,
                     config=config,
+                    progress=self.progress,
                     compiler=self.compiler,
                     target=self.target,
                     optimization=self.optimization,

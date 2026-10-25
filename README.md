@@ -3,8 +3,9 @@
 Calcium is Wednesware's Python-to-C compiler. It lowers supported Python through
 control-flow IR into C11 and builds executables or CPython extension modules.
 
-**Version 26.6.** CPython remains the default compatibility backend. An experimental
-standalone native backend now runs a documented subset without libpython.
+**Version 26.7.** Bonemarrow (`bmrw`) is now the default independent native backend.
+It compiles supported multi-file Python projects without CPython. Select
+`--cpython` explicitly for broad compatibility, CPython extensions or bundles.
 
 Build a script or package directly:
 
@@ -36,19 +37,31 @@ same interface. Use `ca --help` for actions and `ca --build --help` for build
 options. Runtime arguments follow `--`; only `--run` and `--benchmark` execute
 the program. Run propagates its exit status.
 
-## Standalone native backend
+## Bonemarrow: standalone native projects
 
 ```sh
-ca examples/native/hello.py --backend native --run
-ca examples/native/sum_squares.py --backend native -O3 --run --keep-c
-ca check program.py --backend native --optimization-report
+ca examples/native/hello.py --run
+ca main.py --use bmrw -O3 --run --keep-c
+ca my_package/ -O3
+ca --module my_package.cli --project-root ./src
+ca main.py -v --fancy
+ca existing_application/ --cpython
 ```
 
-Native mode uses CaRT, emits C11 without Python headers, and never falls back to
-CPython. It supports primitives, big integers, strings, range loops and basic
-functions in this first milestone. Classes, containers and imports still require
-the default `--backend cpython`. Read the [native support/ownership contract](docs/NATIVE.md)
-and [measured benchmarks](docs/NATIVE_BENCHMARKS.md).
+Calcium is the interface; Bonemarrow is the independent CaRT-based execution
+engine. `--bmrw`, `--use bmrw`, and legacy `--backend native` are equivalent.
+`--cpython`, `--use cpython`, and `--backend cpython` select compatibility mode.
+Conflicting selections fail clearly. Normal compilation stays quiet; verbose
+and optional fancy messages go to stderr, never into generated executables.
+
+Bonemarrow supports project packages, relative/aliased/circular imports, isolated
+module globals and native cross-module calls. It also adds lists, tuples, dictionaries,
+sets, indexing/slicing, common container methods, defaults, keyword-only parameters
+and variadic/expanded calls to the primitive/function/loop subset from 26.6.
+Unsupported features never fall back to CPython. Classes, structured exceptions,
+closures, GUI libraries and the standard library remain blockers for ordinary
+applications such as Discribe. Read the [exact native contract](docs/NATIVE.md)
+and [measured package benchmarks](docs/NATIVE_BENCHMARKS.md).
 
 ## Installation and deployment
 
@@ -57,24 +70,27 @@ and the platform C/math libraries, with no Python SDK/runtime dependency in the
 output. CPython-backend builds additionally need matching
 Python development headers and shared libpython for executables. A relocated
 Python installation is supported when its matching library is under its current
-prefix. Generated executables still require compatible CPython, its standard
-library, and external runtime dependencies. Use `--bundle` to include that runtime
+prefix. CPython-backend executables require compatible CPython, its standard
+library, and external runtime dependencies. Use `--cpython --bundle` to include that runtime
 in a relocatable Linux directory; see [Deployment](docs/DEPLOYMENT.md).
 
 Project imports compile recursively into separate C files. Directory inputs
 include local Python modules; script inputs follow static imports. Add source
 roots with `--include-path` and dynamically selected modules with `--include-all`.
 Ordinary executables leave external dependencies and data on the host. Bundles
-copy the selected Python environment and package data. See [Packages](docs/PACKAGES.md).
+copy the selected Python environment and package data. See [Packages](docs/PACKAGES.md); those historical importlib details apply to `--cpython`.
 
-Native objects are cached by preprocessed C, compiler configuration, Python SDK,
-and optimization flags. Every build relinks against current libraries. Use
+Objects are cached by preprocessed C, compiler identity, backend/ABI and flags;
+CPython builds additionally fingerprint the Python SDK. Every build relinks against current libraries. Use
 `--no-cache` to recompile, `--cache-dir PATH` to choose a location, or `--verbose`
-to see hit/miss reports. Debug builds bypass the cache. Cache failures do not
+to see compilation/cache-reuse stages. Debug builds bypass the cache. Cache failures do not
 block a build. Generated C and IR can be retained using `--keep-c`, `--emit-ir`,
 or `--emit-ast`.
 
-## Language support
+## CPython compatibility backend
+
+The following broader lowering/fallback capabilities apply to explicit `--cpython`.
+Bonemarrow support is listed above and in its [contract](docs/NATIVE.md).
 
 Native lowering covers literals, containers, arithmetic, chained comparisons,
 short circuiting, conditionals, loops, unpacking (including starred assignment),
@@ -90,8 +106,8 @@ Classes, closures, decorators, annotated functions, generators, async functions,
 and function bodies containing unsupported syntax use **reported definition-level
 fallback** when allowed. Supported neighboring code remains native; the module
 is labeled `mixed`. Unsupported module-level syntax uses whole-module fallback.
-No fallback occurs during analysis. The CLI allows reported compatibility execution by default, including projects;
-`--no-fallback` requires all-native lowering. The API preserves its earlier policy:
+No fallback occurs during analysis. With `--cpython`, the CLI allows reported compatibility execution, including projects;
+`--no-fallback` requires all-native lowering. With `backend="cpython"`, the API preserves its earlier policy:
 isolated scripts allow fallback, and projects require `fallback=True`.
 Fallback is CPython execution, not native acceleration.
 
