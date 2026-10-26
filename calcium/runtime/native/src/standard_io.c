@@ -395,8 +395,7 @@ int ca_io_next(CaRuntime *rt, CaValue value, CaValue *out) {
 }
 void ca_io_finalize(CaForeign *foreign) {
   if (foreign->kind == CA_F_FILE && foreign->handle) {
-    fclose(foreign->handle);
-    foreign->handle = NULL;
+    ca_file_close(foreign);
   }
   if (foreign->kind == CA_F_DIRECTORY_ITER && foreign->handle) {
     Walk *w = foreign->handle;
@@ -600,8 +599,15 @@ CaValue ca_io_call(CaRuntime *rt, int kind, int n, int nkw, CaValue *args,
     FILE *f = fdopen((int)out[0].as.i, mode);
     if (!f)
       return ca_native_oserror(rt, errno, NULL);
+    CaValue metadata =
+        ca_container(rt, CA_TUPLE_T, 5,
+                     (CaValue[]){out[3], out[0], out[1], out[4], CA_NONE});
+    if (rt->error) {
+      fclose(f);
+      return CA_UNBOUND;
+    }
     CaValue result =
-        ca_native_object(rt, CA_F_FILE, out[3], f, strchr(mode, 'b') != NULL);
+        ca_native_object(rt, CA_F_FILE, metadata, f, strchr(mode, 'b') != NULL);
     if (rt->error)
       fclose(f);
     return result;
@@ -626,8 +632,7 @@ CaValue ca_io_call(CaRuntime *rt, int kind, int n, int nkw, CaValue *args,
     FILE *f = file->handle;
     if (kind == N_FILE_CLOSE || kind == N_FILE_EXIT) {
       if (f) {
-        file->handle = NULL;
-        if (fclose(f))
+        if (ca_file_close(file))
           return ca_native_oserror(rt, errno, NULL);
       }
       return CA_NONE;
@@ -641,30 +646,30 @@ CaValue ca_io_call(CaRuntime *rt, int kind, int n, int nkw, CaValue *args,
     if (kind == N_FILE_FILENO)
       return ca_int(fileno(f));
     if (kind == N_FILE_FLUSH) {
-      if (fflush(f))
+      if (!(file->auxiliary & 2) && fflush(f))
         return ca_native_oserror(rt, errno, NULL);
       return CA_NONE;
     }
     if (kind == N_FILE_WRITE) {
-      if (out[1].tag != (file->auxiliary ? CA_BYTES_T : CA_STR_T)) {
+      if (out[1].tag != ((file->auxiliary & 1) ? CA_BYTES_T : CA_STR_T)) {
         ca_error(rt, "TypeError", "file write argument has wrong type");
         return CA_UNBOUND;
       }
       CaString *s = (CaString *)out[1].as.obj;
       CaValue encoded = out[1];
-      if (!file->auxiliary) {
-        CaValue arguments[] = {out[1], file->state};
-        encoded = ca_text_call(rt, N_TEXT_ENCODE,
-                               file->state.tag == CA_NONE_T ? 1 : 2, 0,
-                               arguments, NULL);
+      if (!(file->auxiliary & 1)) {
+        CaValue arguments[] = {out[1], ca_file_option(file, 0),
+                               ca_file_option(file, 4)};
+        encoded = ca_text_call(rt, N_TEXT_ENCODE, 3, 0, arguments, NULL);
         if (rt->error)
           return CA_UNBOUND;
       }
       CaString *bytes = (CaString *)encoded.as.obj;
+      file->auxiliary &= ~2L;
       if (fwrite(bytes->data, 1, bytes->length, f) != bytes->length)
         return ca_native_oserror(rt, errno, NULL);
       size_t count = 0;
-      if (file->auxiliary)
+      if (file->auxiliary & 1)
         count = s->length;
       else
         for (size_t i = 0; i < s->length; i++)
@@ -676,11 +681,8 @@ CaValue ca_io_call(CaRuntime *rt, int kind, int n, int nkw, CaValue *args,
       ca_error(rt, "TypeError", "read size must be an integer");
       return CA_UNBOUND;
     }
-    if (!file->auxiliary && out[1].as.i >= 0) {
-      ca_error(rt, "NotImplementedError",
-               "sized text reads are not implemented");
-      return CA_UNBOUND;
-    }
+    if (!(file->auxiliary & 1) && out[1].as.i >= 0)
+      return ca_file_read(rt, out[0], out[1].as.i, 0);
     size_t limit = out[1].as.i < 0 ? SIZE_MAX : (size_t)out[1].as.i;
     char *buffer = NULL;
     size_t used = 0, capacity = 0;
@@ -702,6 +704,7 @@ CaValue ca_io_call(CaRuntime *rt, int kind, int n, int nkw, CaValue *args,
         capacity = used + chunk;
       }
       size_t got = fread(buffer + used, 1, chunk, f);
+      file->auxiliary |= 2;
       used += got;
       if (got < chunk) {
         if (ferror(f)) {
@@ -713,10 +716,9 @@ CaValue ca_io_call(CaRuntime *rt, int kind, int n, int nkw, CaValue *args,
     }
     CaValue bytes = ca_bytes(rt, buffer, used);
     free(buffer);
-    if (rt->error || file->auxiliary)
+    if (rt->error || (file->auxiliary & 1))
       return bytes;
-    CaValue values[] = {bytes, file->state};
-    return ca_text_call(rt, N_TEXT_DECODE, 2, 0, values, NULL);
+    return ca_file_decode(rt, file, bytes);
   }
   if (kind == N_GETTEMPDIR) {
     BIND(0, 0, "");

@@ -143,9 +143,16 @@ def generate(program, optimization=0, *, module_info=None):
             else "if(!ca_enter(rt))return CA_UNBOUND;"
         )
         code += [
-            f"CaValue call_values[{max(1, max_call_args)}];",
+            "CaValue *call_values=NULL;"
+            if max_call_args > 128
+            else f"CaValue call_values[{max(1, max_call_args)}];",
             f"ca_push(rt,&frame,values,{frame_count});",
         ]
+        if max_call_args > 128:
+            code += [
+                f"call_values=calloc({max_call_args},sizeof(CaValue));",
+                'if(!call_values){ca_error(rt,"MemoryError","call scratch allocation failed");goto error;}',
+            ]
         if not generator:
             for i, name in enumerate(fn.parameters):
                 code.append(f"values[{local[name]}]=args[{i}];")
@@ -252,7 +259,9 @@ def generate(program, optimization=0, *, module_info=None):
                 elif op.op in {"native_yield", "native_await"}:
                     index = yield_ids[op.result]
                     code += [
-                        f"g->pc={index};*out={v[0]};ca_pop(rt,&frame);ca_leave(rt);return 1;",
+                        f"g->pc={index};*out={v[0]};"
+                        + ("free(call_values);" if max_call_args > 128 else "")
+                        + "ca_pop(rt,&frame);ca_leave(rt);return 1;",
                         f"resume_{index}:;",
                     ]
                     if op.op == "native_await":
@@ -261,6 +270,8 @@ def generate(program, optimization=0, *, module_info=None):
                             f"goto {'error' if op.error == 'error' else 'err_' + op.error};}}",
                         ]
                     expr = "g->sent"
+                elif op.op == "native_class_finalize":
+                    expr = f"ca_class_finalize(rt,{v[0]})"
                 elif op.op == "native_class":
                     for index, value in enumerate(v):
                         code.append(f"call_values[{index}]={value};")
@@ -326,6 +337,8 @@ def generate(program, optimization=0, *, module_info=None):
                     )
                 elif op.op == "kwargs_set":
                     code.append(f"ca_kwargs_set(rt,{v[0]},{cstr(op.data)},{v[1]});")
+                elif op.op == "unpack_ex":
+                    expr = f"ca_unpack_star(rt,{v[0]},{op.data['before']},{op.data['after']})"
                 elif op.op == "unpack":
                     expr = f"ca_unpack(rt,{v[0]},{op.data})"
                 elif op.op == "tuple_item":
@@ -440,13 +453,17 @@ def generate(program, optimization=0, *, module_info=None):
         if generator:
             code += [
                 "error:result=CA_UNBOUND;",
-                "done:g->result=result;g->closed=1;ca_pop(rt,&frame);ca_leave(rt);return rt->error?-1:0;",
+                "done:g->result=result;g->closed=1;"
+                + ("free(call_values);" if max_call_args > 128 else "")
+                + "ca_pop(rt,&frame);ca_leave(rt);return rt->error?-1:0;",
                 "}",
             ]
         else:
             code += [
                 "error:result=CA_UNBOUND;",
-                "done:ca_pop(rt,&frame);ca_leave(rt);"
+                "done:"
+                + ("free(call_values);" if max_call_args > 128 else "")
+                + "ca_pop(rt,&frame);ca_leave(rt);"
                 + ("free(values);" if heap_frame else "")
                 + "return result;",
                 "}",

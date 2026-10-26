@@ -1,0 +1,116 @@
+{
+  "calcium_version": "26.10",
+  "scope": "Analysis only of Discribe with the newly vendored Nitrogen tree; no installer/application code executed",
+  "analysis_success": false,
+  "builtin_and_listed_syntax_diagnostics_remaining": 0,
+  "source_sha256": {
+    "__init__.py": "2d83556bfed9e35603c405147f53a93a7be81a72426998b29d7e202619372486",
+    "__main__.py": "663b7246a2bc28ca829c31cf0de3a2343eb01776e9401604189404b4e8083873",
+    "collaboration.py": "d110cfb2fe0d6d73db27d78e4bd8ab8f50ca6ed0c559ac72e06932ed5ed15c01",
+    "core.py": "9fa9d6da2914a37c67d09926e0231a2cae22af495103d57797e38f7f1aeb1990",
+    "desktop.py": "24ac1e2eaef2b67c362d4aefed40c7f46fa445f7cbe70eacc1051240bc75ffea",
+    "nitrogen/__init__.py": "2e386ae8bda9d2b60fd2fdaedf03b565314f4a41a636b7f37346833431bcba7e",
+    "nitrogen/__main__.py": "89828d9fcf8b71701d1cbf135eba153e0ab26c88a767f77cd2fd87a842dd6429",
+    "nitrogen/ww/na/__init__.py": "eba79543a98cada1b5101bb83de6ceff2cbce4a32d9c7ae17b82fba93b904be7",
+    "nitrogen/ww/na/__main__.py": "16a501c4460b7249fefb81a3ae7085d43b98bd466f861bd09b89ab0df1a21555",
+    "nitrogen/ww/na/build/lib/nitrogen_entry.py": "8c85a84deb03c6a6336afda6b5317c35124d3c68cece2bd0eb89293f2d3d7344",
+    "nitrogen/ww/na/resources/Interpreter.py": "fa70091bb651d980a8e433caaa20177c1729253809ab2e406899cc0d31e54432",
+    "nitrogen/ww/na/resources/Tokenizer.py": "59ec236218486402276c356e8d750c59c7cbff429c357f7e147faa79baf4f193",
+    "nitrogen/ww/na/scripts/error.py": "d38838b5652888328d619cc34cc376d82be4447bdcbc04ee3e29e9a610716651",
+    "nitrogen/ww/na/scripts/run.py": "691079459413c0ddeb38a673a62403697e352f6a49074eebb89fd8df6649fe57",
+    "shell.py": "f26cde3cd1bc1609124e90c8b07e9413ce402a228309836581025c473d986de5"
+  },
+  "remaining_diagnostics": [
+    {
+      "code": "C160",
+      "message": "Bonemarrow has no native standard-library implementation for 'subprocess'; use --cpython for compatibility (no automatic fallback)",
+      "path": "/home/danny/tests/discribe/discribe/nitrogen/ww/na/__init__.py",
+      "line": 1,
+      "column": 1,
+      "severity": "error",
+      "stage": "frontend"
+    },
+    {
+      "code": "C160",
+      "message": "Bonemarrow has no native standard-library implementation for 'zipfile'; use --cpython for compatibility (no automatic fallback)",
+      "path": "/home/danny/tests/discribe/discribe/nitrogen/__init__.py",
+      "line": 1,
+      "column": 1,
+      "severity": "error",
+      "stage": "frontend"
+    },
+    {
+      "code": "C160",
+      "message": "Bonemarrow has no native standard-library implementation for 'urllib.error'; use --cpython for compatibility (no automatic fallback)",
+      "path": "/home/danny/tests/discribe/discribe/nitrogen/__init__.py",
+      "line": 1,
+      "column": 1,
+      "severity": "error",
+      "stage": "frontend"
+    },
+    {
+      "code": "C160",
+      "message": "Bonemarrow has no native standard-library implementation for 'traceback'; use --cpython for compatibility (no automatic fallback)",
+      "path": "/home/danny/tests/discribe/discribe/nitrogen/__init__.py",
+      "line": 1,
+      "column": 1,
+      "severity": "error",
+      "stage": "frontend"
+    },
+    {
+      "code": "C160",
+      "message": "Bonemarrow has no native standard-library implementation for 're'; use --cpython for compatibility (no automatic fallback)",
+      "path": "/home/danny/tests/discribe/discribe/nitrogen/__init__.py",
+      "line": 1,
+      "column": 1,
+      "severity": "error",
+      "stage": "frontend"
+    },
+    {
+      "code": "C160",
+      "message": "Bonemarrow has no native standard-library implementation for 'importlib.util'; use --cpython for compatibility (no automatic fallback)",
+      "path": "/home/danny/tests/discribe/discribe/nitrogen/__init__.py",
+      "line": 1,
+      "column": 1,
+      "severity": "error",
+      "stage": "frontend"
+    },
+    {
+      "code": "C160",
+      "message": "Bonemarrow has no native standard-library implementation for 'threading'; use --cpython for compatibility (no automatic fallback)",
+      "path": "/home/danny/tests/discribe/discribe/nitrogen/__init__.py",
+      "line": 1,
+      "column": 1,
+      "severity": "error",
+      "stage": "frontend"
+    },
+    {
+      "code": "C160",
+      "message": "Bonemarrow has no native standard-library implementation for 'subprocess'; use --cpython for compatibility (no automatic fallback)",
+      "path": "/home/danny/tests/discribe/discribe/nitrogen/__init__.py",
+      "line": 1,
+      "column": 1,
+      "severity": "error",
+      "stage": "frontend"
+    },
+    {
+      "code": "C160",
+      "message": "Bonemarrow has no native standard-library implementation for 'urllib.request'; use --cpython for compatibility (no automatic fallback)",
+      "path": "/home/danny/tests/discribe/discribe/nitrogen/__init__.py",
+      "line": 3,
+      "column": 1,
+      "severity": "error",
+      "stage": "frontend"
+    },
+    {
+      "code": "C160",
+      "message": "Bonemarrow has no native standard-library implementation for 're'; use --cpython for compatibility (no automatic fallback)",
+      "path": "/home/danny/tests/discribe/discribe/nitrogen/ww/na/resources/Tokenizer.py",
+      "line": 2,
+      "column": 1,
+      "severity": "error",
+      "stage": "frontend"
+    }
+  ],
+  "full_application_compatible": false
+}

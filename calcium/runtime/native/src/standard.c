@@ -463,6 +463,32 @@ CaValue ca_foreign_attribute(CaRuntime *rt, CaValue value, const char *name) {
     if (f->kind == CA_F_PATH)
       return ca_path_attribute(rt, value, name);
     if (f->kind == CA_F_FILE) {
+      if (!strcmp(name, "closed"))
+        return ca_bool(!f->handle);
+      if (!strcmp(name, "name"))
+        return ca_file_option(f, 1);
+      if (!strcmp(name, "mode"))
+        return ca_file_option(f, 2);
+      if (!strcmp(name, "encoding")) {
+        CaValue encoding = ca_file_option(f, 0);
+        return (f->auxiliary & 1)          ? CA_NONE
+               : encoding.tag == CA_NONE_T ? ca_string(rt, "UTF-8", 5)
+                                           : encoding;
+      }
+      if (!strcmp(name, "errors")) {
+        CaValue policy = ca_file_option(f, 4);
+        return (f->auxiliary & 1)        ? CA_NONE
+               : policy.tag == CA_NONE_T ? ca_string(rt, "strict", 6)
+                                         : policy;
+      }
+      int extra = !strcmp(name, "readline")     ? 430
+                  : !strcmp(name, "readlines")  ? 431
+                  : !strcmp(name, "writelines") ? 432
+                  : !strcmp(name, "seek")       ? 433
+                  : !strcmp(name, "tell")       ? 434
+                                                : 0;
+      if (extra)
+        return ca_more_method(rt, value, extra);
       int id = !strcmp(name, "read")        ? N_FILE_READ
                : !strcmp(name, "write")     ? N_FILE_WRITE
                : !strcmp(name, "flush")     ? N_FILE_FLUSH
@@ -517,6 +543,15 @@ void ca_foreign_finalize(CaForeign *f) {
 }
 CaValue ca_foreign_iter(CaRuntime *rt, CaValue value) {
   CaForeign *f = (CaForeign *)value.as.obj;
+  if (f->kind >= CA_F_MAP && f->kind <= CA_F_CALL_ITER)
+    return value;
+  if (f->kind == CA_F_FILE) {
+    if (!f->handle) {
+      ca_error(rt, "ValueError", "I/O operation on closed file");
+      return CA_UNBOUND;
+    }
+    return value;
+  }
   if (f->kind == CA_F_SQL_CURSOR || f->kind == CA_F_DIRECTORY_ITER ||
       f->kind == CA_F_ENUMERATE || f->kind == CA_F_ZIP)
     return value;
@@ -534,6 +569,12 @@ CaValue ca_foreign_iter(CaRuntime *rt, CaValue value) {
 }
 int ca_foreign_next(CaRuntime *rt, CaValue value, CaValue *out) {
   CaForeign *f = (CaForeign *)value.as.obj;
+  if (f->kind >= CA_F_MAP && f->kind <= CA_F_CALL_ITER)
+    return ca_builtin_iterator_next(rt, value, out);
+  if (f->kind == CA_F_FILE) {
+    *out = ca_file_read(rt, value, -1, 1);
+    return rt->error ? -1 : ((CaString *)out->as.obj)->length ? 1 : 0;
+  }
   if (f->kind == CA_F_ENUMERATE || f->kind == CA_F_ZIP) {
     if (f->kind == CA_F_ZIP && f->auxiliary)
       return 0;

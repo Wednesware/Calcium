@@ -1,0 +1,619 @@
+{
+  "python_version": "3.14.8",
+  "meaning": "Native availability covers the documented overloads, not complete CPython reflection or all special protocols",
+  "builtins": {
+    "ArithmeticError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "AssertionError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "AttributeError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "BaseException": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "BaseExceptionGroup": {
+      "status": "unsupported",
+      "scope": "Exception group execution is not implemented"
+    },
+    "BlockingIOError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "BrokenPipeError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "BufferError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "BytesWarning": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "ChildProcessError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "ConnectionAbortedError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "ConnectionError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "ConnectionRefusedError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "ConnectionResetError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "DeprecationWarning": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "EOFError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "Ellipsis": {
+      "status": "unsupported",
+      "scope": "Ellipsis singleton values are not implemented"
+    },
+    "EncodingWarning": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "EnvironmentError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "Exception": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "ExceptionGroup": {
+      "status": "unsupported",
+      "scope": "Exception group execution is not implemented"
+    },
+    "False": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "FileExistsError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "FileNotFoundError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "FloatingPointError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "FutureWarning": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "GeneratorExit": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "IOError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "ImportError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "ImportWarning": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "IndentationError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "IndexError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "InterruptedError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "IsADirectoryError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "KeyError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "KeyboardInterrupt": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "LookupError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "MemoryError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "ModuleNotFoundError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "NameError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "None": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "NotADirectoryError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "NotImplemented": {
+      "status": "unsupported",
+      "scope": "The full reflected-operation protocol is not implemented"
+    },
+    "NotImplementedError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "OSError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "OverflowError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "PendingDeprecationWarning": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "PermissionError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "ProcessLookupError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "PythonFinalizationError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "RecursionError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "ReferenceError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "ResourceWarning": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "RuntimeError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "RuntimeWarning": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "StopAsyncIteration": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "StopIteration": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "SyntaxError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "SyntaxWarning": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "SystemError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "SystemExit": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "TabError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "TimeoutError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "True": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "TypeError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "UnboundLocalError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "UnicodeDecodeError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "UnicodeEncodeError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "UnicodeError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "UnicodeTranslateError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "UnicodeWarning": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "UserWarning": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "ValueError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "Warning": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "ZeroDivisionError": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "__debug__": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "__import__": {
+      "status": "unsupported",
+      "scope": "Dynamic import discovery/loading is not implemented"
+    },
+    "abs": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "aiter": {
+      "status": "unsupported",
+      "scope": "Async iteration protocols are not implemented"
+    },
+    "all": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "anext": {
+      "status": "unsupported",
+      "scope": "Async iteration protocols are not implemented"
+    },
+    "any": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "ascii": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "bin": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "bool": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "breakpoint": {
+      "status": "unsupported",
+      "scope": "An interactive debugger is not implemented"
+    },
+    "bytearray": {
+      "status": "unsupported",
+      "scope": "Mutable byte buffers are not implemented"
+    },
+    "bytes": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "callable": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "chr": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "classmethod": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "compile": {
+      "status": "unsupported",
+      "scope": "Native code-object compilation is not implemented"
+    },
+    "complex": {
+      "status": "unsupported",
+      "scope": "Complex arithmetic is not implemented"
+    },
+    "copyright": {
+      "status": "unsupported",
+      "scope": "Site interactive helpers are not implemented"
+    },
+    "credits": {
+      "status": "unsupported",
+      "scope": "Site interactive helpers are not implemented"
+    },
+    "delattr": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "dict": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "dir": {
+      "status": "unsupported",
+      "scope": "Complete object/type reflection is not implemented"
+    },
+    "divmod": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "enumerate": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "eval": {
+      "status": "unsupported",
+      "scope": "Dynamic Python execution requires a native evaluator/code-object runtime"
+    },
+    "exec": {
+      "status": "unsupported",
+      "scope": "Dynamic Python execution requires a native evaluator/code-object runtime"
+    },
+    "exit": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "filter": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "float": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "format": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "frozenset": {
+      "status": "unsupported",
+      "scope": "Immutable set values are not implemented"
+    },
+    "getattr": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "globals": {
+      "status": "unsupported",
+      "scope": "A live module binding mapping is not implemented"
+    },
+    "hasattr": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "hash": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "help": {
+      "status": "unsupported",
+      "scope": "The interactive documentation system is not implemented"
+    },
+    "hex": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "id": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "input": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "int": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "isinstance": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "issubclass": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "iter": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "len": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "license": {
+      "status": "unsupported",
+      "scope": "Site interactive helpers are not implemented"
+    },
+    "list": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "locals": {
+      "status": "unsupported",
+      "scope": "Live frame-local reflection is not implemented"
+    },
+    "map": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "max": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "memoryview": {
+      "status": "unsupported",
+      "scope": "The buffer protocol is not implemented"
+    },
+    "min": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "next": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "object": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "oct": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "open": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "ord": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "pow": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "print": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "property": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "quit": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "range": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "repr": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "reversed": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "round": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "set": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "setattr": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "slice": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "sorted": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "staticmethod": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "str": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "sum": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "super": {
+      "status": "unsupported",
+      "scope": "Class cells and full descriptor/MRO behavior are not implemented"
+    },
+    "tuple": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "type": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "vars": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    },
+    "zip": {
+      "status": "native",
+      "scope": "See docs/BUILTINS.md"
+    }
+  },
+  "calcium_version": "26.10",
+  "counts": {
+    "native": 129,
+    "unsupported": 23
+  }
+}

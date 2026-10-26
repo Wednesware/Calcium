@@ -20,6 +20,7 @@ from ...optimizer import optimize
 from ..cache import cached_object
 from ..project import module_id
 from .builder import build as build_ir
+from .builtins import inventory
 from .frontend import prepare
 from .generator import generate
 from .standards import LIBRARIES, MODULES
@@ -34,6 +35,7 @@ def analyze(compiler, source, module):
             "target": compiler.target,
             "optimization": compiler.optimization,
             "fallback_allowed": False,
+            "builtin_coverage": inventory(),
         }
     )
     start = perf_counter()
@@ -248,8 +250,9 @@ def emit(directory, result, plan):
         "generator": "calcium",
         "version": __version__,
         "backend": "native",
-        "runtime_abi": 4,
+        "runtime_abi": 5,
         "runtime_dependencies": result.runtime_dependencies,
+        "builtin_coverage": result.metadata["builtin_coverage"],
         "native_standard_modules": result.metadata["native_standard_modules"],
         "compile_flags": ["-pthread"]
         if "http.server" in result.metadata["native_standard_modules"]
@@ -272,7 +275,7 @@ def emit(directory, result, plan):
         "source_sha256": snapshot.digest,
         "optimization_report": result.optimization_report,
         "modules": [{"c_file": p.name} for p in directory.glob("*.c") if p.name != "program.c"],
-        "native_files": ["cart.h", "standard.h"],
+        "native_files": [p.name for p in (runtime / "include").glob("*.h")],
     }
     (directory / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
@@ -386,7 +389,7 @@ def build(compiler, source, module, output, *, transpile=False):
                 ).splitlines()[0]
                 identity = {
                     "backend": "bmrw",
-                    "runtime_abi": 4,
+                    "runtime_abi": 5,
                     "compiler": version,
                     "compiler_sha256": sha256(Path(cc).read_bytes()).hexdigest(),
                 }
@@ -395,7 +398,7 @@ def build(compiler, source, module, output, *, transpile=False):
                     if compiler.cache_dir is not None
                     else Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
                     / "calcium"
-                    / "objects-native-v4"
+                    / "objects-native-v5"
                 )
                 objects, commands, reports, warnings = [], [], [], []
                 for path in sorted(staged.glob("*.c")):

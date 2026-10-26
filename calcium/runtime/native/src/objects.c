@@ -230,6 +230,81 @@ static int parent(int kind) {
   case CA_T_SYSTEMEXIT:
   case CA_T_KEYBOARDINTERRUPT:
     return CA_T_BASEEXCEPTION;
+  case CA_T_ARITHMETICERROR:
+    return CA_T_EXCEPTION;
+  case CA_T_FLOATINGPOINTERROR:
+    return CA_T_ARITHMETICERROR;
+  case CA_T_SYNTAXERROR:
+    return CA_T_EXCEPTION;
+  case CA_T_INDENTATIONERROR:
+    return CA_T_SYNTAXERROR;
+  case CA_T_TABERROR:
+    return CA_T_INDENTATIONERROR;
+  case CA_T_CONNECTIONERROR:
+    return CA_T_OSERROR;
+  case CA_T_BROKENPIPEERROR:
+    return CA_T_CONNECTIONERROR;
+  case CA_T_CONNECTIONABORTEDERROR:
+    return CA_T_CONNECTIONERROR;
+  case CA_T_CONNECTIONREFUSEDERROR:
+    return CA_T_CONNECTIONERROR;
+  case CA_T_CONNECTIONRESETERROR:
+    return CA_T_CONNECTIONERROR;
+  case CA_T_EOFERROR:
+    return CA_T_EXCEPTION;
+  case CA_T_BUFFERERROR:
+    return CA_T_EXCEPTION;
+  case CA_T_GENERATOREXIT:
+    return CA_T_BASEEXCEPTION;
+  case CA_T_STOPASYNCITERATION:
+    return CA_T_EXCEPTION;
+  case CA_T_BLOCKINGIOERROR:
+    return CA_T_OSERROR;
+  case CA_T_CHILDPROCESSERROR:
+    return CA_T_OSERROR;
+  case CA_T_INTERRUPTEDERROR:
+    return CA_T_OSERROR;
+  case CA_T_ISADIRECTORYERROR:
+    return CA_T_OSERROR;
+  case CA_T_NOTADIRECTORYERROR:
+    return CA_T_OSERROR;
+  case CA_T_PROCESSLOOKUPERROR:
+    return CA_T_OSERROR;
+  case CA_T_UNICODETRANSLATEERROR:
+    return CA_T_UNICODEERROR;
+  case CA_T_SYSTEMERROR:
+    return CA_T_EXCEPTION;
+  case CA_T_REFERENCEERROR:
+    return CA_T_EXCEPTION;
+  case CA_T_PYTHONFINALIZATIONERROR:
+    return CA_T_RUNTIMEERROR;
+  case CA_T_WARNING:
+    return CA_T_EXCEPTION;
+  case CA_T_USERWARNING:
+    return CA_T_WARNING;
+  case CA_T_DEPRECATIONWARNING:
+    return CA_T_WARNING;
+  case CA_T_PENDINGDEPRECATIONWARNING:
+    return CA_T_WARNING;
+  case CA_T_SYNTAXWARNING:
+    return CA_T_WARNING;
+  case CA_T_RUNTIMEWARNING:
+    return CA_T_WARNING;
+  case CA_T_FUTUREWARNING:
+    return CA_T_WARNING;
+  case CA_T_IMPORTWARNING:
+    return CA_T_WARNING;
+  case CA_T_UNICODEWARNING:
+    return CA_T_WARNING;
+  case CA_T_BYTESWARNING:
+    return CA_T_WARNING;
+  case CA_T_RESOURCEWARNING:
+    return CA_T_WARNING;
+  case CA_T_ENCODINGWARNING:
+    return CA_T_WARNING;
+  case CA_T_ZERODIVISIONERROR:
+  case CA_T_OVERFLOWERROR:
+    return CA_T_ARITHMETICERROR;
   case CA_T_UNBOUNDLOCALERROR:
     return CA_T_NAMEERROR;
   case CA_T_KEYERROR:
@@ -273,6 +348,10 @@ static int parent(int kind) {
   }
 }
 int ca_subclass(CaRuntime *rt, CaValue sub, CaValue type) {
+  if (sub.tag == CA_FUNCTION_T && sub.as.fn->builtin == 2)
+    sub = ca_type(CA_T_RANGE);
+  if (type.tag == CA_FUNCTION_T && type.as.fn->builtin == 2)
+    type = ca_type(CA_T_RANGE);
   if (sub.tag == CA_FUNCTION_T && sub.as.fn->builtin >= 4 &&
       sub.as.fn->builtin <= 7)
     sub = ca_type(CA_T_LIST + sub.as.fn->builtin - 4);
@@ -311,6 +390,8 @@ int ca_subclass(CaRuntime *rt, CaValue sub, CaValue type) {
   }
 }
 int ca_isinstance(CaRuntime *rt, CaValue value, CaValue type) {
+  if (type.tag == CA_FUNCTION_T && type.as.fn->builtin == 2)
+    type = ca_type(CA_T_RANGE);
   if (type.tag == CA_TUPLE_T) {
     CaContainer *c = (CaContainer *)type.as.obj;
     for (size_t i = 0; i < c->length; i++)
@@ -352,6 +433,10 @@ int ca_isinstance(CaRuntime *rt, CaValue value, CaValue type) {
     return value.tag == CA_CLASS_T || value.tag == CA_TYPE_T ||
            (value.tag == CA_FUNCTION_T && value.as.fn->builtin >= 4 &&
             value.as.fn->builtin <= 7);
+  if (type.as.i == CA_T_RANGE)
+    return value.tag == CA_RANGE_T;
+  if (type.as.i == CA_T_SLICE)
+    return value.tag == CA_SLICE_T;
   if (type.as.i == CA_T_NONE)
     return value.tag == CA_NONE_T;
   if (type.as.i >= CA_T_LIST && type.as.i <= CA_T_SET) {
@@ -469,6 +554,8 @@ CaValue ca_type_of(CaValue value) {
     return ca_type(CA_T_INT);
   case CA_FLOAT_T:
     return ca_type(CA_T_FLOAT);
+  case CA_SLICE_T:
+    return ca_type(CA_T_SLICE);
   case CA_STR_T:
     return ca_type(CA_T_STR);
   case CA_BYTES_T:
@@ -483,6 +570,9 @@ CaValue ca_type_of(CaValue value) {
   case CA_CLOSURE_T:
     return ca_type(CA_T_FUNCTION);
   case CA_FUNCTION_T:
+    if (value.as.fn->builtin == 2 ||
+        (value.as.fn->builtin >= 4 && value.as.fn->builtin <= 7))
+      return ca_type(CA_T_TYPE);
     return ca_type(value.as.fn->builtin ? CA_T_BUILTIN_FUNCTION
                                         : CA_T_FUNCTION);
   case CA_LIST_T:
@@ -501,11 +591,18 @@ CaValue ca_type_of(CaValue value) {
     return ca_type(CA_T_BUILTIN_FUNCTION);
   case CA_FOREIGN_T: {
     CaForeign *f = (CaForeign *)value.as.obj;
-    return ca_type(f->kind == CA_F_PATH       ? CA_T_PATH
-                   : f->kind == CA_F_DATETIME ? CA_T_DATETIME
-                   : f->kind == CA_F_UUID     ? CA_T_UUID
-                   : f->kind == CA_F_UTC      ? CA_T_TIMEZONE
-                                              : CA_T_OBJECT);
+    return ca_type(
+        f->kind == CA_F_MAP      ? CA_T_MAP
+        : f->kind == CA_F_FILTER ? CA_T_FILTER
+        : f->kind == CA_F_REVERSED
+            ? (ca_capture(f->state, 0).tag == CA_LIST_T   ? CA_T_LIST_REVERSE
+               : ca_capture(f->state, 0).tag == CA_DICT_T ? CA_T_DICT_REVERSE
+                                                          : CA_T_REVERSED)
+        : f->kind == CA_F_PATH     ? CA_T_PATH
+        : f->kind == CA_F_DATETIME ? CA_T_DATETIME
+        : f->kind == CA_F_UUID     ? CA_T_UUID
+        : f->kind == CA_F_UTC      ? CA_T_TIMEZONE
+                                   : CA_T_OBJECT);
   }
   default:
     return ca_type(CA_T_OBJECT);
@@ -704,4 +801,40 @@ CaValue ca_object_compare(CaRuntime *rt, CaValue a, CaValue b, const char *op,
     }
   }
   return CA_UNBOUND;
+}
+
+void ca_object_delete(CaRuntime *rt, CaValue object, const char *name) {
+  CaValue mapping = CA_UNBOUND;
+  if (object.tag == CA_INSTANCE_T) {
+    CaValue descriptor =
+        ca_class_lookup(((CaInstance *)object.as.obj)->type, name);
+    if (descriptor.tag == CA_FOREIGN_T &&
+        ((CaForeign *)descriptor.as.obj)->kind == CA_F_PROPERTY) {
+      ca_error(rt, "AttributeError", "property has no deleter");
+      return;
+    }
+    mapping = ((CaInstance *)object.as.obj)->namespace_;
+  } else if (object.tag == CA_CLASS_T)
+    mapping = ((CaClass *)object.as.obj)->namespace_;
+  else {
+    ca_error(rt, "AttributeError",
+             "object does not support attribute deletion");
+    return;
+  }
+  CaValue key = ca_string(rt, name, strlen(name)), args[] = {mapping, key};
+  if (!rt->error)
+    ca_dict_pop(rt, 2, 0, args, NULL);
+  if (rt->error &&
+      ca_exception_match(rt, rt->pending, ca_type(CA_T_KEYERROR))) {
+    ca_exception_take(rt);
+    ca_error(rt, "AttributeError", name);
+  }
+}
+
+CaValue ca_class_finalize(CaRuntime *rt, CaValue value) {
+  CaClass *type = (CaClass *)value.as.obj;
+  if (get(type->namespace_, "__eq__").tag != CA_UNBOUND_T &&
+      get(type->namespace_, "__hash__").tag == CA_UNBOUND_T)
+    set(rt, type->namespace_, "__hash__", CA_NONE);
+  return rt->error ? CA_UNBOUND : value;
 }

@@ -1,4 +1,4 @@
-# Bonemarrow 26.9 native library scope
+# Bonemarrow 26.10 native library scope
 
 Imports below resolve to native C modules. Import availability does **not** mean
 every Python API or option exists. Unsupported attributes/options raise native
@@ -74,3 +74,6 @@ Session helpers also include os.open/common O_* flags, Path.glob/with_suffix/unl
 dict.pop and ASCII-str/bytes secrets.compare_digest. Unsupported directory-fd
 options and multi-component glob patterns remain explicit errors. HTTP manifests
 record -pthread for compilation and linking.
+
+Native built-ins are cataloged separately in [BUILTINS.md](BUILTINS.md). Their
+availability does not add re/importlib/threading/urllib/zipfile/subprocess modules.

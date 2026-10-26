@@ -1,7 +1,7 @@
-# Bonemarrow native backend — 26.9
+# Bonemarrow native backend — 26.10
 
 Calcium is the public CLI and API; **Bonemarrow (`bmrw`)** is the independent
-Python-to-C execution engine, using CaRT. Bonemarrow is the default in 26.9.
+Python-to-C execution engine, using CaRT. Bonemarrow is the default in 26.10.
 `--use bmrw`, `--bmrw`, and legacy `--backend native` select the same engine.
 `--cpython` / `--use cpython` / `--backend cpython` explicitly select the
 established compatibility backend. Conflicting selections are errors.
@@ -68,7 +68,7 @@ implemented. Adding files with `--include-all` does not implement dynamic import
 
 ## Language support
 
-| Feature | Bonemarrow 26.9 |
+| Feature | Bonemarrow 26.10 |
 | --- | --- |
 | Values | None, bool, arbitrary-precision int, double, UTF-8 str, bytes, functions/closures, ranges, modules, containers, classes/instances and native resources |
 | Arithmetic | Addition/subtraction/multiplication, true/floor division, modulo, powers and integer bitwise operations/shifts; checked overflow promotes to big integers |
@@ -77,7 +77,7 @@ implemented. Adding files with `--include-all` does not implement dynamic import
 | Control flow | Branches, loops, comprehensions, lazy generator expressions, walrus, sync/async context managers, native coroutines/await and structured exceptions |
 | Text | Bytes operations, Unicode indexing/case, selected codecs/methods and f-strings |
 | Libraries | Selected native APIs documented in [NATIVE_LIBRARIES.md](NATIVE_LIBRARIES.md) |
-| Identity/reflection | Explicit None/bool identity comparisons; general reflection and Python tracebacks remain unsupported |
+| Identity/reflection | Native object identity/id; general reflection and Python tracebacks remain unsupported |
 
 Dictionary/set storage is currently a contiguous, insertion-preserving value
 array with **linear lookup**, not a native hash-table optimization. Dictionary
@@ -90,26 +90,26 @@ currently accepts a dictionary positional source, without keyword expansion.
 Dictionary views are supported; unlisted methods remain unsupported.
 
 The runtime is single-threaded, with 256 active calls and 128 parameters/call
-arguments (including expanded calls). Source list/tuple/set literals have at most
-128 elements, dictionaries 64 entries; runtime containers can grow beyond these
-frontend limits. Large CIR frames use checked heap allocations. Basic signatures
+arguments (including expanded calls). Container literals can exceed the former
+128-element/64-entry caps; large call scratch buffers use checked heap storage.
+Large CIR frames use checked heap allocations. Basic signatures
 may shadow builtin parameter names; some global builtin shadowing is conservatively
 rejected. Embedded-NUL keyword names in expanded calls are unsupported.
 
 Still rejected or unimplemented: general generator functions, async iteration/generators,
-metaclasses/multiple inheritance, slice assignment, starred assignment, deletion,
+metaclasses/multiple inheritance, slice assignment, general deletion statements,
 arbitrary future flags, surrogate string values and unrestricted
 reflection. Standard-library APIs are bounded subsets. GUI/FastAPI/pycrdt bindings
 are not implemented. Unsupported syntax gets C160; unsupported dynamic operations
 produce native errors. No compatibility fallback occurs.
 
-Exact error wording, object addresses, general numeric identity, GC scheduling,
+Exact error wording, object addresses, CPython-specific immutable interning, GC scheduling,
 resource exhaustion, CPython-specific I/O/digit-limit environment configuration,
 thread/signals/finalizers/weakrefs are outside this milestone's contract.
 
-## CaRT ABI 4 and ownership
+## CaRT ABI 5 and ownership
 
-CaRT's internal ABI is version 4, not a stable public C ABI. `CaValue` directly
+CaRT's internal ABI is version 5, not a stable public C ABI. `CaValue` directly
 tags None/bool/int64/double. Big integers use signed base-2^30 limbs, checked
 promotion, and CaRT decimal conversion; printing retains the default 4300-digit
 limit. Checked O2/O3 scalar integer kernels and guarded same-module direct calls
@@ -118,9 +118,10 @@ conventions, with no Python tuple/dictionary argument allocation; variadic Pytho
 parameters necessarily materialize native tuple/dictionary values. Cross-module
 scalar specialization, general inlining and float kernels remain future work.
 
-Tagged floats carry a copy-preserved identity token, so NaN membership/key/container
-equality agrees with Python without heap-boxing numeric values. Primitive `nan == nan`
-remains false. This does not expose general `id()` or numeric `is` semantics.
+Tagged numbers carry copy-preserved identity tokens outside canonical small integers.
+Native `id()` and `is` preserve aliases; CPython-specific immutable interning is not
+replicated. NaN membership/key/container equality preserves object identity without
+heap-boxing numeric values, while primitive `nan == nan` remains false.
 
 A non-moving mark/sweep heap owns strings, big integers, ranges, iterators,
 containers, slices, bound methods, classes, closure cells, exceptions, generator
@@ -152,7 +153,11 @@ adds the awakening message. JSON stdout stays machine-readable; generated
 executables print no compiler/startup identity messages.
 
 Projects, native module imports, richer language/runtime support and selected
-library bindings are shipped. See [26.9 notes](releases/26.9.md) for the Discribe
+library bindings are shipped. See [26.10 notes](releases/26.10.md) for the Discribe
 core integration evidence and remaining application blockers. Historical package
 benchmarks in [NATIVE_BENCHMARKS.md](NATIVE_BENCHMARKS.md) describe 26.7;
 they do not measure the new library workloads.
+
+See [the built-in inventory and contract](BUILTINS.md) for 26.10 additions and
+remaining runtime features. The vendored Nitrogen dependency graph still has
+standard-library blockers; earlier Discribe CLI probes used the earlier graph.

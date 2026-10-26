@@ -644,3 +644,45 @@ CaValue ca_integer_bitwise(CaRuntime *rt, CaValue a, CaValue b,
   return a.tag == CA_BOOL_T && b.tag == CA_BOOL_T ? ca_bool(value.as.i != 0)
                                                   : value;
 }
+CaValue ca_integer_base(CaRuntime *rt, CaValue value, int base) {
+  Digits d;
+  digits(value, &d);
+  size_t bits = d.n ? 30 * (d.n - 1) : 0;
+  if (d.n) {
+    uint32_t high = d.d[d.n - 1];
+    while (high) {
+      bits++;
+      high >>= 1;
+    }
+  }
+  unsigned group = base == 2 ? 1 : base == 8 ? 3 : 4;
+  size_t count = (bits + group - 1) / group;
+  if (!count)
+    count = 1;
+  if (count > SIZE_MAX - 4) {
+    ca_error(rt, "MemoryError", "integer string too large");
+    return CA_UNBOUND;
+  }
+  char *buffer = malloc(count + 4);
+  if (!buffer) {
+    ca_error(rt, "MemoryError", "integer format allocation failed");
+    return CA_UNBOUND;
+  }
+  size_t at = 0;
+  if (d.sign < 0)
+    buffer[at++] = '-';
+  buffer[at++] = '0';
+  buffer[at++] = base == 2 ? 'b' : base == 8 ? 'o' : 'x';
+  static const char digits[] = "0123456789abcdef";
+  for (size_t i = count; i--;) {
+    size_t bit = i * group, index = bit / 30;
+    unsigned offset = (unsigned)(bit % 30);
+    uint64_t v = index < d.n ? d.d[index] : 0;
+    if (index + 1 < d.n)
+      v |= (uint64_t)d.d[index + 1] << 30;
+    buffer[at++] = digits[(v >> offset) & ((1u << group) - 1)];
+  }
+  CaValue result = ca_string(rt, buffer, at);
+  free(buffer);
+  return result;
+}

@@ -99,6 +99,17 @@ static CaModule *load(CaRuntime *rt, const char *name) {
 }
 CaValue ca_attribute(CaRuntime *rt, CaValue value, const char *name,
                      int importing) {
+  if (value.tag == CA_SLICE_T) {
+    CaSlice *s = (CaSlice *)value.as.obj;
+    if (!strcmp(name, "start"))
+      return s->start;
+    if (!strcmp(name, "stop"))
+      return s->stop;
+    if (!strcmp(name, "step"))
+      return s->step;
+    ca_error(rt, "AttributeError", name);
+    return CA_UNBOUND;
+  }
   if (value.tag == CA_GENERATOR_T) {
     CaGenerator *g = (CaGenerator *)value.as.obj;
     if (!strcmp(name, "__name__"))

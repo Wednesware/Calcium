@@ -1,4 +1,4 @@
-# Remaining-work ledger — 26.9
+# Remaining-work ledger — 26.10
 
 This ledger distinguishes shipped work from architecture projects. A passing
 regression suite establishes tested behavior; it does not establish complete
@@ -8,8 +8,12 @@ Bonemarrow is the default. 26.8 adds native classes, closures, structured except
 comprehensions/lazy generator expressions and selected native library APIs. The
 Discribe persistence core has passed a local differential probe; its full GUI and
 collaboration dependencies remain unsupported. 26.9 adds native coroutines, CLI
-parsing, context helpers and static HTTP serving; Discribe builds and --help runs.
-See [26.9 notes](releases/26.9.md).
+parsing, context helpers and static HTTP serving; the earlier dependency-free
+Discribe entry built and ran --help. The current checkout vendors Nitrogen and
+still needs native subprocess, zipfile, urllib, traceback, re, importlib and
+threading implementations. 26.10 removes its reported built-in and listed syntax
+diagnostics, with bounded native coverage documented in [BUILTINS.md](BUILTINS.md).
+See [26.10 notes](releases/26.10.md).
 
 The existing rows describe the CPython backend unless stated otherwise. The native
 backend is an initial standalone subset; see [its exact contract](NATIVE.md).
@@ -44,3 +48,7 @@ backend is an initial standalone subset; see [its exact contract](NATIVE.md).
 Large remaining architecture projects need their own implementation and platform
 validation. They are not represented as completed by fallback, packaging metadata,
 a renamed option, or a higher optimization-level number.
+
+26.10 ships a broad [native built-in pass](BUILTINS.md), not all Python runtime
+features. The vendored Nitrogen graph still requires subprocess, zipfile, urllib,
+traceback, re, importlib and threading support.

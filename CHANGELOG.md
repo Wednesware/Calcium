@@ -1,5 +1,9 @@
 # Changelog
 
+## 26.10
+
+Broad native built-in and exception coverage, a public-name inventory, starred assignment, native identity, selected match patterns and larger literals. See [release notes](docs/releases/26.10.md) for exact scope and remaining Nitrogen standard-library blockers.
+
 ## 26.9
 
 Native coroutines/await/async context managers, selected asyncio/contextlib/argparse/HTTP APIs, process arguments, bitwise integers and session filesystem helpers. The reported Discribe C160 blockers are removed; full external GUI/collaboration dependencies remain open. See [release notes](docs/releases/26.9.md).

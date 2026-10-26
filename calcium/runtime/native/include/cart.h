@@ -1,5 +1,8 @@
 #ifndef CALCIUM_CART_H
 #define CALCIUM_CART_H
+#ifndef CART_PY_MINOR
+#define CART_PY_MINOR 14
+#endif
 #include <limits.h>
 #include <math.h>
 #include <stddef.h>
@@ -7,7 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-/* CaRT ABI 4. Tagged primitives, module namespaces and traced heap objects,
+/* CaRT ABI 5. Tagged primitives, module namespaces and traced heap objects,
  * tracing roots. */
 typedef struct CaObj CaObj;
 typedef struct CaRuntime CaRuntime;
@@ -56,8 +59,11 @@ typedef struct {
 } CaValue;
 #define CA_UNBOUND ((CaValue){.tag = CA_UNBOUND_T})
 #define CA_NONE ((CaValue){.tag = CA_NONE_T})
+uint64_t ca_next_identity(void);
 static inline CaValue ca_int(int64_t i) {
-  return (CaValue){.tag = CA_INT_T, .as.i = i};
+  return (CaValue){.tag = CA_INT_T,
+                   .identity = (i >= -5 && i <= 256) ? 0 : ca_next_identity(),
+                   .as.i = i};
 }
 static inline CaValue ca_bool(int i) {
   return (CaValue){.tag = CA_BOOL_T, .as.i = !!i};
@@ -251,6 +257,12 @@ enum {
   CA_T_DICT,
   CA_T_SET,
   CA_T_RANGE,
+  CA_T_SLICE,
+  CA_T_MAP,
+  CA_T_FILTER,
+  CA_T_REVERSED,
+  CA_T_LIST_REVERSE,
+  CA_T_DICT_REVERSE,
   CA_T_BASEEXCEPTION = 200,
   CA_T_EXCEPTION,
   CA_T_TYPEERROR,
@@ -289,7 +301,43 @@ enum {
   CA_T_UNICODEENCODEERROR,
   CA_T_UNICODEDECODEERROR,
   CA_T_CANCELLEDERROR,
-  CA_T_TIMEOUTERROR
+  CA_T_TIMEOUTERROR,
+  CA_T_ARITHMETICERROR,
+  CA_T_FLOATINGPOINTERROR,
+  CA_T_SYNTAXERROR,
+  CA_T_INDENTATIONERROR,
+  CA_T_TABERROR,
+  CA_T_CONNECTIONERROR,
+  CA_T_BROKENPIPEERROR,
+  CA_T_CONNECTIONABORTEDERROR,
+  CA_T_CONNECTIONREFUSEDERROR,
+  CA_T_CONNECTIONRESETERROR,
+  CA_T_EOFERROR,
+  CA_T_BUFFERERROR,
+  CA_T_GENERATOREXIT,
+  CA_T_STOPASYNCITERATION,
+  CA_T_BLOCKINGIOERROR,
+  CA_T_CHILDPROCESSERROR,
+  CA_T_INTERRUPTEDERROR,
+  CA_T_ISADIRECTORYERROR,
+  CA_T_NOTADIRECTORYERROR,
+  CA_T_PROCESSLOOKUPERROR,
+  CA_T_UNICODETRANSLATEERROR,
+  CA_T_SYSTEMERROR,
+  CA_T_REFERENCEERROR,
+  CA_T_PYTHONFINALIZATIONERROR,
+  CA_T_WARNING,
+  CA_T_USERWARNING,
+  CA_T_DEPRECATIONWARNING,
+  CA_T_PENDINGDEPRECATIONWARNING,
+  CA_T_SYNTAXWARNING,
+  CA_T_RUNTIMEWARNING,
+  CA_T_FUTUREWARNING,
+  CA_T_IMPORTWARNING,
+  CA_T_UNICODEWARNING,
+  CA_T_BYTESWARNING,
+  CA_T_RESOURCEWARNING,
+  CA_T_ENCODINGWARNING,
 };
 static inline CaValue ca_type(long id) {
   return (CaValue){.tag = CA_TYPE_T, .as.i = id};
@@ -301,6 +349,7 @@ CaValue ca_capture(CaValue, size_t);
 CaValue ca_closure(CaRuntime *, const CaFunction *, CaValue *, size_t,
                    CaValue *);
 CaValue ca_class(CaRuntime *, const char *, size_t, CaValue *);
+CaValue ca_class_finalize(CaRuntime *, CaValue);
 CaValue ca_class_load(CaRuntime *, CaValue, CaValue, const char *);
 CaValue ca_object_attribute(CaRuntime *, CaValue, const char *);
 void ca_object_set(CaRuntime *, CaValue, const char *, CaValue);
@@ -311,6 +360,23 @@ CaValue ca_object_call(CaRuntime *, CaValue, int, int, CaValue *,
                        const char **);
 int ca_subclass(CaRuntime *, CaValue, CaValue);
 int ca_isinstance(CaRuntime *, CaValue, CaValue);
+CaValue ca_builtin_more_lookup(const char *);
+CaValue ca_builtin_more(CaRuntime *, int, int, int, CaValue *, const char **);
+CaValue ca_builtin_index(CaRuntime *, CaValue);
+int ca_file_close(CaForeign *);
+CaValue ca_file_read(CaRuntime *, CaValue, long, int);
+CaValue ca_file_builtin(CaRuntime *, int, int, int, CaValue *, const char **);
+CaValue ca_more_method(CaRuntime *, CaValue, int);
+CaValue ca_file_decode(CaRuntime *, CaForeign *, CaValue);
+CaValue ca_file_option(CaForeign *, size_t);
+CaValue ca_builtin_open(CaRuntime *, int, int, CaValue *, const char **);
+int ca_builtin_iterator_next(CaRuntime *, CaValue, CaValue *);
+CaValue ca_unpack_star(CaRuntime *, CaValue, size_t, size_t);
+int ca_same_identity(CaValue, CaValue);
+CaValue ca_identity(CaRuntime *, CaValue);
+CaValue ca_integer_base(CaRuntime *, CaValue, int);
+CaValue ca_hash_value(CaRuntime *, CaValue);
+void ca_object_delete(CaRuntime *, CaValue, const char *);
 CaValue ca_builtin_lookup(const char *);
 const char *ca_type_name(CaValue);
 CaValue ca_exception_type(const char *);
