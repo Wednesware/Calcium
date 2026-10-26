@@ -26,6 +26,17 @@ static const CaFunction extra[] = {{"isinstance", 0, 0, NULL, NULL, 10},
                                    {"callable", 0, 0, NULL, NULL, 35},
                                    {"type", 0, 0, NULL, NULL, 36}};
 CaValue ca_builtin_lookup(const char *name) {
+#if CART_PY_MINOR < 13
+  if (!strcmp(name, "PythonFinalizationError"))
+    return CA_UNBOUND;
+#endif
+  CaValue more = ca_builtin_more_lookup(name);
+  if (more.tag != CA_UNBOUND_T)
+    return more;
+  if (!strcmp(name, "__debug__"))
+    return ca_bool(1);
+  if (!strcmp(name, "slice"))
+    return ca_type(CA_T_SLICE);
   if (!strcmp(name, "type"))
     return ca_type(CA_T_TYPE);
   CaValue error = ca_exception_type(name);
@@ -150,6 +161,22 @@ static int string_name(CaRuntime *rt, CaValue value, const char **name) {
 }
 CaValue ca_extended_call(CaRuntime *rt, int kind, int n, int nkw, CaValue *args,
                          const char **keys) {
+  if (kind >= CA_T_MAP && kind <= CA_T_REVERSED)
+    return ca_builtin_more(rt,
+                           kind == CA_T_MAP      ? B_MAP
+                           : kind == CA_T_FILTER ? B_FILTER
+                                                 : B_REVERSED,
+                           n, nkw, args, keys);
+  if (kind >= 400)
+    return ca_builtin_more(rt, kind, n, nkw, args, keys);
+  if (kind == 30)
+    return ca_builtin_more(rt, B_ROUND, n, nkw, args, keys);
+  if (kind == CA_T_SLICE)
+    return ca_builtin_more(rt, B_SLICE, n, nkw, args, keys);
+  if (kind == 33 && n == 2 && !nkw)
+    return ca_builtin_more(rt, B_CALL_ITER, n, nkw, args, keys);
+  if (kind == CA_T_RANGE)
+    return ca_call(rt, ca_function(&ca_builtin_range), n, nkw, args, keys);
   if (kind == CA_T_TYPE || kind == 36) {
     if (n != 1 || nkw)
       goto arguments;

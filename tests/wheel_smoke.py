@@ -19,7 +19,7 @@ def main():
             cwd=root,
             text=True,
         )
-        assert version.strip() == "Calcium 26.9", version
+        assert version.strip() == "Calcium 26.11", version
         license_name = subprocess.check_output(
             [
                 sys.executable,
@@ -117,6 +117,18 @@ def main():
             "parser.add_argument('--count',type=int)\n"
             "print(parser.parse_args(['--count','7']).count)\n"
             "with suppress(ValueError): raise ValueError('handled')\n"
+            "with open('builtin-io.txt','w',encoding='utf-8') as stream: stream.write('native')\n"
+            "with open('builtin-io.txt') as stream: print(stream.read())\n"
+            "print(list(map(lambda x:x+1,range(3))),any([0,1]),pow(3,-1,11),round(2.675,2))\n"
+            "import re,subprocess,zipfile,threading,urllib.request,importlib.util,traceback\n"
+            "from pathlib import Path\n"
+            "print(re.sub('[0-9]+','X','native2611'),subprocess.run(['/bin/true']).returncode)\n"
+            "with zipfile.ZipFile('native.zip','w') as archive:archive.writestr('value',b'zip')\n"
+            "with zipfile.ZipFile('native.zip') as archive:print(archive.read('value'))\n"
+            "values=[]\nthread=threading.Thread(target=lambda:values.append(9))\n"
+            "thread.start()\nthread.join()\nprint(values)\n"
+            "urllib.request.urlretrieve('file://'+str(Path('builtin-io.txt').resolve()),'download.txt')\n"
+            "print(Path('download.txt').read_text(),importlib.util.find_spec('re') is not None)\n"
         )
         library_binary = root / "native-libraries"
         run = subprocess.run(
@@ -140,7 +152,7 @@ def main():
         assert run.stdout == (
             '{"name": "native"}\n'
             "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\n"
-            "(42,)\n6\n7\n"
+            "(42,)\n6\n7\nnative\n[1, 2, 3] True 4 2.67\nnativeX 0\nb'zip'\n[9]\nnative True\n"
         ), run.stdout
         library_source.unlink()
         assert (

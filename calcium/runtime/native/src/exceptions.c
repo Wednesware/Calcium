@@ -1,4 +1,4 @@
-#include "standard.h"
+#include "dependencies.h"
 static const char *names[] = {"BaseException",
                               "Exception",
                               "TypeError",
@@ -35,7 +35,52 @@ static const char *names[] = {"BaseException",
                               "sqlite3.DataError",
                               "UnicodeError",
                               "UnicodeEncodeError",
-                              "UnicodeDecodeError", "asyncio.exceptions.CancelledError", "TimeoutError"};
+                              "UnicodeDecodeError",
+                              "asyncio.exceptions.CancelledError",
+                              "TimeoutError",
+                              "ArithmeticError",
+                              "FloatingPointError",
+                              "SyntaxError",
+                              "IndentationError",
+                              "TabError",
+                              "ConnectionError",
+                              "BrokenPipeError",
+                              "ConnectionAbortedError",
+                              "ConnectionRefusedError",
+                              "ConnectionResetError",
+                              "EOFError",
+                              "BufferError",
+                              "GeneratorExit",
+                              "StopAsyncIteration",
+                              "BlockingIOError",
+                              "ChildProcessError",
+                              "InterruptedError",
+                              "IsADirectoryError",
+                              "NotADirectoryError",
+                              "ProcessLookupError",
+                              "UnicodeTranslateError",
+                              "SystemError",
+                              "ReferenceError",
+                              "PythonFinalizationError",
+                              "Warning",
+                              "UserWarning",
+                              "DeprecationWarning",
+                              "PendingDeprecationWarning",
+                              "SyntaxWarning",
+                              "RuntimeWarning",
+                              "FutureWarning",
+                              "ImportWarning",
+                              "UnicodeWarning",
+                              "BytesWarning",
+                              "ResourceWarning",
+                              "EncodingWarning",
+                              "subprocess.SubprocessError",
+                              "subprocess.CalledProcessError",
+                              "subprocess.TimeoutExpired",
+                              "urllib.error.URLError",
+                              "urllib.error.HTTPError",
+                              "zipfile.BadZipFile",
+                              "re.PatternError"};
 const char *ca_type_name(CaValue type) {
   if (type.tag == CA_CLASS_T)
     return ((CaString *)((CaClass *)type.as.obj)->name.as.obj)->data;
@@ -66,6 +111,18 @@ const char *ca_type_name(CaValue type) {
       return "method";
     case CA_T_TYPE:
       return "type";
+    case CA_T_MAP:
+      return "map";
+    case CA_T_FILTER:
+      return "filter";
+    case CA_T_LIST_REVERSE:
+      return "list_reverseiterator";
+    case CA_T_DICT_REVERSE:
+      return "dict_reversekeyiterator";
+    case CA_T_REVERSED:
+      return "reversed";
+    case CA_T_SLICE:
+      return "slice";
     case CA_T_LIST:
       return "list";
     case CA_T_TUPLE:
@@ -83,6 +140,8 @@ const char *ca_type_name(CaValue type) {
   return "object";
 }
 CaValue ca_exception_type(const char *name) {
+  if (!strcmp(name, "EnvironmentError") || !strcmp(name, "IOError"))
+    name = "OSError";
   for (size_t i = 0; i < sizeof names / sizeof names[0]; i++)
     if (!strcmp(name, names[i]))
       return ca_type(200 + (long)i);
@@ -97,8 +156,12 @@ CaValue ca_exception_new(CaRuntime *rt, CaValue type, int n, CaValue *args) {
   e->message = CA_UNBOUND;
   e->cause = CA_NONE;
   e->context = rt->handled.tag == CA_EXCEPTION_T ? rt->handled : CA_NONE;
-  return rt->error ? CA_UNBOUND
-                   : (CaValue){.tag = CA_EXCEPTION_T, .as.obj = (CaObj *)e};
+  CaValue value = {.tag = CA_EXCEPTION_T, .as.obj = (CaObj *)e};
+  if (type.tag == CA_TYPE_T)
+    ca_dependency_exception(rt, value, n, args);
+  if (type.tag == CA_TYPE_T && !rt->error)
+    ca_dependency_exception_message(rt, value, n, args);
+  return rt->error ? CA_UNBOUND : value;
 }
 CaValue ca_error_get(CaRuntime *rt) {
   return rt->error ? rt->pending : CA_NONE;
@@ -145,6 +208,8 @@ void ca_raise(CaRuntime *rt, CaValue value, CaValue cause, int explicit_cause) {
     }
     e->cause = cause;
   }
+  if (e->trace.tag != CA_STR_T)
+    e->trace = ca_trace_capture(rt);
   CaValue message = ca_stringify(rt, value, 0);
   if (rt->error)
     return;

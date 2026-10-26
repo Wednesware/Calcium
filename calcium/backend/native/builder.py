@@ -136,7 +136,43 @@ class NativeBuilder(Builder):
         for node in nodes:
             if self.current.terminator is not None:
                 break
-            if isinstance(node, ast.ClassDef):
+            if isinstance(node, ast.Match):
+                slot = self.hidden()
+                value = self.expr(node.subject)
+                self.save(slot, value, node.lineno)
+                self.drop(value)
+
+                def pattern_test(pattern):
+                    subject = ast.copy_location(ast.Name(id=slot, ctx=ast.Load()), node)
+                    if isinstance(pattern, ast.MatchValue):
+                        return ast.Compare(
+                            left=subject, ops=[ast.Eq()], comparators=[pattern.value]
+                        )
+                    if isinstance(pattern, ast.MatchSingleton):
+                        return ast.Compare(
+                            left=subject,
+                            ops=[ast.Is()],
+                            comparators=[ast.Constant(value=pattern.value)],
+                        )
+                    if isinstance(pattern, ast.MatchOr):
+                        return ast.BoolOp(
+                            op=ast.Or(), values=[pattern_test(p) for p in pattern.patterns]
+                        )
+                    if isinstance(pattern, ast.MatchAs) and pattern.name is None:
+                        return ast.Constant(value=True)
+                    raise ValueError("unsupported native match pattern")
+
+                body = []
+                for case in reversed(node.cases):
+                    test = pattern_test(case.pattern)
+                    if case.guard is not None:
+                        test = ast.BoolOp(op=ast.And(), values=[test, case.guard])
+                    branch = ast.copy_location(ast.If(test=test, body=case.body, orelse=body), node)
+                    ast.fix_missing_locations(branch)
+                    body = [branch]
+                self.statements(body)
+                self.clear_hidden(slot)
+            elif isinstance(node, ast.ClassDef):
                 decorators = [self.expr(d) for d in node.decorator_list]
                 bases = [self.expr(b) for b in node.bases]
                 value = self.emit("native_class", bases, data=node.name, line=node.lineno)
@@ -162,6 +198,9 @@ class NativeBuilder(Builder):
                 self.statements(node.body)
                 self.class_slots.pop()
                 value = super().load(slot)
+                ready = self.emit("native_class_finalize", [value], line=node.lineno)
+                self.drop(value)
+                value = ready
                 self.emit("clear", data=slot, result=False, raises=False)
                 for decorator in reversed(decorators):
                     result = self.emit(

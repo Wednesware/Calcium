@@ -179,7 +179,7 @@ static void render(CaRuntime *rt, FILE *out, CaValue v, int mode) {
       const char *name = ca_type_name(e->type), *dot = strrchr(name, '.');
       fprintf(out, "%s(", dot ? dot + 1 : name);
     }
-    if (e->args.tag == CA_UNBOUND_T) {
+    if (e->args.tag == CA_UNBOUND_T || (!mode && e->message.tag == CA_STR_T)) {
       render(rt, out, e->message, mode ? 1 : 0);
     } else {
       CaContainer *args = (CaContainer *)e->args.as.obj;

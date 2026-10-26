@@ -8,6 +8,7 @@ OPS = {
     "native_yield",
     "native_await",
     "native_class",
+    "native_class_finalize",
     "native_class_load",
     "native_raw_load",
     "constant",
@@ -170,6 +171,7 @@ def validate(program: Program):
                 ):
                     raise CalciumInternalError("yield requires a native generator frame")
                 arities = {
+                    "native_class_finalize": 1,
                     "native_yield": 1,
                     "native_await": 1,
                     "native_raw_load": 0,

@@ -46,9 +46,22 @@ CaValue ca_module_start(CaRuntime *rt, CaModule *m) {
   if (m->state)
     return ca_module_value(m); /* partial namespace during cycles */
   m->state = 1;
+  CaModule *sys = ca_standard_find(rt, "sys");
+  CaValue cache = sys && sys != m && sys->state == 2
+                      ? ca_attribute(rt, ca_module_value(sys), "modules", 0)
+                      : CA_NONE;
+  if (cache.tag == CA_DICT_T)
+    ca_namespace_set(rt, cache, m->name, ca_module_value(m));
   m->initialize(rt);
   if (rt->error) {
     m->state = 0;
+    if (cache.tag == CA_DICT_T) {
+      CaValue failure = ca_exception_take(rt);
+      CaValue args[] = {cache, ca_string(rt, m->name, strlen(m->name)),
+                        CA_NONE};
+      ca_dict_pop(rt, 3, 0, args, NULL);
+      ca_error_set(rt, failure);
+    }
     for (size_t i = 0; i < m->count; i++)
       m->values[i] = CA_UNBOUND;
     return CA_UNBOUND;
@@ -99,6 +112,17 @@ static CaModule *load(CaRuntime *rt, const char *name) {
 }
 CaValue ca_attribute(CaRuntime *rt, CaValue value, const char *name,
                      int importing) {
+  if (value.tag == CA_SLICE_T) {
+    CaSlice *s = (CaSlice *)value.as.obj;
+    if (!strcmp(name, "start"))
+      return s->start;
+    if (!strcmp(name, "stop"))
+      return s->stop;
+    if (!strcmp(name, "step"))
+      return s->step;
+    ca_error(rt, "AttributeError", name);
+    return CA_UNBOUND;
+  }
   if (value.tag == CA_GENERATOR_T) {
     CaGenerator *g = (CaGenerator *)value.as.obj;
     if (!strcmp(name, "__name__"))
@@ -247,4 +271,8 @@ void ca_modules_destroy(CaRuntime *rt) {
     }
     m->state = 0;
   }
+}
+
+CaModule *ca_import_registry(CaRuntime *rt, const char *name) {
+  return load(rt, name);
 }

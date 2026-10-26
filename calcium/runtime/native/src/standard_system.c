@@ -1,5 +1,5 @@
 #define _GNU_SOURCE
-#include "standard.h"
+#include "dependencies.h"
 #include <ctype.h>
 #include <errno.h>
 #include <sys/random.h>
@@ -163,11 +163,16 @@ CaValue ca_system_call(CaRuntime *rt, int kind, int n, int nkw, CaValue *args,
     }
     struct timespec wait = {(time_t)seconds,
                             (long)((seconds - floor(seconds)) * 1e9)};
+    int failed = 0;
+    ca_thread_release(rt);
     while (nanosleep(&wait, &wait)) {
-      if (errno != EINTR)
-        return ca_native_oserror(rt, errno, NULL);
+      if (errno != EINTR) {
+        failed = errno;
+        break;
+      }
     }
-    return CA_NONE;
+    ca_thread_acquire(rt);
+    return failed ? ca_native_oserror(rt, failed, NULL) : CA_NONE;
   }
   if (kind == N_ENVIRON_GET) {
     const char *names[] = {"self", "key", "default"};

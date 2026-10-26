@@ -1,5 +1,6 @@
 #ifndef CALCIUM_STANDARD_H
 #define CALCIUM_STANDARD_H
+#include "builtin_ids.h"
 #include "cart.h"
 enum {
   CA_F_STATIC = 1,
@@ -33,7 +34,11 @@ enum {
   CA_F_READY,
   CA_F_WAIT_FOR,
   CA_F_GATHER,
-  CA_F_HTTP_SERVER
+  CA_F_HTTP_SERVER,
+  CA_F_MAP,
+  CA_F_FILTER,
+  CA_F_REVERSED,
+  CA_F_CALL_ITER
 };
 enum { CA_T_PATH = 300, CA_T_DATETIME, CA_T_TIMEZONE, CA_T_UUID };
 enum {

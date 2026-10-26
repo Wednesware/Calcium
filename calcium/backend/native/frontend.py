@@ -6,9 +6,16 @@ import copy
 import warnings
 
 from ...models import Diagnostic
+from .builtins import SUPPORTED, UNSUPPORTED
 
 ALLOWED = (
     ast.Module,
+    ast.Match,
+    ast.match_case,
+    ast.MatchValue,
+    ast.MatchSingleton,
+    ast.MatchOr,
+    ast.MatchAs,
     ast.AsyncFunctionDef,
     ast.Await,
     ast.AsyncWith,
@@ -157,79 +164,12 @@ def prepare(source):
                     hasattr(builtins, node.id)
                     or node.id in {"__spec__", "__cached__", "__annotations__", "__builtins__"}
                 )
-                and node.id
-                not in {
-                    "print",
-                    "range",
-                    "__name__",
-                    "__file__",
-                    "__package__",
-                    "len",
-                    "list",
-                    "tuple",
-                    "dict",
-                    "set",
-                    "str",
-                    "int",
-                    "float",
-                    "bool",
-                    "bytes",
-                    "object",
-                    "isinstance",
-                    "issubclass",
-                    "type",
-                    "getattr",
-                    "setattr",
-                    "hasattr",
-                    "staticmethod",
-                    "classmethod",
-                    "property",
-                    "sorted",
-                    "sum",
-                    "min",
-                    "max",
-                    "abs",
-                    "enumerate",
-                    "zip",
-                    "iter",
-                    "next",
-                    "repr",
-                    "ascii",
-                    "callable",
-                    "BaseException",
-                    "Exception",
-                    "ValueError",
-                    "TypeError",
-                    "RuntimeError",
-                    "NameError",
-                    "UnboundLocalError",
-                    "AttributeError",
-                    "KeyError",
-                    "IndexError",
-                    "LookupError",
-                    "OSError",
-                    "FileNotFoundError",
-                    "FileExistsError",
-                    "PermissionError",
-                    "ImportError",
-                    "ModuleNotFoundError",
-                    "ZeroDivisionError",
-                    "OverflowError",
-                    "MemoryError",
-                    "RecursionError",
-                    "StopIteration",
-                    "AssertionError",
-                    "NotImplementedError",
-                    "SystemExit",
-                    "KeyboardInterrupt",
-                    "TimeoutError",
-                    "UnicodeError",
-                    "UnicodeEncodeError",
-                    "UnicodeDecodeError",
-                }
+                and node.id not in SUPPORTED
+                and node.id not in {"__name__", "__file__", "__package__"}
                 and node.id not in self.locals_
             ):
-                self.reject(node, f"builtin {node.id!r} is not implemented")
+                reason = UNSUPPORTED.get(node.id, "Native implementation unavailable")
+                self.reject(node, f"builtin {node.id!r} is not implemented: {reason}")
 
         def visit_comprehension(self, node):
             if node.is_async:
@@ -246,6 +186,12 @@ def prepare(source):
                 for n in ast.walk(node.annotation)
             ):
                 self.reject(node, "effectful annotation evaluation is not implemented")
+
+        def visit_MatchAs(self, node):
+            if node.name is not None:
+                self.reject(node, "capturing match patterns are not implemented")
+            else:
+                self.generic_visit(node)
 
         def visit_ClassDef(self, node):
             if len(node.bases) > 1 or node.keywords or node.type_params:
@@ -272,35 +218,14 @@ def prepare(source):
             self.visit(node.body)
 
         def visit_Compare(self, node):
-            operands = [node.left, *node.comparators]
-            for i, op in enumerate(node.ops):
-                if isinstance(op, (ast.Is, ast.IsNot)) and not any(
-                    isinstance(v, ast.Constant) and (v.value is None or type(v.value) is bool)
-                    for v in operands[i : i + 2]
-                ):
-                    self.reject(
-                        node,
-                        "identity comparisons require None or bool; general object identity is not implemented",
-                    )
-                    return
             self.generic_visit(node)
 
         def visit_List(self, node):
-            if len(node.elts) > 128:
-                self.reject(
-                    node, "container literals with more than 128 elements are not supported"
-                )
-            else:
-                self.generic_visit(node)
+            self.generic_visit(node)
 
         visit_Tuple = visit_List
         visit_Set = visit_List
-
-        def visit_Dict(self, node):
-            if len(node.keys) > 64:
-                self.reject(node, "dictionary literals with more than 64 entries are not supported")
-            else:
-                self.generic_visit(node)
+        visit_Dict = visit_List
 
         def visit_ImportFrom(self, node):
             if node.module == "__future__":
@@ -341,10 +266,7 @@ def prepare(source):
                 self.generic_visit(node)
 
         def visit_Starred(self, node):
-            if isinstance(node.ctx, ast.Store):
-                self.reject(node, "starred unpacking assignment is not implemented")
-            else:
-                self.generic_visit(node)
+            self.generic_visit(node)
 
         def visit_AugAssign(self, node):
             if not isinstance(node.target, (ast.Name, ast.Attribute, ast.Subscript)):

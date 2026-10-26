@@ -101,8 +101,12 @@ CaValue ca_container(CaRuntime *rt, CaTag tag, size_t n, CaValue *items) {
     for (size_t i = 0; i < n && !rt->error; i++)
       ca_append(rt, result, items[i]);
   } else if (reserve(rt, c, n)) {
-    if (n)
-      memcpy(c->items, items, n * sizeof(CaValue));
+    if (n) {
+      if (items)
+        memcpy(c->items, items, n * sizeof(CaValue));
+      else
+        memset(c->items, 0, n * sizeof(CaValue));
+    }
     c->length = n;
   }
   return rt->error ? CA_UNBOUND : result;
@@ -165,6 +169,10 @@ static int64_t clipped(CaRuntime *rt, CaValue value, int64_t n, int64_t step,
   return out;
 }
 CaValue ca_getitem(CaRuntime *rt, CaValue v, CaValue key) {
+  if (v.tag == CA_INSTANCE_T) {
+    CaValue method = ca_special(rt, v, "__getitem__");
+    return rt->error ? CA_UNBOUND : ca_call(rt, method, 1, 0, &key, NULL);
+  }
   if (v.tag == CA_BYTES_T) {
     CaString *s = (CaString *)v.as.obj;
     int64_t n = (int64_t)s->length;
@@ -958,6 +966,36 @@ CaValue ca_dict_constructor(CaRuntime *rt, int n, int nkw, CaValue *args,
     ca_setitem(rt, roots[0], key, args[n + i]);
   }
   CaValue result = roots[0];
+  ca_pop(rt, &frame);
+  return rt->error ? CA_UNBOUND : result;
+}
+
+CaValue ca_unpack_star(CaRuntime *rt, CaValue iterable, size_t before,
+                       size_t after) {
+  CaValue roots[] = {iterable, CA_UNBOUND, CA_UNBOUND, CA_UNBOUND};
+  CaFrame frame;
+  ca_push(rt, &frame, roots, 4);
+  roots[1] = ca_collection_builtin(rt, 4, 1, 0, &roots[0]);
+  if (!rt->error) {
+    CaContainer *items = (CaContainer *)roots[1].as.obj;
+    if (before > items->length || after > items->length - before)
+      ca_error(rt, "ValueError", "not enough values to unpack");
+    else {
+      roots[2] = ca_container(rt, CA_LIST_T, 0, NULL);
+      for (size_t i = 0; i < before && !rt->error; i++)
+        ca_append(rt, roots[2], items->items[i]);
+      roots[3] = ca_container(rt, CA_LIST_T, items->length - before - after,
+                              items->items + before);
+      if (!rt->error)
+        ca_append(rt, roots[2], roots[3]);
+      for (size_t i = items->length - after; i < items->length && !rt->error;
+           i++)
+        ca_append(rt, roots[2], items->items[i]);
+      if (!rt->error)
+        roots[2] = ca_collection_builtin(rt, 5, 1, 0, &roots[2]);
+    }
+  }
+  CaValue result = roots[2];
   ca_pop(rt, &frame);
   return rt->error ? CA_UNBOUND : result;
 }

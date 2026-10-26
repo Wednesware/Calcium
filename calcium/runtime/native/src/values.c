@@ -1,11 +1,89 @@
 #include "cart.h"
-CaValue ca_float(double f) {
-  static uint64_t identity = 0;
-  identity++;
-  if (!identity)
-    identity++;
-  return (CaValue){.tag = CA_FLOAT_T, .identity = identity, .as.f = f};
+uint64_t ca_next_identity(void) {
+  static uint64_t next = 0;
+  next++;
+  if (!next)
+    next++;
+  return next;
 }
+CaValue ca_float(double f) {
+  return (CaValue){
+      .tag = CA_FLOAT_T, .identity = ca_next_identity(), .as.f = f};
+}
+static CaValue normalize_type(CaValue v) {
+  if (v.tag == CA_FUNCTION_T && v.as.fn->builtin == 2)
+    return ca_type(CA_T_RANGE);
+  if (v.tag == CA_FUNCTION_T && v.as.fn->builtin >= 4 && v.as.fn->builtin <= 7)
+    return ca_type(CA_T_LIST + v.as.fn->builtin - 4);
+  return v;
+}
+int ca_same_identity(CaValue a, CaValue b) {
+  a = normalize_type(a);
+  b = normalize_type(b);
+  if (a.tag != b.tag)
+    return 0;
+  switch (a.tag) {
+  case CA_NONE_T:
+    return 1;
+  case CA_BOOL_T:
+  case CA_TYPE_T:
+    return a.as.i == b.as.i;
+  case CA_INT_T:
+    if (a.as.i >= -5 && a.as.i <= 256)
+      return a.as.i == b.as.i;
+    return a.identity && a.identity == b.identity;
+  case CA_FLOAT_T:
+    return a.identity && a.identity == b.identity;
+  case CA_FUNCTION_T:
+    return a.as.fn == b.as.fn;
+  case CA_MODULE_T:
+    return a.as.module == b.as.module;
+  case CA_UNBOUND_T:
+    return 0;
+  default:
+    return a.as.obj == b.as.obj;
+  }
+}
+CaValue ca_identity(CaRuntime *rt, CaValue value) {
+  value = normalize_type(value);
+  uint64_t id = 0;
+  switch (value.tag) {
+  case CA_NONE_T:
+    id = 1;
+    break;
+  case CA_BOOL_T:
+    id = value.as.i ? 3 : 2;
+    break;
+  case CA_TYPE_T:
+    id = 0x10000 + (uint64_t)value.as.i * 16;
+    break;
+  case CA_INT_T:
+    if (value.as.i >= -5 && value.as.i <= 256) {
+      id = 0x1000 + (uint64_t)(value.as.i + 5) * 8;
+      break;
+    }
+    id = (value.identity << 4) | 1;
+    break;
+  case CA_FLOAT_T:
+    id = (value.identity << 4) | 1;
+    break;
+  case CA_FUNCTION_T:
+    id = (uintptr_t)value.as.fn;
+    break;
+  case CA_MODULE_T:
+    id = (uintptr_t)value.as.module;
+    break;
+  default:
+    id = (uintptr_t)value.as.obj;
+    break;
+  }
+  if (id <= INT64_MAX)
+    return ca_int((int64_t)id);
+  char buffer[32];
+  snprintf(buffer, sizeof buffer, "%llu", (unsigned long long)id);
+  return ca_integer(rt, buffer);
+}
+
 const CaFunction ca_builtin_print = {"print", 0, 0, NULL, NULL, 1};
 static const CaFunction ca_builtin_collections[] = {
     {"len", 0, 0, NULL, NULL, 3},
@@ -174,6 +252,8 @@ CaValue ca_range_length(CaRuntime *rt, CaRange *range) {
   return rt->error ? CA_UNBOUND : ca_numeric(rt, quotient, ca_int(1), '+');
 }
 CaValue ca_compare(CaRuntime *rt, CaValue a, CaValue b, const char *op) {
+  a = normalize_type(a);
+  b = normalize_type(b);
   if (strcmp(op, "is") && strcmp(op, "is_not") && strcmp(op, "in") &&
       strcmp(op, "not_in")) {
     int handled = 0;
@@ -182,14 +262,7 @@ CaValue ca_compare(CaRuntime *rt, CaValue a, CaValue b, const char *op) {
       return result;
   }
   if (!strcmp(op, "is") || !strcmp(op, "is_not")) {
-    int same =
-        a.tag == b.tag &&
-        (a.tag == CA_NONE_T || (a.tag == CA_BOOL_T && a.as.i == b.as.i) ||
-         (a.tag == CA_MODULE_T && a.as.module == b.as.module) ||
-         (a.tag == CA_FUNCTION_T && a.as.fn == b.as.fn) ||
-         ((ca_is_container(a) || a.tag == CA_STR_T || a.tag == CA_RANGE_T ||
-           a.tag == CA_BIG_T) &&
-          a.as.obj == b.as.obj));
+    int same = ca_same_identity(a, b);
     return ca_bool(!strcmp(op, "is_not") ? !same : same);
   }
   if (!strcmp(op, "in") || !strcmp(op, "not_in")) {
@@ -390,8 +463,9 @@ void ca_print_value(CaRuntime *rt, CaValue v) {
     break;
   }
   case CA_FUNCTION_T:
-    if (v.as.fn->builtin == 2)
-      fputs("<class 'range'>", stdout);
+    if (v.as.fn->builtin == 2 ||
+        (v.as.fn->builtin >= 4 && v.as.fn->builtin <= 7))
+      printf("<class '%s'>", v.as.fn->name);
     else if (v.as.fn->builtin)
       printf("<built-in function %s>", v.as.fn->name);
     else
@@ -572,9 +646,6 @@ CaValue ca_load(CaRuntime *rt, CaValue v, const char *name, int local) {
   if (v.tag != CA_UNBOUND_T)
     return v;
   if (!local) {
-    CaValue builtin = ca_builtin_lookup(name);
-    if (builtin.tag != CA_UNBOUND_T)
-      return builtin;
     for (size_t i = 0; i < 5; i++)
       if (!strcmp(name, ca_builtin_collections[i].name))
         return ca_function(&ca_builtin_collections[i]);
@@ -582,6 +653,9 @@ CaValue ca_load(CaRuntime *rt, CaValue v, const char *name, int local) {
       return ca_function(&ca_builtin_print);
     if (!strcmp(name, "range"))
       return ca_function(&ca_builtin_range);
+    CaValue builtin = ca_builtin_lookup(name);
+    if (builtin.tag != CA_UNBOUND_T)
+      return builtin;
   }
   char message[220];
   snprintf(message, sizeof message, "name '%s' is not bound", name);

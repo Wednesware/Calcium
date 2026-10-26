@@ -3,7 +3,7 @@
 Calcium is Wednesware's Python-to-C compiler. It lowers supported Python through
 control-flow IR into C11 and builds executables or CPython extension modules.
 
-**Version 26.9.** Bonemarrow (`bmrw`) is the default independent native backend.
+**Version 26.11.** Bonemarrow (`bmrw`) is the default independent native backend.
 It compiles supported multi-file Python projects without CPython. Select
 `--cpython` explicitly for broad compatibility, CPython extensions or bundles.
 
@@ -58,9 +58,12 @@ Bonemarrow supports multi-file projects, classes, closures, exceptions/context
 managers, coroutines/await, comprehensions, lazy generator expressions, bytes and selected native
 standard-library APIs. SHA-256 and SQLite use their established C libraries.
 Unsupported features never fall back to CPython. Discribe's document storage core
-has been exercised natively, and its package builds with a working native CLI.
-The complete GUI/collaboration runtime still needs external dependency support. Read the [native contract](docs/NATIVE.md),
-[library API scope](docs/NATIVE_LIBRARIES.md), and [26.9 notes](docs/releases/26.9.md).
+has been exercised natively.
+Native regex, ZIP, HTTP downloads, subprocesses, threads, traceback formatting and
+compiled-module import helpers are now available. Discribe with vendored Nitrogen
+builds and runs --help; dynamically downloaded Python and the full GUI/collaboration
+runtime still need additional support. See [built-in coverage](docs/BUILTINS.md). Read the [native contract](docs/NATIVE.md),
+[library API scope](docs/NATIVE_LIBRARIES.md), and [26.11 notes](docs/releases/26.11.md).
 
 ## Installation and deployment
 

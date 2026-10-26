@@ -1,0 +1,18 @@
+{
+  "calcium_version": "26.10",
+  "scope": "Unmodified Discribe core workflow only with deterministic clock/UUID injection",
+  "core_sha256": "9fa9d6da2914a37c67d09926e0231a2cae22af495103d57797e38f7f1aeb1990",
+  "parity": true,
+  "results": {
+    "python": {
+      "status": 0,
+      "stdout": "1 1970-01-01T00:00:00+00:00 1970-01-01T00:00:00+00:00 print(\"h\u00e9\ud83d\ude00\")\ndoc\nconflict True\n{'theme': 'dark'} {'theme': 'dark'}\npython fca8485f5be1a556c52dfba174e5249a7be07316c4fb94b494e61ae8c40c0438 h\u00e9\ud83d\ude00\n\nhello.py h\u00e9\ud83d\ude00\n python 0\ndisk conflict\n[]\n",
+      "stderr": ""
+    },
+    "native": {
+      "status": 0,
+      "stdout": "1 1970-01-01T00:00:00+00:00 1970-01-01T00:00:00+00:00 print(\"h\u00e9\ud83d\ude00\")\ndoc\nconflict True\n{'theme': 'dark'} {'theme': 'dark'}\npython fca8485f5be1a556c52dfba174e5249a7be07316c4fb94b494e61ae8c40c0438 h\u00e9\ud83d\ude00\n\nhello.py h\u00e9\ud83d\ude00\n python 0\ndisk conflict\n[]\n",
+      "stderr": ""
+    }
+  }
+}

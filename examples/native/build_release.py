@@ -23,7 +23,16 @@ def main():
     with tempfile.TemporaryDirectory(prefix="calcium-examples-") as temporary:
         root = Path(temporary) / name
         root.mkdir()
-        for example in ["pass", "hello", "sum_squares", "values", "coroutines", "demo_package"]:
+        for example in [
+            "pass",
+            "hello",
+            "sum_squares",
+            "values",
+            "coroutines",
+            "builtin_tools",
+            "library_tools",
+            "demo_package",
+        ]:
             source = sources / (example + ".py") if example != "demo_package" else sources / example
             result = Calcium(
                 backend="native",
@@ -41,6 +50,9 @@ def main():
             actual = subprocess.check_output([str(root / example)])
             if actual != expected:
                 raise RuntimeError(f"{example} output mismatch")
+            (root / (example + ".dependencies.json")).write_text(
+                json.dumps(result.runtime_dependencies, indent=2) + "\n"
+            )
             if "libpython" in subprocess.check_output(["ldd", str(root / example)], text=True):
                 raise RuntimeError("unexpected libpython dependency")
         (root / "BUILD.json").write_text(
@@ -48,7 +60,7 @@ def main():
                 {
                     "calcium_version": __version__,
                     "backend": "native",
-                    "runtime_abi": 4,
+                    "runtime_abi": 6,
                     "platform": platform.platform(),
                     "machine": platform.machine(),
                     "libc": platform.libc_ver(),
@@ -56,14 +68,14 @@ def main():
                         ["gcc", "--version"], text=True
                     ).splitlines()[0],
                     "optimization": 3,
-                    "requires": "compatible Linux C/math libraries and ELF loader; no Python installation required",
+                    "requires": "compatible Linux libraries and ELF loader; per-program dependencies are listed in *.dependencies.json; no Python installation required",
                 },
                 indent=2,
             )
             + "\n"
         )
         (root / "README.txt").write_text(
-            "Run ./hello or ./sum_squares. The programs need compatible Linux C/math libraries, but no Python interpreter or libpython. BUILD.json identifies the build host/ABI. sum_squares.calcium contains the generated C and CaRT. demo_package demonstrates multi-file imports and containers; demo_package.calcium contains its separate C translation units. coroutines demonstrates native async functions, tasks and locks. These demonstrate only the documented Bonemarrow 26.9 subset.\n"
+            "Run ./hello or ./sum_squares. Programs need the compatible Linux C libraries listed in their .dependencies.json files, but no Python interpreter or libpython. BUILD.json identifies the build host/ABI. sum_squares.calcium contains the generated C and CaRT. demo_package demonstrates multi-file imports and containers; demo_package.calcium contains its separate C translation units. coroutines demonstrates native async functions, tasks and locks. builtin_tools demonstrates native lazy iterators, numerical built-ins and selected match patterns. library_tools demonstrates native regex, process, thread, traceback and compiled registry APIs. These demonstrate only the documented Bonemarrow 26.11 subset.\n"
         )
         shutil.copyfile(sources.parents[1] / "LICENSE", root / "LICENSE")
         output = args.output / (name + ".tar.gz")
