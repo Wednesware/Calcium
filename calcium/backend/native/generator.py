@@ -51,7 +51,7 @@ def generate(program, optimization=0, *, module_info=None):
         code += [
             "static const char *global_names[]={" + ",".join(cstr(n) for n in slots) + "};",
             "static CaValue initialize(CaRuntime *rt);",
-            f"CaModule {module_info['symbol']} = {{.name={cstr(module_info['name'])}, .package={cstr(module_info['package'])}, .is_package={int(module_info['is_package'])}, .names=global_names, .values=globals, .count={len(slots)}, .initialize=initialize}};",
+            f"CaModule {module_info['symbol']} = {{.name={cstr(module_info['name'])}, .package={cstr(module_info['package'])}, .origin={cstr(module_info['file'])}, .is_package={int(module_info['is_package'])}, .names=global_names, .values=globals, .count={len(slots)}, .initialize=initialize}};",
         ]
     code.append(f"static CaFrame default_roots[{max(1, len(program.functions))}];")
     scalar = []
@@ -147,6 +147,7 @@ def generate(program, optimization=0, *, module_info=None):
             if max_call_args > 128
             else f"CaValue call_values[{max(1, max_call_args)}];",
             f"ca_push(rt,&frame,values,{frame_count});",
+            f"frame.file={cstr(module_info['file']) if module_info else cstr('<native>')};frame.function={cstr('<module>' if fn.module else fn.name)};",
         ]
         if max_call_args > 128:
             code += [
@@ -207,6 +208,7 @@ def generate(program, optimization=0, *, module_info=None):
         for block in fn.blocks:
             code += [f"{block.name}:;", "ca_safepoint(rt);"]
             for op in block.instructions:
+                code.append(f"frame.line={op.line};")
                 v = [f"values[{i}]" for i in op.args]
                 dest = f"values[{op.result}]"
                 expr = None

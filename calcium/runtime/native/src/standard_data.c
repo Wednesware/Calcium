@@ -1,4 +1,4 @@
-#include "standard.h"
+#include "dependencies.h"
 #ifdef CA_WITH_OPENSSL
 #include <openssl/evp.h>
 #endif
@@ -282,13 +282,57 @@ static CaValue asdict_value(CaRuntime *rt, CaValue value, CaValue factory) {
 CaValue ca_data_call(CaRuntime *rt, int kind, int n, int nkw, CaValue *args,
                      const char **keys) {
   if (kind == N_DATACLASS) {
-    if (n != 1 || nkw) {
-      ca_error(
-          rt, "NotImplementedError",
-          "only the standard @dataclass decorator options are implemented");
-      return CA_UNBOUND;
+    int slots = 0;
+    if (n > 1)
+      return ca_dep_error(rt, "TypeError",
+                          "dataclass accepts at most one class");
+    for (int i = 0; i < nkw; i++) {
+      if (strcmp(keys[i], "slots"))
+        return ca_dep_error(
+            rt, "NotImplementedError",
+            "native dataclass supports default options and slots only");
+      slots = ca_truth(rt, args[n + i]);
     }
-    return dataclass_decorate(rt, args[0]);
+    if (!n) {
+      if (!nkw)
+        return ca_native_function(N_DATACLASS);
+      CaValue values[] = {ca_native_function(N_DATACLASS), ca_bool(slots)};
+      const char *names[] = {"slots"};
+      return ca_data_call(rt, N_PARTIAL, 1, 1, values, names);
+    }
+    if (!slots)
+      return dataclass_decorate(rt, args[0]);
+    if (args[0].tag != CA_CLASS_T)
+      return ca_dep_error(rt, "TypeError", "dataclass expects a class");
+    CaClass *old = (CaClass *)args[0].as.obj;
+    if (old->parent.tag == CA_CLASS_T)
+      return ca_dep_error(rt, "NotImplementedError",
+                          "slotted dataclass inheritance is not implemented");
+    CaValue roots[] = {
+        args[0], ca_class(rt, ((CaString *)old->name.as.obj)->data, 0, NULL),
+        CA_UNBOUND};
+    CaFrame frame;
+    ca_push(rt, &frame, roots, 3);
+    if (!rt->error) {
+      CaClass *cls = (CaClass *)roots[1].as.obj;
+      ca_kwargs_merge(rt, cls->namespace_, old->namespace_, 0);
+      roots[2] = dataclass_decorate(rt, roots[1]);
+      if (!rt->error) {
+        CaContainer *fields = (CaContainer *)cls->fields.as.obj;
+        CaValue slots_value =
+            ca_container(rt, CA_TUPLE_T, fields->length, fields->items);
+        ca_namespace_set(rt, cls->namespace_, "__slots__", slots_value);
+        cls->slotted = 1;
+        for (size_t i = 0; i < fields->length && !rt->error; i++) {
+          CaString *name = (CaString *)fields->items[i].as.obj;
+          ca_namespace_set(rt, cls->namespace_, name->data,
+                           ca_native_object(rt, 80, fields->items[i], NULL, 0));
+        }
+      }
+    }
+    CaValue result = roots[2];
+    ca_pop(rt, &frame);
+    return rt->error ? CA_UNBOUND : result;
   }
   if (kind == N_FIELD) {
     const char *names[] = {"default", "default_factory", "init",     "repr",

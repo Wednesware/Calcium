@@ -1,5 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
-#include "standard.h"
+#include "dependencies.h"
 #include <errno.h>
 #include <time.h>
 /* Task state is ordinary traced CaRT storage. No C stack survives suspension.
@@ -17,7 +17,7 @@ enum {
   STATE_COUNT
 };
 typedef struct {
-  CaValue tasks, current;
+  CaValue tasks, current, identity;
 } Loop;
 static CaValue *state(CaValue v) {
   return ((CaContainer *)((CaForeign *)v.as.obj)->state.as.obj)->items;
@@ -342,9 +342,16 @@ static CaValue run(CaRuntime *rt, CaValue coro) {
     return CA_UNBOUND;
   }
   Loop loop = {CA_UNBOUND, CA_NONE};
-  CaValue roots[] = {coro, CA_UNBOUND, CA_UNBOUND, rt->handled};
+  CaValue roots[] = {coro, CA_UNBOUND, CA_UNBOUND, rt->handled, CA_UNBOUND};
   CaFrame frame;
-  ca_push(rt, &frame, roots, 4);
+  ca_push(rt, &frame, roots, 5);
+  roots[4] = ca_dep_record(rt, "NativeEventLoop");
+  loop.identity = roots[4];
+  ca_dep_put(rt, loop.identity, "_running", ca_bool(1));
+  ca_dep_put(rt, loop.identity, "is_running",
+             ca_native_method(rt, loop.identity, D_HELPERS_LOOP_RUNNING));
+  ca_dep_put(rt, loop.identity, "create_task", ca_native_function(N_AS_TASK));
+  ca_dep_put(rt, loop.identity, "time", ca_native_function(N_MONOTONIC));
   roots[1] = ca_container(rt, CA_LIST_T, 0, NULL);
   loop.tasks = roots[1];
   rt->event_loop = &loop;
@@ -424,6 +431,7 @@ static CaValue run(CaRuntime *rt, CaValue coro) {
       }
     }
   }
+  ca_dep_put(rt, loop.identity, "_running", ca_bool(0));
   rt->event_loop = NULL;
   rt->handled = roots[3];
   CaValue result = CA_UNBOUND;
@@ -599,4 +607,12 @@ CaValue ca_async_attribute(CaRuntime *rt, CaValue value, const char *name) {
     return ca_native_method(rt, value, id);
   ca_error(rt, "AttributeError", name);
   return CA_UNBOUND;
+}
+
+CaValue ca_async_running_loop(CaRuntime *rt) {
+  if (!rt->event_loop) {
+    ca_error(rt, "RuntimeError", "no running event loop");
+    return CA_UNBOUND;
+  }
+  return ((Loop *)rt->event_loop)->identity;
 }

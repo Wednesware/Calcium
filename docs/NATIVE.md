@@ -1,7 +1,7 @@
-# Bonemarrow native backend — 26.10
+# Bonemarrow native backend — 26.11
 
 Calcium is the public CLI and API; **Bonemarrow (`bmrw`)** is the independent
-Python-to-C execution engine, using CaRT. Bonemarrow is the default in 26.10.
+Python-to-C execution engine, using CaRT. Bonemarrow is the default in 26.11.
 `--use bmrw`, `--bmrw`, and legacy `--backend native` select the same engine.
 `--cpython` / `--use cpython` / `--backend cpython` explicitly select the
 established compatibility backend. Conflicting selections are errors.
@@ -68,7 +68,7 @@ implemented. Adding files with `--include-all` does not implement dynamic import
 
 ## Language support
 
-| Feature | Bonemarrow 26.10 |
+| Feature | Bonemarrow 26.11 |
 | --- | --- |
 | Values | None, bool, arbitrary-precision int, double, UTF-8 str, bytes, functions/closures, ranges, modules, containers, classes/instances and native resources |
 | Arithmetic | Addition/subtraction/multiplication, true/floor division, modulo, powers and integer bitwise operations/shifts; checked overflow promotes to big integers |
@@ -77,7 +77,7 @@ implemented. Adding files with `--include-all` does not implement dynamic import
 | Control flow | Branches, loops, comprehensions, lazy generator expressions, walrus, sync/async context managers, native coroutines/await and structured exceptions |
 | Text | Bytes operations, Unicode indexing/case, selected codecs/methods and f-strings |
 | Libraries | Selected native APIs documented in [NATIVE_LIBRARIES.md](NATIVE_LIBRARIES.md) |
-| Identity/reflection | Native object identity/id; general reflection and Python tracebacks remain unsupported |
+| Identity/reflection | Native object identity/id; general reflection and CPython traceback objects remain unsupported |
 
 Dictionary/set storage is currently a contiguous, insertion-preserving value
 array with **linear lookup**, not a native hash-table optimization. Dictionary
@@ -89,7 +89,9 @@ operations are generic CaRT operations, not unboxed container specializations.
 currently accepts a dictionary positional source, without keyword expansion.
 Dictionary views are supported; unlisted methods remain unsupported.
 
-The runtime is single-threaded, with 256 active calls and 128 parameters/call
+The runtime serializes tagged Python operations. Native threads have separate
+call/exception/event-loop contexts, with suspended GC roots preserved. There are
+256 active calls per thread and 128 parameters/call
 arguments (including expanded calls). Container literals can exceed the former
 128-element/64-entry caps; large call scratch buffers use checked heap storage.
 Large CIR frames use checked heap allocations. Basic signatures
@@ -105,11 +107,11 @@ produce native errors. No compatibility fallback occurs.
 
 Exact error wording, object addresses, CPython-specific immutable interning, GC scheduling,
 resource exhaustion, CPython-specific I/O/digit-limit environment configuration,
-thread/signals/finalizers/weakrefs are outside this milestone's contract.
+signals/finalizers/weakrefs are outside this milestone's contract.
 
-## CaRT ABI 5 and ownership
+## CaRT ABI 6 and ownership
 
-CaRT's internal ABI is version 5, not a stable public C ABI. `CaValue` directly
+CaRT's internal ABI is version 6, not a stable public C ABI. `CaValue` directly
 tags None/bool/int64/double. Big integers use signed base-2^30 limbs, checked
 promotion, and CaRT decimal conversion; printing retains the default 4300-digit
 limit. Checked O2/O3 scalar integer kernels and guarded same-module direct calls
@@ -153,11 +155,12 @@ adds the awakening message. JSON stdout stays machine-readable; generated
 executables print no compiler/startup identity messages.
 
 Projects, native module imports, richer language/runtime support and selected
-library bindings are shipped. See [26.10 notes](releases/26.10.md) for the Discribe
+library bindings are shipped. See [26.11 notes](releases/26.11.md) for the Discribe
 core integration evidence and remaining application blockers. Historical package
 benchmarks in [NATIVE_BENCHMARKS.md](NATIVE_BENCHMARKS.md) describe 26.7;
 they do not measure the new library workloads.
 
-See [the built-in inventory and contract](BUILTINS.md) for 26.10 additions and
-remaining runtime features. The vendored Nitrogen dependency graph still has
-standard-library blockers; earlier Discribe CLI probes used the earlier graph.
+See [the built-in inventory and contract](BUILTINS.md) for available APIs and
+remaining runtime features. The vendored Nitrogen dependency graph builds with the new native libraries.
+Discribe --help and selected Nitrogen helpers are tested; dynamically installed
+Python and the complete GUI/collaboration application remain outside this contract.

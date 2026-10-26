@@ -1,4 +1,4 @@
-# Remaining-work ledger — 26.10
+# Remaining-work ledger — 26.11
 
 This ledger distinguishes shipped work from architecture projects. A passing
 regression suite establishes tested behavior; it does not establish complete
@@ -9,11 +9,12 @@ comprehensions/lazy generator expressions and selected native library APIs. The
 Discribe persistence core has passed a local differential probe; its full GUI and
 collaboration dependencies remain unsupported. 26.9 adds native coroutines, CLI
 parsing, context helpers and static HTTP serving; the earlier dependency-free
-Discribe entry built and ran --help. The current checkout vendors Nitrogen and
-still needs native subprocess, zipfile, urllib, traceback, re, importlib and
-threading implementations. 26.10 removes its reported built-in and listed syntax
-diagnostics, with bounded native coverage documented in [BUILTINS.md](BUILTINS.md).
-See [26.10 notes](releases/26.10.md).
+Discribe entry built and ran --help. 26.11 also builds the current vendored Nitrogen
+checkout and runs Discribe --help; selected Nitrogen helpers match Python. Native
+implementations replace all ten prior import diagnostics. Runtime-loaded Python,
+full GUI/collaboration dependencies and unlisted library APIs remain open. See
+[26.11 notes](releases/26.11.md) and [the library contract](LIBRARIES_26_11.md).
+
 
 The existing rows describe the CPython backend unless stated otherwise. The native
 backend is an initial standalone subset; see [its exact contract](NATIVE.md).
@@ -50,5 +51,6 @@ validation. They are not represented as completed by fallback, packaging metadat
 a renamed option, or a higher optimization-level number.
 
 26.10 ships a broad [native built-in pass](BUILTINS.md), not all Python runtime
-features. The vendored Nitrogen graph still requires subprocess, zipfile, urllib,
-traceback, re, importlib and threading support.
+features. 26.11 adds the selected native dependency APIs needed to remove the
+vendored Nitrogen import blockers; complete runtime loading and external
+application dependencies remain open.

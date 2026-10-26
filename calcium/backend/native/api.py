@@ -173,7 +173,22 @@ def analyze(compiler, source, module):
             {"name": i["name"], "source": i["file"], "namespace": i["namespace"]} for i in infos
         ]
         result.metadata["unresolved_imports"] = sorted(project.external - MODULES - {"__future__"})
-        result.metadata["native_standard_modules"] = sorted(project.external & MODULES)
+        standard_modules = set(project.external & MODULES)
+        for item in project.modules.values():
+            if item.tree is None:
+                continue
+            for node in ast.walk(item.tree):
+                if (
+                    isinstance(node, ast.ImportFrom)
+                    and not node.level
+                    and node.module in project.external
+                ):
+                    standard_modules.update(
+                        child
+                        for alias in node.names
+                        if (child := f"{node.module}.{alias.name}") in MODULES
+                    )
+        result.metadata["native_standard_modules"] = sorted(standard_modules)
         if any(d.severity == "error" for d in result.diagnostics):
             return result, None
         lines = ['#include "cart.h"']
@@ -211,7 +226,7 @@ def analyze(compiler, source, module):
         result.metadata["native_standard_library_scope"] = (
             "Selected native APIs only; module presence does not imply full stdlib compatibility"
         )
-        if "http.server" in result.metadata["native_standard_modules"]:
+        if {"http.server", "threading"} & set(result.metadata["native_standard_modules"]):
             result.runtime_dependencies.append("POSIX threads")
         result.success = True
         return result, (snapshot, units)
@@ -250,17 +265,22 @@ def emit(directory, result, plan):
         "generator": "calcium",
         "version": __version__,
         "backend": "native",
-        "runtime_abi": 5,
+        "runtime_abi": 6,
         "runtime_dependencies": result.runtime_dependencies,
         "builtin_coverage": result.metadata["builtin_coverage"],
         "native_standard_modules": result.metadata["native_standard_modules"],
         "compile_flags": ["-pthread"]
-        if "http.server" in result.metadata["native_standard_modules"]
+        if {"http.server", "threading"} & set(result.metadata["native_standard_modules"])
         else [],
         "link_flags": ["-pthread"]
-        if "http.server" in result.metadata["native_standard_modules"]
+        if {"http.server", "threading"} & set(result.metadata["native_standard_modules"])
         else [],
-        "compile_definitions": [f"CART_PY_MINOR={sys.version_info.minor}"]
+        "compile_definitions": (
+            ["CA_WITH_THREADS=1"]
+            if "threading" in result.metadata["native_standard_modules"]
+            else []
+        )
+        + [f"CART_PY_MINOR={sys.version_info.minor}"]
         + [
             definition + "=1"
             for name, (_, definition) in LIBRARIES.items()
@@ -358,7 +378,9 @@ def build(compiler, source, module, output, *, transpile=False):
                 elif compiler.cache:
                     flags += [f"-ffile-prefix-map={staged}=/calcium/generated"]
                 link_flags = []
-                if "http.server" in result.metadata["native_standard_modules"]:
+                if {"http.server", "threading"} & set(result.metadata["native_standard_modules"]):
+                    if "threading" in result.metadata["native_standard_modules"]:
+                        flags.append("-DCA_WITH_THREADS=1")
                     flags.append("-pthread")
                     link_flags.append("-pthread")
                 for module_name, (package, definition) in LIBRARIES.items():
@@ -389,7 +411,7 @@ def build(compiler, source, module, output, *, transpile=False):
                 ).splitlines()[0]
                 identity = {
                     "backend": "bmrw",
-                    "runtime_abi": 5,
+                    "runtime_abi": 6,
                     "compiler": version,
                     "compiler_sha256": sha256(Path(cc).read_bytes()).hexdigest(),
                 }
@@ -398,7 +420,7 @@ def build(compiler, source, module, output, *, transpile=False):
                     if compiler.cache_dir is not None
                     else Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
                     / "calcium"
-                    / "objects-native-v5"
+                    / "objects-native-v6"
                 )
                 objects, commands, reports, warnings = [], [], [], []
                 for path in sorted(staged.glob("*.c")):

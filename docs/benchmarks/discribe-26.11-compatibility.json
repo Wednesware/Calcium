@@ -1,0 +1,85 @@
+{
+  "calcium_version": "26.11",
+  "scope": "Native analysis/build and --help of Discribe with vendored Nitrogen; read-only Nitrogen import/helper probe; no installers or downloads run",
+  "source_sha256": {
+    "__init__.py": "2d83556bfed9e35603c405147f53a93a7be81a72426998b29d7e202619372486",
+    "__main__.py": "663b7246a2bc28ca829c31cf0de3a2343eb01776e9401604189404b4e8083873",
+    "collaboration.py": "d110cfb2fe0d6d73db27d78e4bd8ab8f50ca6ed0c559ac72e06932ed5ed15c01",
+    "core.py": "9fa9d6da2914a37c67d09926e0231a2cae22af495103d57797e38f7f1aeb1990",
+    "desktop.py": "24ac1e2eaef2b67c362d4aefed40c7f46fa445f7cbe70eacc1051240bc75ffea",
+    "nitrogen/__init__.py": "2e386ae8bda9d2b60fd2fdaedf03b565314f4a41a636b7f37346833431bcba7e",
+    "nitrogen/__main__.py": "89828d9fcf8b71701d1cbf135eba153e0ab26c88a767f77cd2fd87a842dd6429",
+    "nitrogen/ww/na/__init__.py": "eba79543a98cada1b5101bb83de6ceff2cbce4a32d9c7ae17b82fba93b904be7",
+    "nitrogen/ww/na/__main__.py": "16a501c4460b7249fefb81a3ae7085d43b98bd466f861bd09b89ab0df1a21555",
+    "nitrogen/ww/na/build/lib/nitrogen_entry.py": "8c85a84deb03c6a6336afda6b5317c35124d3c68cece2bd0eb89293f2d3d7344",
+    "nitrogen/ww/na/resources/Interpreter.py": "fa70091bb651d980a8e433caaa20177c1729253809ab2e406899cc0d31e54432",
+    "nitrogen/ww/na/resources/Tokenizer.py": "59ec236218486402276c356e8d750c59c7cbff429c357f7e147faa79baf4f193",
+    "nitrogen/ww/na/scripts/error.py": "d38838b5652888328d619cc34cc376d82be4447bdcbc04ee3e29e9a610716651",
+    "nitrogen/ww/na/scripts/run.py": "691079459413c0ddeb38a673a62403697e352f6a49074eebb89fd8df6649fe57",
+    "shell.py": "f26cde3cd1bc1609124e90c8b07e9413ce402a228309836581025c473d986de5"
+  },
+  "analysis_success": true,
+  "remaining_diagnostics": [],
+  "discribe_cli": {
+    "build_success": true,
+    "returncode": 0,
+    "stdout": "usage: discribe [-h] targets ... [--output output] [--port port] [--bind bind] [--data data]\n\nDiscribe \u2014 Two ways to write. One place to create.\n\noptions:\n  -h, --help  show this help message and exit\n  targets  Optional build/web/desktop/host command, or files to open in desktop mode\n  --output\n  --port\n  --bind\n  --data\n",
+    "stderr": "",
+    "runtime_dependencies": [
+      "C11 platform C library",
+      "libm",
+      "openssl",
+      "sqlite3",
+      "libpcre2-8",
+      "libarchive",
+      "libcurl",
+      "POSIX threads"
+    ],
+    "native_standard_modules": [
+      "argparse",
+      "asyncio",
+      "contextlib",
+      "dataclasses",
+      "datetime",
+      "functools",
+      "hashlib",
+      "http.server",
+      "importlib.util",
+      "json",
+      "os",
+      "pathlib",
+      "re",
+      "secrets",
+      "shutil",
+      "sqlite3",
+      "subprocess",
+      "sys",
+      "tempfile",
+      "threading",
+      "time",
+      "traceback",
+      "urllib.error",
+      "urllib.request",
+      "uuid",
+      "zipfile"
+    ]
+  },
+  "nitrogen_helpers": {
+    "probe_sha256": "ed60baaf92ebef810ae2b6bd044cc10456bbe83457908ada48297842a964f7c2",
+    "parity": true,
+    "outputs": {
+      "python": {
+        "returncode": 0,
+        "stdout": "calcium hello-there ca26_11\nInstallResult(status='ok', lines=['native'], exit_code=0)\n",
+        "stderr": ""
+      },
+      "native": {
+        "returncode": 0,
+        "stdout": "calcium hello-there ca26_11\nInstallResult(status='ok', lines=['native'], exit_code=0)\n",
+        "stderr": ""
+      }
+    }
+  },
+  "full_application_compatible": false,
+  "remaining_scope": "Unlisted stdlib APIs, complete GUI/collaboration dependencies and runtime source loading are not implemented; dynamically downloaded Python requires rebuilding"
+}

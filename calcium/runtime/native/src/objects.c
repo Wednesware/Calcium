@@ -1,4 +1,4 @@
-#include "standard.h"
+#include "dependencies.h"
 /* Module namespaces and instance dictionaries share native, allocation-free
    name lookup. New keys allocate once; writes to existing attributes do not. */
 static CaValue get(CaValue mapping, const char *name) {
@@ -159,16 +159,26 @@ CaValue ca_object_attribute(CaRuntime *rt, CaValue value, const char *name) {
     CaInstance *i = (CaInstance *)value.as.obj;
     if (!strcmp(name, "__class__"))
       return i->type;
-    if (!strcmp(name, "__dict__"))
+    if (!strcmp(name, "__dict__")) {
+      if (((CaClass *)i->type.as.obj)->slotted) {
+        ca_error(rt, "AttributeError", name);
+        return CA_UNBOUND;
+      }
       return i->namespace_;
+    }
     CaValue v = class_get(i->type, name);
     if (v.tag == CA_FOREIGN_T && ((CaForeign *)v.as.obj)->kind == 3)
       return bind(rt, v, value, i->type);
     CaValue own = get(i->namespace_, name);
     if (own.tag != CA_UNBOUND_T)
       return own;
-    if (v.tag != CA_UNBOUND_T)
+    if (v.tag != CA_UNBOUND_T) {
+      if (v.tag == CA_FOREIGN_T && ((CaForeign *)v.as.obj)->kind == 80) {
+        ca_error(rt, "AttributeError", name);
+        return CA_UNBOUND;
+      }
       return bind(rt, v, value, i->type);
+    }
     CaValue missing = class_get(i->type, "__getattr__");
     if (missing.tag != CA_UNBOUND_T) {
       CaValue args[] = {value, ca_string(rt, name, strlen(name))};
@@ -176,6 +186,9 @@ CaValue ca_object_attribute(CaRuntime *rt, CaValue value, const char *name) {
     }
   } else if (value.tag == CA_EXCEPTION_T) {
     CaException *e = (CaException *)value.as.obj;
+    CaValue own = get(e->attributes, name);
+    if (own.tag != CA_UNBOUND_T)
+      return own;
     if (!strcmp(name, "__class__"))
       return e->type;
     if (!strcmp(name, "args")) {
@@ -198,6 +211,11 @@ CaValue ca_object_attribute(CaRuntime *rt, CaValue value, const char *name) {
 }
 void ca_object_set(CaRuntime *rt, CaValue value, const char *name, CaValue v) {
   if (value.tag == CA_FOREIGN_T &&
+      ((CaForeign *)value.as.obj)->kind >= CA_F_REGEX) {
+    ca_dependency_set(rt, value, name, v);
+    return;
+  }
+  if (value.tag == CA_FOREIGN_T &&
       ((CaForeign *)value.as.obj)->kind == CA_F_HTTP_SERVER) {
     ca_http_set(rt, value, name, v);
     return;
@@ -218,6 +236,13 @@ void ca_object_set(CaRuntime *rt, CaValue value, const char *name, CaValue v) {
       ca_error(rt, "TypeError", "dynamic __class__ assignment is unsupported");
       return;
     }
+    CaClass *cls = (CaClass *)i->type.as.obj;
+    if (cls->slotted &&
+        ca_namespace_get(ca_class_lookup(i->type, "__dataclass_fields__"), name)
+                .tag == CA_UNBOUND_T) {
+      ca_error(rt, "AttributeError", name);
+      return;
+    }
     set(rt, i->namespace_, name, v);
     return;
   }
@@ -226,6 +251,13 @@ void ca_object_set(CaRuntime *rt, CaValue value, const char *name, CaValue v) {
 }
 static int parent(int kind) {
   switch (kind) {
+  case CA_T_CALLEDPROCESSERROR:
+  case CA_T_TIMEOUTEXPIRED:
+    return CA_T_SUBPROCESSERROR;
+  case CA_T_URLERROR:
+    return CA_T_OSERROR;
+  case CA_T_HTTPERROR:
+    return CA_T_URLERROR;
   case CA_T_EXCEPTION:
   case CA_T_SYSTEMEXIT:
   case CA_T_KEYBOARDINTERRUPT:

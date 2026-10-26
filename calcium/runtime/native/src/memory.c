@@ -1,4 +1,4 @@
-#include "cart.h"
+#include "dependencies.h"
 void ca_error(CaRuntime *rt, const char *kind, const char *message) {
   if (!rt->error) {
     rt->error = kind;
@@ -13,6 +13,7 @@ void ca_error(CaRuntime *rt, const char *kind, const char *message) {
       e->cause = CA_NONE;
       e->context = rt->handled.tag == CA_EXCEPTION_T ? rt->handled : CA_NONE;
       rt->pending = (CaValue){.tag = CA_EXCEPTION_T, .as.obj = (CaObj *)e};
+      e->trace = ca_trace_capture(rt);
     }
   }
 }
@@ -37,6 +38,9 @@ void *ca_allocate(CaRuntime *rt, size_t size, CaTag kind) {
   return obj;
 }
 void ca_push(CaRuntime *rt, CaFrame *frame, CaValue *v, size_t n) {
+  frame->file = NULL;
+  frame->function = NULL;
+  frame->line = 1;
   frame->values = v;
   frame->count = n;
   frame->previous = rt->roots;
@@ -61,9 +65,11 @@ static void mark(CaValue value, CaObj **pending) {
   *pending = obj;
 }
 void ca_safepoint(CaRuntime *rt) {
+  ca_thread_yield(rt);
   if (rt->bytes < (rt->threshold ? rt->threshold : 65536))
     return;
   CaObj *pending = NULL;
+  ca_thread_roots(rt, mark, &pending);
   mark(rt->pending, &pending);
   mark(rt->handled, &pending);
   mark(rt->environment, &pending);
@@ -118,6 +124,8 @@ void ca_safepoint(CaRuntime *rt) {
       mark(e->cause, &pending);
       mark(e->context, &pending);
       mark(e->message, &pending);
+      mark(e->attributes, &pending);
+      mark(e->trace, &pending);
     } else if (obj->kind == CA_FOREIGN_T)
       mark(((CaForeign *)obj)->state, &pending);
     else if (ca_is_container(value)) {
@@ -170,6 +178,8 @@ void ca_collect(CaRuntime *rt) {
     rt->threshold = previous;
 }
 void ca_destroy(CaRuntime *rt) {
+  if (ca_thread_shutdown(rt))
+    return;
   ca_modules_destroy(rt);
   ca_standard_destroy(rt);
   while (rt->heap) {

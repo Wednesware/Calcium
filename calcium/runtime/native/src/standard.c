@@ -1,4 +1,4 @@
-#include "standard.h"
+#include "dependencies.h"
 #include <errno.h>
 static const CaFunction functions[] = {
     {"time", 0, 0, NULL, NULL, N_TIME},
@@ -136,6 +136,8 @@ static const CaFunction functions[] = {
 _Static_assert(sizeof functions / sizeof functions[0] == N_LAST - 1000,
                "native function registry must match operation IDs");
 CaValue ca_native_function(int id) {
+  if (id >= 2000)
+    return ca_dependency_function(id);
   return id >= 1000 && id < N_LAST ? ca_function(functions + (id - 1000))
                                    : CA_UNBOUND;
 }
@@ -248,6 +250,16 @@ static CaValue init_16(CaRuntime *);
 static CaValue init_17(CaRuntime *);
 static CaValue init_18(CaRuntime *);
 static CaValue init_19(CaRuntime *);
+static CaValue init_20(CaRuntime *);
+static CaValue init_21(CaRuntime *);
+static CaValue init_22(CaRuntime *);
+static CaValue init_23(CaRuntime *);
+static CaValue init_24(CaRuntime *);
+static CaValue init_25(CaRuntime *);
+static CaValue init_26(CaRuntime *);
+static CaValue init_27(CaRuntime *);
+static CaValue init_28(CaRuntime *);
+static CaValue init_29(CaRuntime *);
 static CaModule modules[] = {
     {.name = "os", .package = "", .initialize = init_0},
     {.name = "os.path", .package = "", .initialize = init_1},
@@ -269,18 +281,53 @@ static CaModule modules[] = {
     {.name = "asyncio", .package = "", .initialize = init_17},
     {.name = "http", .package = "", .is_package = 1, .initialize = init_18},
     {.name = "http.server", .package = "", .initialize = init_19},
+    {.name = "subprocess",
+     .package = "",
+     .is_package = 0,
+     .initialize = init_20},
+    {.name = "zipfile", .package = "", .is_package = 0, .initialize = init_21},
+    {.name = "re", .package = "", .is_package = 0, .initialize = init_22},
+    {.name = "urllib", .package = "", .is_package = 1, .initialize = init_23},
+    {.name = "urllib.error",
+     .package = "",
+     .is_package = 0,
+     .initialize = init_24},
+    {.name = "urllib.request",
+     .package = "",
+     .is_package = 0,
+     .initialize = init_25},
+    {.name = "traceback",
+     .package = "",
+     .is_package = 0,
+     .initialize = init_26},
+    {.name = "importlib",
+     .package = "",
+     .is_package = 1,
+     .initialize = init_27},
+    {.name = "importlib.util",
+     .package = "",
+     .is_package = 0,
+     .initialize = init_28},
+    {.name = "threading",
+     .package = "",
+     .is_package = 0,
+     .initialize = init_29},
 };
 static CaModule *registry[] = {
     &modules[0],  &modules[1],  &modules[2],  &modules[3],  &modules[4],
     &modules[5],  &modules[6],  &modules[7],  &modules[8],  &modules[9],
     &modules[10], &modules[11], &modules[12], &modules[13], &modules[14],
-    &modules[15], &modules[16], &modules[17], &modules[18], &modules[19]};
+    &modules[15], &modules[16], &modules[17], &modules[18], &modules[19],
+    &modules[20], &modules[21], &modules[22], &modules[23], &modules[24],
+    &modules[25], &modules[26], &modules[27], &modules[28], &modules[29]};
 void ca_standard_setup(CaRuntime *rt) {
   rt->standard_modules = registry;
   rt->standard_count = sizeof registry / sizeof registry[0];
 }
 CaModule *ca_standard_find(CaRuntime *rt, const char *name) {
   (void)rt;
+  if (!ca_dependency_available(name))
+    return NULL;
   for (size_t i = 0; i < sizeof registry / sizeof registry[0]; i++)
     if (!strcmp(registry[i]->name, name))
       return registry[i];
@@ -337,6 +384,8 @@ static CaValue init_2(CaRuntime *rt) {
 static CaValue init_3(CaRuntime *rt) {
   put(rt, 3, "JSONDecodeError",
       ca_exception_type("json.decoder.JSONDecodeError"));
+  put(rt, 3, "load", ca_native_function(D_HELPERS_JSON_LOAD));
+  put(rt, 3, "dump", ca_native_function(D_HELPERS_JSON_DUMP));
   put(rt, 3, "loads", ca_native_function(N_JSON_LOADS));
   put(rt, 3, "dumps", ca_native_function(N_JSON_DUMPS));
   return CA_NONE;
@@ -402,6 +451,8 @@ static CaValue init_13(CaRuntime *rt) {
 }
 CaValue ca_standard_call(CaRuntime *rt, int id, int n, int nkw, CaValue *args,
                          const char **keys) {
+  if (id >= 2000)
+    return ca_dependency_call(rt, id, n, nkw, args, keys);
   if (id >= N_OS_OPEN && id <= N_DICT_POP)
     return ca_extra_call(rt, id, n, nkw, args, keys);
   if (id >= N_SYS_EXIT && id <= N_PARSER_HELP)
@@ -449,6 +500,8 @@ CaValue ca_foreign_attribute(CaRuntime *rt, CaValue value, const char *name) {
     }
   } else {
     CaForeign *f = (CaForeign *)value.as.obj;
+    if (f->kind >= CA_F_REGEX)
+      return ca_dependency_attribute(rt, value, name);
     if (f->kind == CA_F_SUPPRESS || f->kind == CA_F_NULLCONTEXT ||
         f->kind == CA_F_PARSER || f->kind == CA_F_ACTION)
       return ca_cli_attribute(rt, value, name);
@@ -536,6 +589,7 @@ CaValue ca_foreign_attribute(CaRuntime *rt, CaValue value, const char *name) {
   return CA_UNBOUND;
 }
 void ca_foreign_finalize(CaForeign *f) {
+  ca_dependency_finalize(f);
   ca_http_finalize(f);
   ca_io_finalize(f);
   ca_data_finalize(f);
@@ -543,7 +597,8 @@ void ca_foreign_finalize(CaForeign *f) {
 }
 CaValue ca_foreign_iter(CaRuntime *rt, CaValue value) {
   CaForeign *f = (CaForeign *)value.as.obj;
-  if (f->kind >= CA_F_MAP && f->kind <= CA_F_CALL_ITER)
+  if (f->kind == CA_F_REGEX_ITER ||
+      (f->kind >= CA_F_MAP && f->kind <= CA_F_CALL_ITER))
     return value;
   if (f->kind == CA_F_FILE) {
     if (!f->handle) {
@@ -568,6 +623,8 @@ CaValue ca_foreign_iter(CaRuntime *rt, CaValue value) {
   return CA_UNBOUND;
 }
 int ca_foreign_next(CaRuntime *rt, CaValue value, CaValue *out) {
+  if (((CaForeign *)value.as.obj)->kind == CA_F_REGEX_ITER)
+    return ca_re_next(rt, value, out);
   CaForeign *f = (CaForeign *)value.as.obj;
   if (f->kind >= CA_F_MAP && f->kind <= CA_F_CALL_ITER)
     return ca_builtin_iterator_next(rt, value, out);
@@ -672,6 +729,16 @@ void ca_standard_arguments(CaRuntime *rt, int argc, char **argv) {
 static CaValue init_14(CaRuntime *rt) {
   put(rt, 14, "argv", rt->arguments);
   put(rt, 14, "exit", ca_native_function(N_SYS_EXIT));
+  put(rt, 14, "modules", ca_container(rt, CA_DICT_T, 0, NULL));
+  CaValue cache = ca_attribute(rt, ca_module_value(&modules[14]), "modules", 0);
+  for (size_t i = 0; i < rt->module_count; i++)
+    if (rt->modules[i]->state)
+      ca_namespace_set(rt, cache, rt->modules[i]->name,
+                       ca_module_value(rt->modules[i]));
+  for (size_t i = 0; i < rt->standard_count; i++)
+    if (rt->standard_modules[i]->state)
+      ca_namespace_set(rt, cache, rt->standard_modules[i]->name,
+                       ca_module_value(rt->standard_modules[i]));
   put(rt, 14, "platform", ca_string(rt, "linux", 5));
   return CA_NONE;
 }
@@ -696,6 +763,7 @@ static CaValue init_17(CaRuntime *rt) {
                N_AS_WAIT_FOR, N_AS_GATHER, N_AS_LOCK};
   for (size_t i = 0; i < 6; i++)
     put(rt, 17, names[i], ca_native_function(ids[i]));
+  put(rt, 17, "get_running_loop", ca_native_function(D_HELPERS_RUNNING_LOOP));
   put(rt, 17, "CancelledError", ca_type(CA_T_CANCELLEDERROR));
   put(rt, 17, "TimeoutError", ca_type(CA_T_TIMEOUTERROR));
   return CA_NONE;
@@ -713,4 +781,44 @@ static CaValue init_19(CaRuntime *rt) {
     put(rt, 19, "SimpleHTTPRequestHandler", cls);
   }
   return CA_NONE;
+}
+
+static CaValue init_20(CaRuntime *rt) {
+  return ca_dependency_init(rt, 0, ca_module_value(&modules[20]));
+}
+
+static CaValue init_21(CaRuntime *rt) {
+  return ca_dependency_init(rt, 1, ca_module_value(&modules[21]));
+}
+
+static CaValue init_22(CaRuntime *rt) {
+  return ca_dependency_init(rt, 2, ca_module_value(&modules[22]));
+}
+
+static CaValue init_23(CaRuntime *rt) {
+  return ca_dependency_init(rt, 3, ca_module_value(&modules[23]));
+}
+
+static CaValue init_24(CaRuntime *rt) {
+  return ca_dependency_init(rt, 4, ca_module_value(&modules[24]));
+}
+
+static CaValue init_25(CaRuntime *rt) {
+  return ca_dependency_init(rt, 5, ca_module_value(&modules[25]));
+}
+
+static CaValue init_26(CaRuntime *rt) {
+  return ca_dependency_init(rt, 6, ca_module_value(&modules[26]));
+}
+
+static CaValue init_27(CaRuntime *rt) {
+  return ca_dependency_init(rt, 7, ca_module_value(&modules[27]));
+}
+
+static CaValue init_28(CaRuntime *rt) {
+  return ca_dependency_init(rt, 8, ca_module_value(&modules[28]));
+}
+
+static CaValue init_29(CaRuntime *rt) {
+  return ca_dependency_init(rt, 9, ca_module_value(&modules[29]));
 }

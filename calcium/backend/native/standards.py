@@ -2,6 +2,16 @@
 
 MODULES = frozenset(
     {
+        "subprocess",
+        "zipfile",
+        "re",
+        "urllib",
+        "urllib.error",
+        "urllib.request",
+        "traceback",
+        "importlib",
+        "importlib.util",
+        "threading",
         "sys",
         "contextlib",
         "argparse",
@@ -25,3 +35,11 @@ MODULES = frozenset(
     }
 )
 LIBRARIES = {"hashlib": ("openssl", "CA_WITH_OPENSSL"), "sqlite3": ("sqlite3", "CA_WITH_SQLITE")}
+
+LIBRARIES.update(
+    {
+        "re": ("libpcre2-8", "CA_WITH_PCRE2"),
+        "zipfile": ("libarchive", "CA_WITH_ARCHIVE"),
+        "urllib.request": ("libcurl", "CA_WITH_CURL"),
+    }
+)
