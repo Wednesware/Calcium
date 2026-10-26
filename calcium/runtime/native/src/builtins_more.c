@@ -605,7 +605,8 @@ CaValue ca_builtin_more(CaRuntime *rt, int id, int n, int nkw, CaValue *args,
                "native vars requires an instance argument");
       return CA_UNBOUND;
     }
-    if (args[0].tag == CA_INSTANCE_T)
+    if (args[0].tag == CA_INSTANCE_T &&
+        !((CaClass *)((CaInstance *)args[0].as.obj)->type.as.obj)->slotted)
       return ((CaInstance *)args[0].as.obj)->namespace_;
     ca_error(rt, "TypeError", "vars() argument must have a supported __dict__");
     return CA_UNBOUND;

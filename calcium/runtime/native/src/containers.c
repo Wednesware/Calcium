@@ -101,8 +101,12 @@ CaValue ca_container(CaRuntime *rt, CaTag tag, size_t n, CaValue *items) {
     for (size_t i = 0; i < n && !rt->error; i++)
       ca_append(rt, result, items[i]);
   } else if (reserve(rt, c, n)) {
-    if (n)
-      memcpy(c->items, items, n * sizeof(CaValue));
+    if (n) {
+      if (items)
+        memcpy(c->items, items, n * sizeof(CaValue));
+      else
+        memset(c->items, 0, n * sizeof(CaValue));
+    }
     c->length = n;
   }
   return rt->error ? CA_UNBOUND : result;

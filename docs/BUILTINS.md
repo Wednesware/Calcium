@@ -76,7 +76,7 @@ large native call scratch arrays use checked heap storage. Function parameter an
 call argument limits remain 128.
 
 Built-ins are separate from standard-library modules. The supplied vendored
-Nitrogen tree now has no reported built-in or listed syntax diagnostics, but
-subprocess, zipfile, urllib, traceback, re, importlib and threading still require
-native implementations. In particular, downloading and dynamically loading new
-Python packages cannot be made native by renaming __import__ or importlib APIs.
+Nitrogen tree has no reported built-in or listed syntax diagnostics. 26.11 adds
+[selected native implementations](LIBRARIES_26_11.md) for its remaining module
+imports. Downloaded Python packages still need rebuilding into the executable;
+compiled importlib APIs do not implement a Python evaluator.

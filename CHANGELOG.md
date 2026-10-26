@@ -1,5 +1,9 @@
 # Changelog
 
+## 26.11
+
+Native implementations for the eight module names behind the ten Nitrogen import diagnostics: subprocess, zipfile, re, urllib.error/request, traceback, importlib.util and threading. Adds compiled-module imports, source-location tracebacks, synchronized thread callbacks, JSON streams and simple slotted dataclasses. See [release notes](docs/releases/26.11.md) for the bounded API contract and validation.
+
 ## 26.10
 
 Broad native built-in and exception coverage, a public-name inventory, starred assignment, native identity, selected match patterns and larger literals. See [release notes](docs/releases/26.10.md) for exact scope and remaining Nitrogen standard-library blockers.

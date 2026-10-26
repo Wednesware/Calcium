@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-/* CaRT ABI 5. Tagged primitives, module namespaces and traced heap objects,
+/* CaRT ABI 6. Tagged primitives, module namespaces and traced heap objects,
  * tracing roots. */
 typedef struct CaObj CaObj;
 typedef struct CaRuntime CaRuntime;
@@ -76,6 +76,8 @@ typedef struct CaFrame {
   struct CaFrame *previous;
   CaValue *values;
   size_t count;
+  const char *file, *function;
+  int line;
 } CaFrame;
 struct CaObj {
   CaObj *next, *mark_next;
@@ -93,6 +95,7 @@ struct CaRuntime {
   CaValue environment, pending, handled;
   CaValue arguments;
   void *event_loop;
+  void *threading;
   CaModule **standard_modules;
   size_t standard_count;
   const char *error;
@@ -137,6 +140,7 @@ struct CaBinding {
 struct CaModule {
   const char *name, *package;
   int is_package, state; /* 0 absent, 1 initializing, 2 loaded */
+  const char *origin;
   const char **names;
   CaValue *values;
   size_t count;
@@ -218,7 +222,7 @@ typedef struct {
 typedef struct {
   CaObj base;
   CaValue name, namespace_, parent, fields;
-  int dataclass;
+  int dataclass, slotted;
 } CaClass;
 typedef struct {
   CaObj base;
@@ -231,7 +235,7 @@ typedef struct {
 } CaBound;
 typedef struct {
   CaObj base;
-  CaValue type, args, cause, context, message;
+  CaValue type, args, cause, context, message, attributes, trace;
 } CaException;
 typedef struct {
   CaObj base;
@@ -338,6 +342,13 @@ enum {
   CA_T_BYTESWARNING,
   CA_T_RESOURCEWARNING,
   CA_T_ENCODINGWARNING,
+  CA_T_SUBPROCESSERROR,
+  CA_T_CALLEDPROCESSERROR,
+  CA_T_TIMEOUTEXPIRED,
+  CA_T_URLERROR,
+  CA_T_HTTPERROR,
+  CA_T_BADZIPFILE,
+  CA_T_REERROR,
 };
 static inline CaValue ca_type(long id) {
   return (CaValue){.tag = CA_TYPE_T, .as.i = id};
